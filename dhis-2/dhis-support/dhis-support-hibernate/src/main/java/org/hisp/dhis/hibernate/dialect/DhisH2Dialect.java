@@ -1,7 +1,5 @@
-package org.hisp.dhis.hibernate.dialect;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,34 +25,68 @@ package org.hisp.dhis.hibernate.dialect;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.hibernate.dialect;
 
-import org.hibernate.dialect.H2Dialect;
-
+import io.hypersistence.utils.hibernate.type.array.StringArrayType;
 import java.sql.Types;
+import org.hibernate.boot.model.TypeContributions;
+import org.hibernate.dialect.H2Dialect;
+import org.hibernate.dialect.function.StandardSQLFunction;
+import org.hibernate.service.ServiceRegistry;
+import org.hibernate.type.StandardBasicTypes;
+import org.hisp.dhis.hibernate.jsonb.type.JsonBinaryType;
+import org.hisp.dhis.hibernate.jsonb.type.JsonbFunctions;
 
 /**
  * @author Lars Helge Overland
  */
-public class DhisH2Dialect extends H2Dialect
-{
-    public DhisH2Dialect()
-    {
-        registerColumnType( Types.JAVA_OBJECT, "text" );
-        registerColumnType( Types.JAVA_OBJECT - 1, "jsonb" );
-    }
+public class DhisH2Dialect extends H2Dialect {
+  public DhisH2Dialect() {
+    registerColumnType(Types.JAVA_OBJECT, "text");
+    registerColumnType(Types.JAVA_OBJECT, "jsonb");
+    registerColumnType(Types.OTHER, "uuid");
+    registerFunction(
+        JsonbFunctions.EXTRACT_PATH,
+        new StandardSQLFunction(JsonbFunctions.EXTRACT_PATH, StandardBasicTypes.STRING));
+    registerFunction(
+        JsonbFunctions.EXTRACT_PATH_TEXT,
+        new StandardSQLFunction(JsonbFunctions.EXTRACT_PATH_TEXT, StandardBasicTypes.STRING));
+    registerFunction(
+        JsonbFunctions.JSONB_TYPEOF,
+        new StandardSQLFunction(JsonbFunctions.JSONB_TYPEOF, StandardBasicTypes.STRING));
+    registerFunction(
+        JsonbFunctions.HAS_USER_GROUP_IDS,
+        new StandardSQLFunction(JsonbFunctions.HAS_USER_GROUP_IDS, StandardBasicTypes.BOOLEAN));
+    registerFunction(
+        JsonbFunctions.CHECK_USER_GROUPS_ACCESS,
+        new StandardSQLFunction(
+            JsonbFunctions.CHECK_USER_GROUPS_ACCESS, StandardBasicTypes.BOOLEAN));
+    registerFunction(
+        JsonbFunctions.HAS_USER_ID,
+        new StandardSQLFunction(JsonbFunctions.HAS_USER_ID, StandardBasicTypes.BOOLEAN));
+    registerFunction(
+        JsonbFunctions.CHECK_USER_ACCESS,
+        new StandardSQLFunction(JsonbFunctions.CHECK_USER_ACCESS, StandardBasicTypes.BOOLEAN));
+    registerFunction("array_agg", new StandardSQLFunction("array_agg", StringArrayType.INSTANCE));
+  }
 
-    @Override
-    public String getDropSequenceString( String sequenceName )
-    {
-        // Adding the "if exists" clause to avoid warnings
-        return "drop sequence if exists " + sequenceName;
-    }
+  @Override
+  public String getDropSequenceString(String sequenceName) {
+    // Adding the "if exists" clause to avoid warnings
+    return "drop sequence if exists " + sequenceName;
+  }
 
-    @Override
-    public boolean dropConstraints()
-    {
-        // No need to drop constraints before dropping tables, leads to error
-        // messages
-        return false;
-    }
+  @Override
+  public boolean dropConstraints() {
+    // No need to drop constraints before dropping tables, leads to error
+    // messages
+    return false;
+  }
+
+  @Override
+  public void contributeTypes(
+      TypeContributions typeContributions, ServiceRegistry serviceRegistry) {
+    super.contributeTypes(typeContributions, serviceRegistry);
+    typeContributions.contributeType(new JsonBinaryType(), "jsonb");
+  }
 }

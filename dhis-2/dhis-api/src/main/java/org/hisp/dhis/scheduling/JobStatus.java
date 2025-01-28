@@ -1,7 +1,5 @@
-package org.hisp.dhis.scheduling;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,31 +25,44 @@ package org.hisp.dhis.scheduling;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.scheduling;
 
 /**
- * Enum for job status. This is used for current status of a job(RUNNING or SCHEDULED) and for last executed status, for which the
- * status can be COMPLETED, STOPPED or FAILED.
+ * Enum for job status. This is used for current status of a job(RUNNING or SCHEDULED) and for last
+ * executed status, for which the status can be COMPLETED, STOPPED or FAILED.
  *
  * @author Henning Håkonsen
  */
-public enum JobStatus
-{
-    RUNNING( "running" ),
-    COMPLETED( "done" ),
-    STOPPED( "stopped" ),
-    SCHEDULED( "scheduled" ),
-    DISABLED( "disabled" ),
-    FAILED( "failed" );
+public enum JobStatus {
 
-    private final String key;
+  /*
+  Current job status
+   */
+  RUNNING("running"),
+  SCHEDULED("scheduled"),
+  DISABLED("disabled"),
 
-    JobStatus( String key )
-    {
-        this.key = key;
-    }
+  /*
+   * Outcomes for last executed status
+   */
+  COMPLETED("done"),
+  STOPPED("stopped"),
+  FAILED("failed"),
+  /**
+   * Status of a freshly created run once job before is executed via "executeNow".
+   *
+   * <p>When it has not run before or when it is part of a queue and it got skipped because a job in
+   * the queue before it failed.
+   */
+  NOT_STARTED("not_started");
 
-    public String getKey()
-    {
-        return key;
-    }
+  private final String key;
+
+  JobStatus(String key) {
+    this.key = key;
+  }
+
+  public String getKey() {
+    return key;
+  }
 }

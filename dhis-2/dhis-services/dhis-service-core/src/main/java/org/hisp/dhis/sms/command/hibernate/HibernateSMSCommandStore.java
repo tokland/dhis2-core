@@ -1,7 +1,5 @@
-package org.hisp.dhis.sms.command.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,56 +25,105 @@ package org.hisp.dhis.sms.command.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.sms.command.hibernate;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import java.util.Collection;
 import java.util.List;
-
-import org.hibernate.Criteria;
-import org.hibernate.Query;
-import org.hibernate.criterion.Restrictions;
+import javax.annotation.Nonnull;
+import org.hibernate.query.Query;
+import org.hisp.dhis.common.UID;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
+import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.dataset.DataSet;
+import org.hisp.dhis.query.JpaQueryUtils;
+import org.hisp.dhis.security.acl.AclService;
 import org.hisp.dhis.sms.command.SMSCommand;
+import org.hisp.dhis.sms.command.code.SMSCode;
 import org.hisp.dhis.sms.parse.ParserType;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
-public class HibernateSMSCommandStore
-    extends HibernateIdentifiableObjectStore<SMSCommand> implements SMSCommandStore
-{
-    @SuppressWarnings( "unchecked" )
-    @Override
-    public List<SMSCommand> getJ2MESMSCommands()
-    {
-        Criteria criteria = sessionFactory.getCurrentSession().createCriteria( SMSCommand.class );
-        criteria.add( Restrictions.eq( "parserType", ParserType.J2ME_PARSER ) );
-        return criteria.list();
+@Repository("org.hisp.dhis.sms.command.hibernate.SMSCommandStore")
+public class HibernateSMSCommandStore extends HibernateIdentifiableObjectStore<SMSCommand>
+    implements SMSCommandStore {
+  public HibernateSMSCommandStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, SMSCommand.class, aclService, true);
+  }
+
+  @Override
+  public List<SMSCommand> getJ2MESMSCommands() {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("parserType"), ParserType.J2ME_PARSER)));
+  }
+
+  @Override
+  public SMSCommand getSMSCommand(String commandName, ParserType parserType) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    List<SMSCommand> list =
+        getList(
+            builder,
+            newJpaParameters()
+                .addPredicate(root -> builder.equal(root.get("parserType"), parserType))
+                .addPredicate(
+                    root ->
+                        JpaQueryUtils.stringPredicateIgnoreCase(
+                            builder,
+                            root.get("name"),
+                            commandName,
+                            JpaQueryUtils.StringSearchMode.ANYWHERE)));
+
+    if (list != null && !list.isEmpty()) {
+      return list.get(0);
     }
 
-    @Override
-    public SMSCommand getSMSCommand( String commandName, ParserType parserType )
-    {
-        Criteria criteria = sessionFactory.getCurrentSession().createCriteria( SMSCommand.class );
-        criteria.add( Restrictions.eq( "parserType", parserType ) );
-        criteria.add( Restrictions.ilike( "name", "%" + commandName + "%" ) );
+    return null;
+  }
 
-        if ( criteria.list() != null && criteria.list().size() > 0 )
-        {
-            return (SMSCommand) criteria.list().get( 0 );
-        }
+  @Override
+  public int countDataSetSmsCommands(DataSet dataSet) {
+    Query<Long> query =
+        getTypedQuery("select count(distinct c) from SMSCommand c where c.dataset=:dataSet");
+    query.setParameter("dataSet", dataSet);
+    // TODO rename data set property
 
-        return null;
-    }
+    return query.getSingleResult().intValue();
+  }
 
-    @Override
-    public int countDataSetSmsCommands( DataSet dataSet )
-    {
-        Query query = getQuery( "select count(distinct c) from SMSCommand c where c.dataset=:dataSet", true );
-        query.setEntity( "dataSet", dataSet );
-        // TODO rename dataset prop
+  @Override
+  public List<SMSCode> getCodesByDataElement(Collection<DataElement> dataElements) {
+    return getQuery(
+            """
+            from SMSCode s
+            where s.dataElement in :dataElements
+            """,
+            SMSCode.class)
+        .setParameter("dataElements", dataElements)
+        .list();
+  }
 
-        return ((Long) query.uniqueResult()).intValue();
-    }
-
-    public Query getQuery( String hql, boolean cacheable )
-    {
-        return sessionFactory.getCurrentSession().createQuery( hql ).setCacheable( cacheable );
-    }
+  @Override
+  public List<SMSCode> getCodesByCategoryOptionCombo(@Nonnull Collection<UID> uids) {
+    if (uids.isEmpty()) return List.of();
+    return getQuery(
+            """
+            select distinct sms from SMSCode sms
+            join sms.optionId coc
+            where coc.uid in :uids
+            """,
+            SMSCode.class)
+        .setParameter("uids", UID.toValueList(uids))
+        .list();
+  }
 }

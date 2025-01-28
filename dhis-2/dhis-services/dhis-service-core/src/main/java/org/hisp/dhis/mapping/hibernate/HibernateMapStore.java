@@ -1,7 +1,5 @@
-package org.hisp.dhis.mapping.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,25 +25,38 @@ package org.hisp.dhis.mapping.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.mapping.hibernate;
 
-import org.hibernate.Query;
+import jakarta.persistence.EntityManager;
+import org.hibernate.query.Query;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.mapping.Map;
 import org.hisp.dhis.mapping.MapStore;
 import org.hisp.dhis.mapping.MapView;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Lars Helge Overland
  */
-public class HibernateMapStore
-    extends HibernateIdentifiableObjectStore<Map> implements MapStore
-{
-    @Override
-    public int countMapViewMaps( MapView mapView )
-    {
-        Query query = getQuery( "select count(distinct c) from Map c where :mapView in elements(c.mapViews)" );
-        query.setEntity( "mapView", mapView );
+@Repository("org.hisp.dhis.mapping.MapStore")
+public class HibernateMapStore extends HibernateIdentifiableObjectStore<Map> implements MapStore {
+  public HibernateMapStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, Map.class, aclService, true);
+  }
 
-        return ((Long) query.uniqueResult()).intValue();
-    }
+  @Override
+  public int countMapViewMaps(MapView mapView) {
+    Query<Long> query =
+        getTypedQuery("select count(distinct c) from Map c where :mapView in elements(c.mapViews)");
+    query.setParameter("mapView", mapView);
+
+    return query.getSingleResult().intValue();
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.resourcetable;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,87 +25,26 @@ package org.hisp.dhis.resourcetable;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.resourcetable;
+
+import org.hisp.dhis.scheduling.JobProgress;
 
 /**
  * @author Lars Helge Overland
  */
-public interface ResourceTableService
-{
-    String ID = ResourceTableService.class.getName();
+public interface ResourceTableService {
+  /** Generates resource tables. */
+  void generateResourceTables();
 
-    /**
-     * Generates a resource table containing the hierarchy graph for each
-     * OrganisationUnit.
-     */
-    void generateOrganisationUnitStructures();
-    
-    /**
-     * Generates a resource table containing data sets and organisation units 
-     * with their associated attribute option combinations.
-     */
-    void generateDataSetOrganisationUnitCategoryTable();
-    
-    /**
-     * Generates a resource table containing id and a derived name for
-     * all CategoryOptionCombos.
-     */
-    void generateCategoryOptionComboNames();
-    
-    /**
-     * Generates a resource table for all data elements.
-     */
-    void generateDataElementGroupSetTable();
+  /** Replicates resource tables in the analytics database. */
+  void replicateAnalyticsResourceTables();
 
-    /**
-     * Generates a resource table for all indicators.
-     */
-    void generateIndicatorGroupSetTable();
-    
-    /**
-     * Generates a resource table for all organisation units 
-     */
-    void generateOrganisationUnitGroupSetTable();
+  /** Generates data approval resource tables. */
+  void generateDataApprovalResourceTables();
 
-    /**
-     * Generates a resource table for all category option combos.
-     * 
-     * Depends on the category option combo names table.
-     */
-    void generateCategoryTable();
-    
-    /**
-     * Generates a resource table for all data elements.
-     */
-    void generateDataElementTable();
+  /** Create all SQL views. */
+  void createAllSqlViews(JobProgress progress);
 
-    /**
-     * Generates a resource table for dates and associated periods.
-     */
-    void generateDatePeriodTable();
-    
-    /**
-     * Generates a resource table for all periods.
-     */
-    void generatePeriodTable();
-    
-    /**
-     * Generates a resource table for all data elements and relevant category
-     * option combinations.
-     */
-    void generateCategoryOptionComboTable();
-    
-    /**
-     * Generates a resource table for data approval aggregated to minimum level.
-     */
-    void generateDataApprovalMinLevelTable();
-    
-    /**
-     * Create all SQL views.
-     */
-    void createAllSqlViews();
-    
-    /**
-     * Drop all SQL views.
-     */
-    void dropAllSqlViews();
+  /** Drop all SQL views. */
+  void dropAllSqlViews(JobProgress progress);
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.program;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,35 +25,94 @@ package org.hisp.dhis.program;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program;
 
-import static org.junit.Assert.assertEquals;
+import static org.hisp.dhis.program.Program.DEFAULT_PREFIX;
+import static org.hisp.dhis.program.Program.PREFIX_KEY;
+import static org.hisp.dhis.program.ProgramTest.getNewProgram;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Map;
 import java.util.Set;
-import org.junit.Test;
-import com.google.common.collect.Sets;
+import org.hisp.dhis.attribute.AttributeValues;
+import org.hisp.dhis.common.ObjectStyle;
+import org.hisp.dhis.security.acl.Access;
+import org.hisp.dhis.user.sharing.Sharing;
+import org.junit.jupiter.api.Test;
 
 /**
-* @author Lars Helge Overland
-*/
-public class ProgramIndicatorTest
-{
-    @Test
-    public void testGetIdentifiersEvent()
-    {
-        String expression = "#{chG8sINMf11.yD5mUKAm3aK} + #{chG8sINMf11.UaGD9u0kaur} - A{y1Bhi6xHtVk}";
-        
-        Set<String> expected = Sets.newHashSet( "yD5mUKAm3aK", "UaGD9u0kaur", "y1Bhi6xHtVk" );
-        
-        assertEquals( expected, ProgramIndicator.getDataElementAndAttributeIdentifiers( expression, AnalyticsType.EVENT ) );
-    }
-    
-    @Test
-    public void testGetIdentifiersEnrollment()
-    {
-        String expression = "#{chG8sINMf11.yD5mUKAm3aK} + #{chG8sINMf11.UaGD9u0kaur} - A{y1Bhi6xHtVk}";
-        
-        Set<String> expected = Sets.newHashSet( "chG8sINMf11_yD5mUKAm3aK", "chG8sINMf11_UaGD9u0kaur", "y1Bhi6xHtVk" );
-        
-        assertEquals( expected, ProgramIndicator.getDataElementAndAttributeIdentifiers( expression, AnalyticsType.ENROLLMENT ) );
-    }
+ * @author Lars Helge Overland
+ */
+class ProgramIndicatorTest {
+
+  @Test
+  void testHasFilter() {
+    ProgramIndicator pi = new ProgramIndicator();
+    assertFalse(pi.hasFilter());
+    pi.setFilter("true");
+    assertTrue(pi.hasFilter());
+  }
+
+  @Test
+  void testCopyOf() {
+    Program programOriginal = getNewProgram();
+    Program programCopy = Program.shallowCopy(programOriginal, Map.of());
+    ProgramIndicator original = getNewProgramIndicator(programOriginal);
+    ProgramIndicator copy = ProgramIndicator.copyOf(original, programCopy, Map.of());
+
+    assertNotEquals(original, copy);
+    assertNotEquals(original.getUid(), copy.getUid());
+    assertNotEquals(original.getProgram().getUid(), copy.getProgram().getUid());
+    assertNotSame(original, copy);
+
+    assertEquals(original.getDecimals(), copy.getDecimals());
+    assertEquals(DEFAULT_PREFIX + original.getName(), copy.getName());
+    assertEquals(DEFAULT_PREFIX + original.getShortName(), copy.getShortName());
+  }
+
+  @Test
+  void testCopyOfWithPrefix() {
+    String customPrefix = "use this ";
+    Program programOriginal = getNewProgram();
+    Program programCopy = Program.shallowCopy(programOriginal, Map.of());
+    ProgramIndicator original = getNewProgramIndicator(programOriginal);
+    ProgramIndicator copy =
+        ProgramIndicator.copyOf(original, programCopy, Map.of(PREFIX_KEY, customPrefix));
+
+    assertNotEquals(original, copy);
+    assertNotEquals(original.getUid(), copy.getUid());
+    assertNotEquals(original.getProgram().getUid(), copy.getProgram().getUid());
+    assertNotSame(original, copy);
+
+    assertEquals(original.getDecimals(), copy.getDecimals());
+    assertEquals(customPrefix + original.getName(), copy.getName());
+    assertEquals(customPrefix + original.getShortName(), copy.getShortName());
+  }
+
+  static ProgramIndicator getNewProgramIndicator(Program program) {
+    ProgramIndicator pi = new ProgramIndicator();
+    pi.setAutoFields();
+    pi.setProgram(program);
+    pi.setName("indicator 1");
+    pi.setAccess(new Access());
+    pi.setDecimals(2);
+    pi.setPublicAccess("rw------");
+    pi.setAttributeValues(AttributeValues.empty());
+    pi.setSharing(new Sharing());
+    pi.setTranslations(Set.of());
+    pi.setExpression("expression");
+    pi.setFilter("filter");
+    pi.setFormName("form name");
+    pi.setOrgUnitField("org unit field");
+    pi.setDisplayInForm(true);
+    pi.setAnalyticsPeriodBoundaries(Set.of());
+    pi.setStyle(new ObjectStyle());
+    pi.setShortName("short name");
+    pi.setDescription("description");
+    return pi;
+  }
 }

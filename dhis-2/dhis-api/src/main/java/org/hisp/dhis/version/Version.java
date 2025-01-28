@@ -1,7 +1,5 @@
-package org.hisp.dhis.version;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,102 +25,87 @@ package org.hisp.dhis.version;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.version;
 
 /**
  * @author mortenoh
  */
-public class Version
-{
-    private int id;
+public class Version {
+  private long id;
 
-    private String key;
+  private String key;
 
-    private String value;
+  private String value;
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Constructors
+  // -------------------------------------------------------------------------
 
-    public Version()
-    {
-    }
-    
-    public Version( String key, String value )
-    {
-        this.key = key;
-        this.value = value;
-    }
+  public Version() {}
 
-    // -------------------------------------------------------------------------
-    // hashCode and equals
-    // -------------------------------------------------------------------------
+  public Version(String key, String value) {
+    this.key = key;
+    this.value = value;
+  }
 
-    @Override
-    public int hashCode()
-    {
-        return key.hashCode();
-    }
+  // -------------------------------------------------------------------------
+  // hashCode and equals
+  // -------------------------------------------------------------------------
 
-    @Override
-    public boolean equals( Object o )
-    {
-        if ( this == o )
-        {
-            return true;
-        }
+  @Override
+  public int hashCode() {
+    return key.hashCode();
+  }
 
-        if ( o == null )
-        {
-            return false;
-        }
-
-        if ( !(o instanceof Version) )
-        {
-            return false;
-        }
-
-        final Version other = (Version) o;
-
-        return key.equals( other.getKey() );
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
 
-    @Override
-    public String toString()
-    {
-        return "[" + key + "]";
+    if (o == null) {
+      return false;
     }
 
-    // -------------------------------------------------------------------------
-    // Getter & Setter
-    // -------------------------------------------------------------------------
-
-    public int getId()
-    {
-        return id;
+    if (!(o instanceof Version)) {
+      return false;
     }
 
-    public void setId( int id )
-    {
-        this.id = id;
-    }
+    final Version other = (Version) o;
 
-    public String getKey()
-    {
-        return key;
-    }
+    return key.equals(other.getKey());
+  }
 
-    public void setKey( String key )
-    {
-        this.key = key;
-    }
+  @Override
+  public String toString() {
+    return "[" + key + "]";
+  }
 
-    public String getValue()
-    {
-        return value;
-    }
+  // -------------------------------------------------------------------------
+  // Getter & Setter
+  // -------------------------------------------------------------------------
 
-    public void setValue( String value )
-    {
-        this.value = value;
-    }
+  public long getId() {
+    return id;
+  }
+
+  public void setId(long id) {
+    this.id = id;
+  }
+
+  public String getKey() {
+    return key;
+  }
+
+  public void setKey(String key) {
+    this.key = key;
+  }
+
+  public String getValue() {
+    return value;
+  }
+
+  public void setValue(String value) {
+    this.value = value;
+  }
 }

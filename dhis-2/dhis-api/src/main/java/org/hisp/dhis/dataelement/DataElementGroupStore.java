@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataelement;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,10 +25,13 @@ package org.hisp.dhis.dataelement;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataelement;
 
+import java.util.Collection;
+import java.util.List;
 import org.hisp.dhis.common.IdentifiableObjectStore;
 
-public interface DataElementGroupStore
-    extends IdentifiableObjectStore<DataElementGroup>
-{
+public interface DataElementGroupStore extends IdentifiableObjectStore<DataElementGroup> {
+
+  List<DataElementGroup> getByDataElement(Collection<DataElement> dataElements);
 }

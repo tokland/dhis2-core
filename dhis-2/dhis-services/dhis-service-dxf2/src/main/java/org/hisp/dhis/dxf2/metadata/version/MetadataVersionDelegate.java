@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.version;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,214 +25,206 @@ package org.hisp.dhis.dxf2.metadata.version;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.version;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.hisp.dhis.dxf2.metadata.sync.exception.RemoteServerUnavailableException;
-import org.hisp.dhis.dxf2.metadata.systemsettings.DefaultMetadataSystemSettingService;
-import org.hisp.dhis.dxf2.metadata.version.exception.MetadataVersionServiceException;
-import org.hisp.dhis.dxf2.synch.AvailabilityStatus;
-import org.hisp.dhis.dxf2.synch.SynchronizationManager;
-import org.hisp.dhis.metadata.version.MetadataVersion;
-import org.hisp.dhis.metadata.version.MetadataVersionService;
-import org.hisp.dhis.render.RenderFormat;
-import org.hisp.dhis.render.RenderService;
-import org.hisp.dhis.system.util.DhisHttpResponse;
-import org.hisp.dhis.system.util.HttpUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
+import org.hisp.dhis.dxf2.metadata.sync.exception.RemoteServerUnavailableException;
+import org.hisp.dhis.dxf2.metadata.systemsettings.DefaultMetadataSystemSettingService;
+import org.hisp.dhis.dxf2.metadata.version.exception.MetadataVersionServiceException;
+import org.hisp.dhis.dxf2.sync.AvailabilityStatus;
+import org.hisp.dhis.dxf2.sync.SynchronizationManager;
+import org.hisp.dhis.metadata.version.MetadataVersion;
+import org.hisp.dhis.metadata.version.MetadataVersionService;
+import org.hisp.dhis.render.RenderFormat;
+import org.hisp.dhis.render.RenderService;
+import org.hisp.dhis.system.util.DhisHttpResponse;
+import org.hisp.dhis.system.util.HttpUtils;
+import org.springframework.context.annotation.Scope;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
 
 /**
  * Handling remote calls for metadata version.
  *
  * @author anilkumk
  */
-public class MetadataVersionDelegate
-{
-    private static final Log log = LogFactory.getLog( MetadataVersionDelegate.class );
+@Slf4j
+@Component("org.hisp.dhis.dxf2.metadata.version.MetadataVersionDelegate")
+@Scope("prototype")
+public class MetadataVersionDelegate {
+  private DefaultMetadataSystemSettingService metadataSystemSettingService;
 
-    @Autowired
-    private DefaultMetadataSystemSettingService metadataSystemSettingService;
+  private SynchronizationManager synchronizationManager;
 
-    @Autowired
-    private SynchronizationManager synchronizationManager;
+  private RenderService renderService;
 
-    @Autowired
-    private RenderService renderService;
+  private MetadataVersionService metadataVersionService;
 
-    @Autowired
-    private MetadataVersionService metadataVersionService;
+  public MetadataVersionDelegate(
+      DefaultMetadataSystemSettingService metadataSystemSettingService,
+      SynchronizationManager synchronizationManager,
+      RenderService renderService,
+      MetadataVersionService metadataVersionService) {
+    checkNotNull(metadataSystemSettingService);
+    checkNotNull(synchronizationManager);
+    checkNotNull(renderService);
+    checkNotNull(metadataVersionService);
 
-    private int VERSION_TIMEOUT = 120000;
+    this.metadataSystemSettingService = metadataSystemSettingService;
+    this.synchronizationManager = synchronizationManager;
+    this.renderService = renderService;
+    this.metadataVersionService = metadataVersionService;
+  }
 
-    private int DOWNLOAD_TIMEOUT = 300000;
+  private int VERSION_TIMEOUT = 120000;
 
-    public MetadataVersion getRemoteMetadataVersion( String versionName )
-    {
-        String versionDetailsUrl = metadataSystemSettingService.getVersionDetailsUrl( versionName );
-        DhisHttpResponse dhisHttpResponse = getDhisHttpResponse( versionDetailsUrl, VERSION_TIMEOUT );
-        MetadataVersion dataVersion = null;
+  private int DOWNLOAD_TIMEOUT = 300000;
 
-        if ( isValidDhisHttpResponse( dhisHttpResponse ) )
-        {
-            try
-            {
-                dataVersion = renderService.fromJson( dhisHttpResponse.getResponse(), MetadataVersion.class );
-            }
-            catch ( Exception e )
-            {
-                String message = "Exception occurred while trying to do JSON conversion for metadata version";
-                log.error( message, e );
-                throw new MetadataVersionServiceException( message, e );
-            }
-        }
+  public MetadataVersion getRemoteMetadataVersion(String versionName) {
+    String versionDetailsUrl = metadataSystemSettingService.getVersionDetailsUrl(versionName);
+    DhisHttpResponse dhisHttpResponse = getDhisHttpResponse(versionDetailsUrl, VERSION_TIMEOUT);
+    MetadataVersion dataVersion = null;
 
-        return dataVersion;
+    if (isValidDhisHttpResponse(dhisHttpResponse)) {
+      try {
+        dataVersion = renderService.fromJson(dhisHttpResponse.getResponse(), MetadataVersion.class);
+      } catch (Exception e) {
+        String message =
+            "Exception occurred while trying to do JSON conversion for metadata version";
+        log.error(message, e);
+        throw new MetadataVersionServiceException(message, e);
+      }
     }
 
-    public List<MetadataVersion> getMetaDataDifference( MetadataVersion metadataVersion )
-    {
-        String url;
-        List<MetadataVersion> metadataVersions = new ArrayList<>();
-        
-        if ( metadataVersion == null )
-        {
-            url = metadataSystemSettingService.getEntireVersionHistory();
-        }
-        else
-        {
-            url = metadataSystemSettingService.getMetaDataDifferenceURL( metadataVersion.getName() );
-        }
+    return dataVersion;
+  }
 
-        DhisHttpResponse dhisHttpResponse = getDhisHttpResponse( url, VERSION_TIMEOUT );
+  public List<MetadataVersion> getMetaDataDifference(MetadataVersion metadataVersion) {
+    String url;
+    List<MetadataVersion> metadataVersions = new ArrayList<>();
 
-        if ( isValidDhisHttpResponse( dhisHttpResponse ) )
-        {
-            try
-            {
-                metadataVersions = renderService
-                    .fromMetadataVersion( new ByteArrayInputStream( dhisHttpResponse.getResponse().getBytes() ),
-                        RenderFormat.JSON );
-                return metadataVersions;
-            }
-            catch ( IOException io )
-            {
-                String message =
-                    "Exception occurred while trying to do JSON conversion. Caused by:  " + io.getMessage();
-                log.error( message, io );
-                throw new MetadataVersionServiceException( message, io );
-            }
-        }
+    if (metadataVersion == null) {
+      url = metadataSystemSettingService.getEntireVersionHistory();
+    } else {
+      url = metadataSystemSettingService.getMetaDataDifferenceURL(metadataVersion.getName());
+    }
 
-        log.warn( "Returning empty for the metadata versions difference" );
+    DhisHttpResponse dhisHttpResponse = getDhisHttpResponse(url, VERSION_TIMEOUT);
+
+    if (isValidDhisHttpResponse(dhisHttpResponse)) {
+      try {
+        metadataVersions =
+            renderService.fromMetadataVersion(
+                new ByteArrayInputStream(dhisHttpResponse.getResponse().getBytes()),
+                RenderFormat.JSON);
         return metadataVersions;
+      } catch (IOException io) {
+        String message =
+            "Exception occurred while trying to do JSON conversion. Caused by:  " + io.getMessage();
+        log.error(message, io);
+        throw new MetadataVersionServiceException(message, io);
+      }
     }
 
-    public String downloadMetadataVersionSnapshot(MetadataVersion version )
-        throws MetadataVersionServiceException
-    {
-        String downloadVersionSnapshotURL = metadataSystemSettingService.getDownloadVersionSnapshotURL( version.getName() );
-        DhisHttpResponse dhisHttpResponse = getDhisHttpResponse( downloadVersionSnapshotURL, DOWNLOAD_TIMEOUT );
+    log.warn("Returning empty for the metadata versions difference");
+    return metadataVersions;
+  }
 
-        if ( isValidDhisHttpResponse( dhisHttpResponse ) )
-        {
-            return dhisHttpResponse.getResponse();
-        }
+  public String downloadMetadataVersionSnapshot(MetadataVersion version)
+      throws MetadataVersionServiceException {
+    String downloadVersionSnapshotURL =
+        metadataSystemSettingService.getDownloadVersionSnapshotURL(version.getName());
+    DhisHttpResponse dhisHttpResponse =
+        getDhisHttpResponse(downloadVersionSnapshotURL, DOWNLOAD_TIMEOUT);
 
-        return null;
+    if (isValidDhisHttpResponse(dhisHttpResponse)) {
+      return dhisHttpResponse.getResponse();
     }
 
-    public synchronized void addNewMetadataVersion( MetadataVersion version )
-    {
-        version.setImportDate( new Date() );
+    return null;
+  }
 
-        try
-        {
-            metadataVersionService.addVersion( version );
-        }
-        catch ( Exception e )
-        {
-            throw new MetadataVersionServiceException( "Exception occurred while trying to add metadata version" + version, e );
-        }
+  public synchronized void addNewMetadataVersion(MetadataVersion version) {
+    version.setImportDate(new Date());
+
+    try {
+      metadataVersionService.addVersion(version);
+    } catch (Exception e) {
+      throw new MetadataVersionServiceException(
+          "Exception occurred while trying to add metadata version" + version, e);
+    }
+  }
+
+  // ----------------------------------------------------------------------------------------
+  // Private Methods
+  // ----------------------------------------------------------------------------------------
+
+  private DhisHttpResponse getDhisHttpResponse(String url, int timeout) {
+    AvailabilityStatus remoteServerAvailable = synchronizationManager.isRemoteServerAvailable();
+
+    if (!(remoteServerAvailable.isAvailable())) {
+      String message = remoteServerAvailable.getMessage();
+      log.error(message);
+      throw new RemoteServerUnavailableException(message);
     }
 
-    //----------------------------------------------------------------------------------------
-    // Private Methods
-    //----------------------------------------------------------------------------------------
+    String username = metadataSystemSettingService.getRemoteInstanceUserName();
+    String password = metadataSystemSettingService.getRemoteInstancePassword();
 
-    private DhisHttpResponse getDhisHttpResponse( String url, int timeout )
-    {
-        AvailabilityStatus remoteServerAvailable = synchronizationManager.isRemoteServerAvailable();
+    log.info("Remote server metadata version  URL: " + url + ", username: " + username);
+    DhisHttpResponse dhisHttpResponse;
 
-        if ( !( remoteServerAvailable.isAvailable() ) )
-        {
-            String message = remoteServerAvailable.getMessage();
-            log.error( message );
-            throw new RemoteServerUnavailableException( message );
-        }
-
-        String username = metadataSystemSettingService.getRemoteInstanceUserName();
-        String password = metadataSystemSettingService.getRemoteInstancePassword();
-
-        log.info( "Remote server metadata version  URL: " + url + ", username: " + username );
-        DhisHttpResponse dhisHttpResponse = null;
-
-        try
-        {
-            dhisHttpResponse = HttpUtils.httpGET( url, true, username, password, null, timeout, true );
-        }
-        catch ( Exception e )
-        {
-            String message = "Exception occurred while trying to make the GET call to URL: " + url;
-            log.error( message, e );
-            throw new MetadataVersionServiceException( message, e );
-        }
-
-        return dhisHttpResponse;
+    try {
+      dhisHttpResponse = HttpUtils.httpGET(url, true, username, password, null, timeout, true);
+    } catch (Exception e) {
+      String message = "Exception occurred while trying to make the GET call to URL: " + url;
+      log.error(message, e);
+      throw new MetadataVersionServiceException(message, e);
     }
 
-    private boolean isValidDhisHttpResponse( DhisHttpResponse dhisHttpResponse )
-    {
-        if ( dhisHttpResponse == null || dhisHttpResponse.getResponse().isEmpty() )
-        {
-            log.warn( "Dhis http response is null" );
-            return false;
-        }
+    return dhisHttpResponse;
+  }
 
-        if ( HttpStatus.valueOf( dhisHttpResponse.getStatusCode() ).is2xxSuccessful() )
-        {
-            return true;
-        }
-
-        if ( HttpStatus.valueOf( dhisHttpResponse.getStatusCode() ).is4xxClientError() )
-        {
-            StringBuilder clientErrorMessage = buildErrorMessage( "Client Error. ", dhisHttpResponse );
-            log.warn( clientErrorMessage.toString() );
-            throw new MetadataVersionServiceException( clientErrorMessage.toString() );
-        }
-
-        if ( HttpStatus.valueOf( dhisHttpResponse.getStatusCode() ).is5xxServerError() )
-        {
-            StringBuilder serverErrorMessage = buildErrorMessage( "Server Error. ", dhisHttpResponse );
-            log.warn( serverErrorMessage.toString() );
-            throw new MetadataVersionServiceException( serverErrorMessage.toString() );
-        }
-
-        return false;
+  private boolean isValidDhisHttpResponse(DhisHttpResponse dhisHttpResponse) {
+    if (dhisHttpResponse == null || dhisHttpResponse.getResponse().isEmpty()) {
+      log.warn("Dhis http response is null");
+      return false;
     }
 
-    private StringBuilder buildErrorMessage( String errorType, DhisHttpResponse dhisHttpResponse )
-    {
-        StringBuilder message = new StringBuilder();
-        message.append( errorType ).append( "Http call failed with status code: " )
-            .append( dhisHttpResponse.getStatusCode() ).append( " Caused by: " )
-            .append( dhisHttpResponse.getResponse() );
-        return message;
+    if (HttpStatus.valueOf(dhisHttpResponse.getStatusCode()).is2xxSuccessful()) {
+      return true;
     }
+
+    if (HttpStatus.valueOf(dhisHttpResponse.getStatusCode()).is4xxClientError()) {
+      StringBuilder clientErrorMessage = buildErrorMessage("Client Error. ", dhisHttpResponse);
+      log.warn(clientErrorMessage.toString());
+      throw new MetadataVersionServiceException(clientErrorMessage.toString());
+    }
+
+    if (HttpStatus.valueOf(dhisHttpResponse.getStatusCode()).is5xxServerError()) {
+      StringBuilder serverErrorMessage = buildErrorMessage("Server Error. ", dhisHttpResponse);
+      log.warn(serverErrorMessage.toString());
+      throw new MetadataVersionServiceException(serverErrorMessage.toString());
+    }
+
+    return false;
+  }
+
+  private StringBuilder buildErrorMessage(String errorType, DhisHttpResponse dhisHttpResponse) {
+    StringBuilder message = new StringBuilder();
+    message
+        .append(errorType)
+        .append("Http call failed with status code: ")
+        .append(dhisHttpResponse.getStatusCode())
+        .append(" Caused by: ")
+        .append(dhisHttpResponse.getResponse());
+    return message;
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.programrule.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,26 +25,82 @@ package org.hisp.dhis.programrule.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.programrule.hibernate;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import java.util.Collection;
 import java.util.List;
-
-import org.hibernate.criterion.Restrictions;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
+import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.program.Program;
 import org.hisp.dhis.programrule.ProgramRuleVariable;
+import org.hisp.dhis.programrule.ProgramRuleVariableSourceType;
 import org.hisp.dhis.programrule.ProgramRuleVariableStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author markusbekken
  */
+@Repository("org.hisp.dhis.programrule.ProgramRuleVariableStore")
 public class HibernateProgramRuleVariableStore
     extends HibernateIdentifiableObjectStore<ProgramRuleVariable>
-    implements ProgramRuleVariableStore
-{
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<ProgramRuleVariable> get( Program program )
-    {
-        return getCriteria( Restrictions.eq( "program", program ) ).list();
-    }
+    implements ProgramRuleVariableStore {
+  public HibernateProgramRuleVariableStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, ProgramRuleVariable.class, aclService, false);
+  }
+
+  @Override
+  public List<ProgramRuleVariable> get(Program program) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getList(
+        builder,
+        newJpaParameters().addPredicate(root -> builder.equal(root.get("program"), program)));
+  }
+
+  @Override
+  public List<ProgramRuleVariable> getProgramVariables(Program program, DataElement dataElement) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("program"), program))
+            .addPredicate(root -> builder.equal(root.get("dataElement"), dataElement)));
+  }
+
+  @Override
+  public List<ProgramRuleVariable> getVariablesWithNoDataElement() {
+    return getQuery(
+            "FROM ProgramRuleVariable prv WHERE prv.sourceType IN ( :dataTypes ) AND prv.dataElement IS NULL")
+        .setParameter("dataTypes", ProgramRuleVariableSourceType.getDataTypes())
+        .getResultList();
+  }
+
+  @Override
+  public List<ProgramRuleVariable> getVariablesWithNoAttribute() {
+    return getQuery(
+            "FROM ProgramRuleVariable prv WHERE prv.sourceType IN ( :attributeTypes ) AND prv.attribute IS NULL")
+        .setParameter("attributeTypes", ProgramRuleVariableSourceType.getAttributeTypes())
+        .getResultList();
+  }
+
+  @Override
+  public List<ProgramRuleVariable> getByDataElement(Collection<DataElement> dataElements) {
+    return getQuery(
+            """
+            from ProgramRuleVariable prv
+            where prv.dataElement in :dataElements
+            """)
+        .setParameter("dataElements", dataElements)
+        .list();
+  }
 }

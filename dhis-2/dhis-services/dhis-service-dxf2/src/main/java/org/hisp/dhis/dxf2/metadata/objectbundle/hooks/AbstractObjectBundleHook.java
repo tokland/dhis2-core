@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,89 +25,87 @@ package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
 
-import org.hibernate.SessionFactory;
-import org.hisp.dhis.common.IdentifiableObject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.util.List;
+import java.util.function.Consumer;
+import org.hibernate.Session;
 import org.hisp.dhis.common.IdentifiableObjectManager;
 import org.hisp.dhis.dxf2.metadata.objectbundle.ObjectBundle;
 import org.hisp.dhis.dxf2.metadata.objectbundle.ObjectBundleHook;
 import org.hisp.dhis.feedback.ErrorReport;
 import org.hisp.dhis.preheat.PreheatService;
-import org.hisp.dhis.schema.MergeService;
+import org.hisp.dhis.schema.MetadataMergeService;
 import org.hisp.dhis.schema.SchemaService;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class AbstractObjectBundleHook implements ObjectBundleHook
-{
-    @Autowired
-    protected IdentifiableObjectManager manager;
+public class AbstractObjectBundleHook<T> implements ObjectBundleHook<T> {
+  @Autowired protected IdentifiableObjectManager manager;
 
-    @Autowired
-    protected PreheatService preheatService;
+  @Autowired protected PreheatService preheatService;
 
-    @Autowired
-    protected SessionFactory sessionFactory;
+  @PersistenceContext protected EntityManager entityManager;
 
-    @Autowired
-    protected SchemaService schemaService;
+  @Autowired protected SchemaService schemaService;
 
-    @Autowired
-    protected MergeService mergeService;
+  @Autowired protected MetadataMergeService metadataMergeService;
 
-    @Override
-    public <T extends IdentifiableObject> List<ErrorReport> validate( T object, ObjectBundle bundle )
-    {
-        return new ArrayList<>();
-    }
+  @Override
+  public void validate(T object, ObjectBundle bundle, Consumer<ErrorReport> addReports) {
+    // by default nothing to validate
+  }
 
-    @Override
-    public void preCommit( ObjectBundle bundle )
-    {
-    }
+  @Override
+  public void preCommit(ObjectBundle bundle) {
+    // by default nothing to do
+  }
 
-    @Override
-    public void postCommit( ObjectBundle bundle )
-    {
-    }
+  @Override
+  public void postCommit(ObjectBundle bundle) {
+    // by default nothing to do
+  }
 
-    @Override
-    public <T extends IdentifiableObject> void preTypeImport( Class<? extends IdentifiableObject> klass, List<T> objects, ObjectBundle bundle )
-    {
-    }
+  @Override
+  public <E extends T> void preTypeImport(Class<E> klass, List<E> objects, ObjectBundle bundle) {
+    // by default nothing to do
+  }
 
-    @Override
-    public <T extends IdentifiableObject> void postTypeImport( Class<? extends IdentifiableObject> klass, List<T> objects, ObjectBundle bundle )
-    {
-    }
+  @Override
+  public <E extends T> void postTypeImport(Class<E> klass, List<E> objects, ObjectBundle bundle) {
+    // by default nothing to do
+  }
 
-    @Override
-    public <T extends IdentifiableObject> void preCreate( T object, ObjectBundle bundle )
-    {
-    }
+  @Override
+  public void preCreate(T object, ObjectBundle bundle) {
+    // by default nothing to do
+  }
 
-    @Override
-    public <T extends IdentifiableObject> void postCreate( T persistedObject, ObjectBundle bundle )
-    {
-    }
+  @Override
+  public void postCreate(T persistedObject, ObjectBundle bundle) {
+    // by default nothing to do
+  }
 
-    @Override
-    public <T extends IdentifiableObject> void preUpdate( T object, T persistedObject, ObjectBundle bundle )
-    {
-    }
+  @Override
+  public void preUpdate(T object, T persistedObject, ObjectBundle bundle) {
+    // by default nothing to do
+  }
 
-    @Override
-    public <T extends IdentifiableObject> void postUpdate( T persistedObject, ObjectBundle bundle )
-    {
-    }
+  @Override
+  public void postUpdate(T persistedObject, ObjectBundle bundle) {
+    // by default nothing to do
+  }
 
-    @Override
-    public <T extends IdentifiableObject> void preDelete( T persistedObject, ObjectBundle bundle )
-    {
-    }
+  @Override
+  public void preDelete(T persistedObject, ObjectBundle bundle) {
+    // by default nothing to do
+  }
+
+  protected Session getSession() {
+    return entityManager.unwrap(Session.class);
+  }
 }

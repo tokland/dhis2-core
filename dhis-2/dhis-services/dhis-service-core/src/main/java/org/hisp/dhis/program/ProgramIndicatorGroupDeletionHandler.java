@@ -1,7 +1,5 @@
-package org.hisp.dhis.program;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,40 +25,30 @@ package org.hisp.dhis.program;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program;
 
-import org.hisp.dhis.system.deletion.DeletionHandler;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.system.deletion.IdObjectDeletionHandler;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Viet Nguyen
  */
+@Component
+@RequiredArgsConstructor
 public class ProgramIndicatorGroupDeletionHandler
-    extends DeletionHandler
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+    extends IdObjectDeletionHandler<ProgramIndicatorGroup> {
+  private final ProgramIndicatorService programIndicatorService;
 
-    @Autowired
-    private ProgramIndicatorService programIndicatorService;
+  @Override
+  protected void registerHandler() {
+    whenDeleting(ProgramIndicator.class, this::deleteProgramIndicator);
+  }
 
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
-
-    @Override
-    public String getClassName()
-    {
-        return ProgramIndicatorGroup.class.getName();
+  private void deleteProgramIndicator(ProgramIndicator programIndicator) {
+    for (ProgramIndicatorGroup group : programIndicator.getGroups()) {
+      group.getMembers().remove(programIndicator);
+      programIndicatorService.updateProgramIndicatorGroup(group);
     }
-
-    @Override
-    public void deleteProgramIndicator( ProgramIndicator programIndicator)
-    {
-        for ( ProgramIndicatorGroup group : programIndicator.getGroups() )
-        {
-            group.getMembers().remove( programIndicator );
-            programIndicatorService.updateProgramIndicatorGroup( group );
-        }
-    }
+  }
 }

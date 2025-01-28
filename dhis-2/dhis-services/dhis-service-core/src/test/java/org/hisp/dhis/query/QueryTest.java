@@ -1,7 +1,5 @@
-package org.hisp.dhis.query;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,58 +25,51 @@ package org.hisp.dhis.query;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.query;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.Date;
 import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.query.operators.MatchMode;
 import org.hisp.dhis.schema.Property;
 import org.hisp.dhis.schema.Schema;
-import org.junit.Test;
-
-import java.util.Date;
-
-import static org.junit.Assert.assertEquals;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class QueryTest
-{
-    private Property createProperty( Class<?> klazz, String name, boolean simple, boolean persisted )
-    {
-        Property property = new Property( klazz );
-        property.setName( name );
-        property.setFieldName( name );
-        property.setSimple( simple );
-        property.setPersisted( persisted );
+class QueryTest {
 
-        return property;
-    }
+  private Property createProperty(Class<?> klazz, String name, boolean simple, boolean persisted) {
+    Property property = new Property(klazz);
+    property.setName(name);
+    property.setFieldName(name);
+    property.setSimple(simple);
+    property.setPersisted(persisted);
+    return property;
+  }
 
-    private Schema createSchema()
-    {
-        Schema schema = new Schema( DataElement.class, "dataElement", "dataElements" );
-        schema.addProperty( createProperty( String.class, "id", true, true ) );
-        schema.addProperty( createProperty( String.class, "name", true, true ) );
-        schema.addProperty( createProperty( String.class, "code", true, true ) );
-        schema.addProperty( createProperty( Date.class, "created", true, true ) );
-        schema.addProperty( createProperty( Date.class, "lastUpdated", true, true ) );
+  private Schema createSchema() {
+    Schema schema = new Schema(DataElement.class, "dataElement", "dataElements");
+    schema.addProperty(createProperty(String.class, "id", true, true));
+    schema.addProperty(createProperty(String.class, "name", true, true));
+    schema.addProperty(createProperty(String.class, "code", true, true));
+    schema.addProperty(createProperty(Date.class, "created", true, true));
+    schema.addProperty(createProperty(Date.class, "lastUpdated", true, true));
+    schema.addProperty(createProperty(Integer.class, "int", true, true));
+    schema.addProperty(createProperty(Long.class, "long", true, true));
+    schema.addProperty(createProperty(Float.class, "float", true, true));
+    schema.addProperty(createProperty(Double.class, "double", true, true));
+    return schema;
+  }
 
-        schema.addProperty( createProperty( Integer.class, "int", true, true ) );
-        schema.addProperty( createProperty( Long.class, "long", true, true ) );
-        schema.addProperty( createProperty( Float.class, "float", true, true ) );
-        schema.addProperty( createProperty( Double.class, "double", true, true ) );
-
-        return schema;
-    }
-
-    @Test
-    public void validRestrictionParameters()
-    {
-        Query query = Query.from( createSchema() );
-        query.add( Restrictions.eq( "id", "anc" ) );
-        query.add( Restrictions.like( "name", "anc", MatchMode.ANYWHERE ) );
-        query.add( Restrictions.eq( "code", "anc" ) );
-
-        assertEquals( 3, query.getCriterions().size() );
-    }
+  @Test
+  void validRestrictionParameters() {
+    Query query = Query.from(createSchema());
+    query.add(Restrictions.eq("id", "anc"));
+    query.add(Restrictions.like("name", "anc", MatchMode.ANYWHERE));
+    query.add(Restrictions.eq("code", "anc"));
+    assertEquals(3, query.getCriterions().size());
+  }
 }

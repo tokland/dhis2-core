@@ -1,7 +1,5 @@
-package org.hisp.dhis.dbms;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,25 +25,19 @@ package org.hisp.dhis.dbms;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import java.util.List;
+package org.hisp.dhis.dbms;
 
 /**
  * @author Lars Helge Overland
  */
-public interface DbmsManager
-{
-    String ID = DbmsManager.class.getName();
-    
-    void emptyDatabase();
-    
-    void clearSession();
-    
-    void flushSession();
-    
-    void emptyTable( String table );
-    
-    boolean tableExists( String tableName );
+public interface DbmsManager {
+  String ID = DbmsManager.class.getName();
 
-    List<List<Object>> getTableContent( String table );
+  void emptyDatabase();
+
+  void clearSession();
+
+  void flushSession();
+
+  void emptyTable(String table);
 }

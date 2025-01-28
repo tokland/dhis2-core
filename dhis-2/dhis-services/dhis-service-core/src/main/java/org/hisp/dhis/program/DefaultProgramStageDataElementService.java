@@ -1,7 +1,5 @@
-package org.hisp.dhis.program;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,61 +25,59 @@ package org.hisp.dhis.program;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program;
 
 import java.util.List;
-
+import lombok.RequiredArgsConstructor;
 import org.hisp.dhis.dataelement.DataElement;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Viet Nguyen
  */
-@Transactional
-public class DefaultProgramStageDataElementService
-    implements ProgramStageDataElementService
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.program.ProgramStageDataElementService")
+public class DefaultProgramStageDataElementService implements ProgramStageDataElementService {
+  private final ProgramStageDataElementStore programStageDataElementStore;
 
-    private ProgramStageDataElementStore programStageDataElementStore;
+  // -------------------------------------------------------------------------
+  // Implementation methods
+  // -------------------------------------------------------------------------
 
-    public void setProgramStageDataElementStore( ProgramStageDataElementStore programStageDataElementStore )
-    {
-        this.programStageDataElementStore = programStageDataElementStore;
-    }
+  @Override
+  @Transactional
+  public void addProgramStageDataElement(ProgramStageDataElement programStageDataElement) {
+    programStageDataElementStore.save(programStageDataElement);
+  }
 
-    // -------------------------------------------------------------------------
-    // Implementation methods
-    // -------------------------------------------------------------------------
+  @Override
+  @Transactional
+  public void deleteProgramStageDataElement(ProgramStageDataElement programStageDataElement) {
+    programStageDataElementStore.delete(programStageDataElement);
+  }
 
-    @Override
-    public void addProgramStageDataElement( ProgramStageDataElement programStageDataElement )
-    {
-        programStageDataElementStore.save( programStageDataElement );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<ProgramStageDataElement> getAllProgramStageDataElements() {
+    return programStageDataElementStore.getAll();
+  }
 
-    @Override
-    public void deleteProgramStageDataElement( ProgramStageDataElement programStageDataElement )
-    {
-        programStageDataElementStore.delete( programStageDataElement );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<ProgramStageDataElement> getProgramStageDataElements(DataElement dataElement) {
+    return programStageDataElementStore.getProgramStageDataElements(dataElement);
+  }
 
-    @Override
-    public List<ProgramStageDataElement> getAllProgramStageDataElements()
-    {
-        return programStageDataElementStore.getAll();
-    }
-    
-    @Override
-    public ProgramStageDataElement get( ProgramStage programStage, DataElement dataElement )
-    {
-        return programStageDataElementStore.get( programStage, dataElement );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public ProgramStageDataElement get(ProgramStage programStage, DataElement dataElement) {
+    return programStageDataElementStore.get(programStage, dataElement);
+  }
 
-    @Override
-    public void updateProgramStageDataElement( ProgramStageDataElement programStageDataElement )
-    {
-        programStageDataElementStore.update( programStageDataElement );
-    }
+  @Override
+  @Transactional
+  public void updateProgramStageDataElement(ProgramStageDataElement programStageDataElement) {
+    programStageDataElementStore.update(programStageDataElement);
+  }
 }

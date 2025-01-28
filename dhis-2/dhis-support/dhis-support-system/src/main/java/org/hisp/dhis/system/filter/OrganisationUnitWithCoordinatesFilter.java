@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.filter;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.system.filter;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.filter;
 
 import org.hisp.dhis.commons.filter.Filter;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
@@ -34,12 +33,9 @@ import org.hisp.dhis.organisationunit.OrganisationUnit;
 /**
  * @author Lars Helge Overland
  */
-public class OrganisationUnitWithCoordinatesFilter
-    implements Filter<OrganisationUnit>
-{
-    @Override
-    public boolean retain( OrganisationUnit object )
-    {
-        return object != null && object.hasFeatureType() && object.hasCoordinates();
-    }    
+public class OrganisationUnitWithCoordinatesFilter implements Filter<OrganisationUnit> {
+  @Override
+  public boolean retain(OrganisationUnit object) {
+    return object != null && object.hasCoordinates();
+  }
 }

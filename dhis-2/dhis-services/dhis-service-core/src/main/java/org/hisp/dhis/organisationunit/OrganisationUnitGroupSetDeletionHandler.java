@@ -1,7 +1,5 @@
-package org.hisp.dhis.organisationunit;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,37 +25,26 @@ package org.hisp.dhis.organisationunit;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.organisationunit;
 
-import org.hisp.dhis.common.IdentifiableObjectManager;
-import org.hisp.dhis.system.deletion.DeletionHandler;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.hisp.dhis.system.deletion.IdObjectDeletionHandler;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
  */
+@Component
 public class OrganisationUnitGroupSetDeletionHandler
-    extends DeletionHandler
-{
-    @Autowired
-    private IdentifiableObjectManager idObjectManager;
-    
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
+    extends IdObjectDeletionHandler<OrganisationUnitGroup> {
+  @Override
+  protected void registerHandler() {
+    whenDeleting(OrganisationUnitGroup.class, this::deleteOrganisationUnitGroup);
+  }
 
-    @Override
-    public String getClassName()
-    {
-        return OrganisationUnitGroupSet.class.getSimpleName();
+  private void deleteOrganisationUnitGroup(OrganisationUnitGroup group) {
+    for (OrganisationUnitGroupSet groupSet : group.getGroupSets()) {
+      groupSet.getOrganisationUnitGroups().remove(group);
+      idObjectManager.updateNoAcl(groupSet);
     }
-    
-    @Override
-    public void deleteOrganisationUnitGroup( OrganisationUnitGroup group )
-    {
-        for ( OrganisationUnitGroupSet groupSet : group.getGroupSets() )
-        {
-            groupSet.getOrganisationUnitGroups().remove( group );
-            idObjectManager.updateNoAcl( groupSet );
-        }
-    }
+  }
 }

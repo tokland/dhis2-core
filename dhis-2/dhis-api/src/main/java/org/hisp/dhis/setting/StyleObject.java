@@ -1,7 +1,5 @@
-package org.hisp.dhis.setting;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,61 +25,52 @@ package org.hisp.dhis.setting;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.setting;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * @author Lars Helge Overland
  */
-public class StyleObject
-{
-    private String name;
-    
-    private String key;
-    
-    private String path;
+public class StyleObject {
+  private String name;
 
-    public StyleObject()
-    {
-    }
+  private String key;
 
-    public StyleObject( String name, String key, String path )
-    {
-        this.name = name;
-        this.key = key;
-        this.path = path;
-    }
-    
-    @JsonProperty
-    public String getName()
-    {
-        return name;
-    }
+  private String path;
 
-    public void setName( String name )
-    {
-        this.name = name;
-    }
+  public StyleObject() {}
 
-    @JsonProperty
-    public String getKey()
-    {
-        return key;
-    }
+  public StyleObject(String name, String key, String path) {
+    this.name = name;
+    this.key = key;
+    this.path = path;
+  }
 
-    public void setKey( String key )
-    {
-        this.key = key;
-    }
+  @JsonProperty
+  public String getName() {
+    return name;
+  }
 
-    @JsonProperty
-    public String getPath()
-    {
-        return path;
-    }
+  public void setName(String name) {
+    this.name = name;
+  }
 
-    public void setPath( String path )
-    {
-        this.path = path;
-    }
+  @JsonProperty
+  public String getKey() {
+    return key;
+  }
+
+  public void setKey(String key) {
+    this.key = key;
+  }
+
+  @JsonProperty
+  public String getPath() {
+    return path;
+  }
+
+  public void setPath(String path) {
+    this.path = path;
+  }
 }

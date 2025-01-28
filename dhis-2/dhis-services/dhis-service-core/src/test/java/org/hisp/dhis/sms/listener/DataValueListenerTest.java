@@ -1,7 +1,5 @@
-package org.hisp.dhis.sms.listener;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,9 +25,24 @@ package org.hisp.dhis.sms.listener;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.sms.listener;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.google.common.collect.Sets;
-import org.hisp.dhis.DhisConvenienceTest;
+import java.util.Date;
 import org.hisp.dhis.category.CategoryOptionCombo;
 import org.hisp.dhis.category.CategoryService;
 import org.hisp.dhis.common.ValueType;
@@ -39,6 +52,7 @@ import org.hisp.dhis.dataset.CompleteDataSetRegistration;
 import org.hisp.dhis.dataset.CompleteDataSetRegistrationService;
 import org.hisp.dhis.dataset.DataSet;
 import org.hisp.dhis.dataset.DataSetService;
+import org.hisp.dhis.dataset.LockStatus;
 import org.hisp.dhis.datavalue.DataValue;
 import org.hisp.dhis.datavalue.DataValueService;
 import org.hisp.dhis.message.MessageSender;
@@ -54,376 +68,506 @@ import org.hisp.dhis.sms.incoming.IncomingSmsService;
 import org.hisp.dhis.sms.incoming.SmsMessageStatus;
 import org.hisp.dhis.sms.outbound.GatewayResponse;
 import org.hisp.dhis.sms.parse.ParserType;
-import org.hisp.dhis.sms.parse.SMSParserException;
+import org.hisp.dhis.test.TestBase;
 import org.hisp.dhis.user.User;
+import org.hisp.dhis.user.UserDetails;
 import org.hisp.dhis.user.UserService;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
-
-import java.util.Date;
-
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * @Author Zubair Asghar.
+ * @author Zubair Asghar.
  */
+@ExtendWith(MockitoExtension.class)
+class DataValueListenerTest extends TestBase {
+  private static final String FETCHED_DATA_VALUE = "fetchedDataValue";
 
-@RunWith( MockitoJUnitRunner.class )
-public class DataValueListenerTest extends DhisConvenienceTest
-{
-    private static final String FETCHED_DATA_VALUE = "fetchedDataValue";
-    private static final String STORED_BY = "CGhost";
-    private static final String DATA_ENTRY_COMMAND = "dataentrycommand";
-    private static final String SUCCESS_MESSAGE = "data entered successfully";
-    private static final String SMS_TEXT = DATA_ENTRY_COMMAND + " " + "de=sample";
-    private static final String SMS_TEXT_FOR_CUSTOM_SEPARATOR = DATA_ENTRY_COMMAND + " " + "de.sample";
-    private static final String SMS_TEXT_FOR_COMPULSORY = DATA_ENTRY_COMMAND + " " + "de=sample=deb=sample2";
-    private static final String ORIGINATOR = "474000000";
-    private static final String WRONG_FORMAT = "WRONG_FORMAT";
-    private static final String MORE_THAN_ONE_OU = "MORE_THAN_ONE_OU";
+  private static final String STORED_BY = "CGhost";
 
-    @Mock
-    private CompleteDataSetRegistrationService registrationService;
+  private static final String LAST_UPDATED_BY = "CGhost";
 
-    @Mock
-    private DataValueService dataValueService;
+  private static final String DATA_ENTRY_COMMAND = "dataentrycommand";
 
-    @Mock
-    private CategoryService dataElementCategoryService;
+  private static final String SUCCESS_MESSAGE = "data entered successfully";
 
-    @Mock
-    private SMSCommandService smsCommandService;
+  private static final String SMS_TEXT = DATA_ENTRY_COMMAND + " " + "de=sample";
 
-    @Mock
-    private DataSetService dataSetService;
+  private static final String SMS_TEXT_FOR_CUSTOM_SEPARATOR =
+      DATA_ENTRY_COMMAND + " " + "de.sample";
 
-    @Mock
-    private IncomingSmsService incomingSmsService;
+  private static final String SMS_TEXT_FOR_COMPULSORY =
+      DATA_ENTRY_COMMAND + " " + "de=sample=deb=sample2";
 
-    @Mock
-    private DataElementService dataElementService;
+  private static final String SMS_TEXT_FOR_COMPULSORY2 =
+      DATA_ENTRY_COMMAND + " " + "de=sample|deb=sample2";
 
-    @Mock
-    private MessageSender smsSender;
+  private static final String ORIGINATOR = "474000000";
 
-    @Mock
-    private UserService userService;
+  private static final String WRONG_FORMAT = "WRONG_FORMAT";
 
-    @InjectMocks
-    private DataValueSMSListener dataValueSMSListener;
+  private static final String MORE_THAN_ONE_OU = "MORE_THAN_ONE_OU";
 
-    private CompleteDataSetRegistration fetchedCompleteDataSetRegistration;
-    private CompleteDataSetRegistration savedCompleteDataSetRegistration;
-    private CompleteDataSetRegistration deletedCompleteDataSetRegistration;
+  @Mock private CategoryService dataElementCategoryService;
 
-    private DataValue fetchedDataValue;
-    private DataValue addedDataValue;
-    private DataValue updatedDataValue;
+  @Mock private UserService userService;
 
-    private DataElement dataElement;
-    private DataElement dataElementB;
+  @Mock private IncomingSmsService incomingSmsService;
 
-    private CategoryOptionCombo defaultCategoryOptionCombo;
-    private CategoryOptionCombo categoryOptionCombo;
+  @Mock private MessageSender smsSender;
 
-    private OrganisationUnit organisationUnitA;
-    private OrganisationUnit organisationUnitB;
-    private DataSet dataSet;
-    private Period period;
-    private User user;
-    private User userWithNoOu;
-    private User userwithMultipleOu;
+  @Mock private CompleteDataSetRegistrationService registrationService;
 
-    private SMSCommand keyValueCommand;
-    private SMSCode smsCode;
-    private SMSCode smsCodeForcompulsory;
-    private SMSSpecialCharacter smsSpecialCharacter;
-    private IncomingSms incomingSms;
-    private IncomingSms incomingSmsForCustomSeparator;
-    private IncomingSms incomingSmsForCompulsoryCode;
-    private IncomingSms updatedIncomingSms;
+  @Mock private DataValueService dataValueService;
 
-    private OutboundMessageResponse response;
+  @Mock private SMSCommandService smsCommandService;
 
-    private boolean locked = false;
-    private boolean smsConfigured = true;
+  @Mock private DataSetService dataSetService;
 
-    private String message = "";
+  @Mock private DataElementService dataElementService;
 
-    @Before
-    public void initTest()
-    {
-        setUpInstances();
+  private DataValueSMSListener subject;
 
-        // Mock for registrationService
-        when( registrationService.getCompleteDataSetRegistration( any(), any(), any(), any() ) )
-            .thenReturn( fetchedCompleteDataSetRegistration );
+  private CompleteDataSetRegistration fetchedCompleteDataSetRegistration;
 
-        doAnswer(invocation -> {
-            savedCompleteDataSetRegistration = (CompleteDataSetRegistration) invocation.getArguments()[0];
-            return savedCompleteDataSetRegistration;
-        }).when( registrationService ).saveCompleteDataSetRegistration( any() );
+  private CompleteDataSetRegistration deletedCompleteDataSetRegistration;
 
-        doAnswer( invocation -> {
-            deletedCompleteDataSetRegistration = (CompleteDataSetRegistration) invocation.getArguments()[0];
-            return deletedCompleteDataSetRegistration;
-        }).when( registrationService ).deleteCompleteDataSetRegistration( any() );
+  private DataValue fetchedDataValue;
 
-        // Mock for dataValueService
-        when( dataValueService.getDataValue( any(), any(), any(), any() ) )
-            .thenReturn( fetchedDataValue );
+  private DataValue updatedDataValue;
 
-        when( dataValueService.addDataValue( any() ) )
-            .thenAnswer( invocation -> {
-                addedDataValue = (DataValue) invocation.getArguments()[0];
-                return addedDataValue;
+  private DataElement dataElement;
+
+  private DataElement dataElementB;
+
+  private CategoryOptionCombo defaultCategoryOptionCombo;
+
+  private CategoryOptionCombo categoryOptionCombo;
+
+  private OrganisationUnit organisationUnitA;
+
+  private OrganisationUnit organisationUnitB;
+
+  private DataSet dataSet;
+
+  private DataSet dataSetB;
+
+  private Period period;
+
+  private User user;
+
+  private User userB;
+
+  private User userC;
+
+  private User userWithNoOu;
+
+  private User userwithMultipleOu;
+
+  private SMSCommand keyValueCommand;
+
+  private SMSCode smsCode;
+
+  private SMSCode smsCodeForcompulsory;
+
+  private SMSSpecialCharacter smsSpecialCharacter;
+
+  private IncomingSms incomingSms;
+
+  private IncomingSms incomingSmsForCustomSeparator;
+
+  private IncomingSms incomingSmsForCompulsoryCode;
+
+  private IncomingSms updatedIncomingSms;
+
+  private OutboundMessageResponse response;
+
+  private boolean smsConfigured = true;
+
+  private String message = "";
+
+  @BeforeEach
+  public void initTest() {
+    subject =
+        new DataValueSMSListener(
+            userService,
+            incomingSmsService,
+            smsSender,
+            registrationService,
+            dataValueService,
+            dataElementCategoryService,
+            smsCommandService,
+            dataSetService,
+            dataElementService);
+
+    organisationUnitA = createOrganisationUnit('O');
+    organisationUnitB = createOrganisationUnit('P');
+    dataSet = createDataSet('D');
+    dataSetB = createDataSet('B');
+    dataSet.addOrganisationUnit(organisationUnitA);
+    dataSet.addOrganisationUnit(organisationUnitB);
+    period = createPeriod(new Date(), new Date());
+
+    user = makeUser("U");
+    user.setPhoneNumber(ORIGINATOR);
+    user.setOrganisationUnits(Sets.newHashSet(organisationUnitA));
+
+    userB = makeUser("B");
+    userB.setPhoneNumber(ORIGINATOR);
+    userB.setOrganisationUnits(Sets.newHashSet(organisationUnitA));
+
+    userC = makeUser("C");
+    userC.setPhoneNumber(ORIGINATOR);
+    userC.setOrganisationUnits(Sets.newHashSet(organisationUnitA, organisationUnitB));
+
+    userWithNoOu = makeUser("V");
+    userWithNoOu.setPhoneNumber(null);
+    userWithNoOu.setOrganisationUnits(null);
+
+    userwithMultipleOu = makeUser("W");
+    userwithMultipleOu.setPhoneNumber(ORIGINATOR);
+    userwithMultipleOu.setOrganisationUnits(Sets.newHashSet(organisationUnitA, organisationUnitB));
+
+    dataElement = createDataElement('D');
+    dataElement.setValueType(ValueType.TEXT);
+    defaultCategoryOptionCombo = createCategoryOptionCombo('D');
+    categoryOptionCombo = createCategoryOptionCombo('C');
+
+    dataElementB = createDataElement('B');
+    dataElementB.setValueType(ValueType.TEXT);
+
+    fetchedDataValue =
+        createDataValue(
+            dataElement, period, organisationUnitA, FETCHED_DATA_VALUE, categoryOptionCombo);
+
+    fetchedCompleteDataSetRegistration =
+        new CompleteDataSetRegistration(
+            dataSet,
+            period,
+            organisationUnitA,
+            categoryOptionCombo,
+            new Date(),
+            STORED_BY,
+            new Date(),
+            LAST_UPDATED_BY,
+            true);
+
+    smsCode = new SMSCode();
+    smsCode.setCode("de");
+    smsCode.setDataElement(dataElement);
+    smsCode.setOptionId(defaultCategoryOptionCombo);
+
+    smsCodeForcompulsory = new SMSCode();
+    smsCodeForcompulsory.setCode("deb");
+    smsCodeForcompulsory.setDataElement(dataElementB);
+    smsCodeForcompulsory.setOptionId(categoryOptionCombo);
+    smsCodeForcompulsory.setCompulsory(true);
+
+    smsSpecialCharacter = new SMSSpecialCharacter();
+    smsSpecialCharacter.setName("special");
+    smsSpecialCharacter.setValue("spc1");
+
+    keyValueCommand = new SMSCommand();
+    keyValueCommand.setName(DATA_ENTRY_COMMAND);
+    keyValueCommand.setParserType(ParserType.KEY_VALUE_PARSER);
+    keyValueCommand.setDataset(dataSet);
+    keyValueCommand.setCodes(Sets.newHashSet(smsCode));
+    keyValueCommand.setSuccessMessage(SUCCESS_MESSAGE);
+
+    response = new OutboundMessageResponse();
+    response.setResponseObject(GatewayResponse.SUCCESS);
+    response.setOk(true);
+
+    incomingSms = new IncomingSms();
+    incomingSms.setText(SMS_TEXT);
+    incomingSms.setOriginator(ORIGINATOR);
+    incomingSms.setCreatedBy(user);
+
+    incomingSmsForCompulsoryCode = new IncomingSms();
+    incomingSmsForCompulsoryCode.setText(SMS_TEXT_FOR_COMPULSORY);
+    incomingSmsForCompulsoryCode.setOriginator(ORIGINATOR);
+    incomingSmsForCompulsoryCode.setCreatedBy(user);
+
+    incomingSmsForCustomSeparator = new IncomingSms();
+    incomingSmsForCustomSeparator.setText(SMS_TEXT_FOR_CUSTOM_SEPARATOR);
+    incomingSmsForCustomSeparator.setOriginator(ORIGINATOR);
+    incomingSmsForCustomSeparator.setCreatedBy(user);
+  }
+
+  private void mockSmsSender() {
+    // Mock for smsSender
+    when(smsSender.isConfigured()).thenReturn(smsConfigured);
+
+    when(smsSender.sendMessage(any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              message = invocation.getArgument(1);
+              return response;
             });
+  }
 
-        doAnswer( invocation -> {
-            updatedDataValue = (DataValue) invocation.getArguments()[0];
-            return updatedDataValue;
-        }).when( dataValueService ).updateDataValue( any() );
+  private void mockServices() {
+    // Mock for registrationService
+    when(registrationService.getCompleteDataSetRegistration(any(), any(), any(), any()))
+        .thenReturn(fetchedCompleteDataSetRegistration);
 
-        // Mock for userService
-        when( userService.getUser( anyString() ) ).thenReturn( user );
+    doAnswer(
+            invocation -> {
+              deletedCompleteDataSetRegistration =
+                  (CompleteDataSetRegistration) invocation.getArguments()[0];
+              return deletedCompleteDataSetRegistration;
+            })
+        .when(registrationService)
+        .deleteCompleteDataSetRegistration(any());
 
-        // Mock for dataElementCategoryService
-        when( dataElementCategoryService.getDefaultCategoryOptionCombo() ).thenReturn( defaultCategoryOptionCombo );
+    // Mock for dataValueService
+    when(dataValueService.getDataValue(any(), any(), any(), any())).thenReturn(fetchedDataValue);
 
-        when ( dataElementCategoryService.getCategoryOptionCombo( anyInt() ) ).thenReturn( categoryOptionCombo );
+    doAnswer(
+            invocation -> {
+              updatedDataValue = (DataValue) invocation.getArguments()[0];
+              return updatedDataValue;
+            })
+        .when(dataValueService)
+        .updateDataValue(any());
 
-        // Mock for smsCommandService
-        when( smsCommandService.getSMSCommand( anyString(), any() ) ).thenReturn( keyValueCommand );
+    // Mock for userService
+    when(userService.getUser(anyString())).thenReturn(user);
 
-        // Mock for dataSetService
-        when( dataSetService.isLocked( any(DataSet.class ), any(), any(), any(), any() ) ).thenReturn( locked );
+    // Mock for dataElementCategoryService
+    when(dataElementCategoryService.getDefaultCategoryOptionCombo())
+        .thenReturn(defaultCategoryOptionCombo);
 
-        // Mock for incomingSmsService
-        doAnswer( invocation -> {
-            updatedIncomingSms = (IncomingSms) invocation.getArguments()[0];
-            return updatedIncomingSms;
-        }).when( incomingSmsService ).update( any() );
+    Mockito.lenient()
+        .when(dataElementCategoryService.getCategoryOptionCombo(anyInt()))
+        .thenReturn(categoryOptionCombo);
 
-        // Mock for dataElementService
-        when( dataElementService.getDataElement( anyInt() ) ).thenReturn( dataElement );
+    // Mock for smsCommandService
+    when(smsCommandService.getSMSCommand(anyString(), any())).thenReturn(keyValueCommand);
 
-        // Mock for smsSender
-        when( smsSender.isConfigured() ).thenReturn( smsConfigured );
+    // Mock for dataSetService
+    when(dataSetService.getLockStatus(any(DataSet.class), any(), any(), any()))
+        .thenReturn(LockStatus.OPEN);
 
-        when( smsSender.sendMessage( anyString(), anyString(), anyString() ) ).thenAnswer( invocation -> {
-            message = (String) invocation.getArguments()[1];
-            return response;
-        });
-    }
+    // Mock for incomingSmsService
+    doAnswer(
+            invocation -> {
+              updatedIncomingSms = (IncomingSms) invocation.getArguments()[0];
+              return updatedIncomingSms;
+            })
+        .when(incomingSmsService)
+        .update(any());
+  }
 
-    @Test
-    public void testAccept()
-    {
-        incomingSms.setUser( user );
-        boolean result = dataValueSMSListener.accept( incomingSms );
+  @Test
+  void testAcceptTrue() {
+    when(smsCommandService.getSMSCommand(anyString(), any())).thenReturn(keyValueCommand);
+    IncomingSms sms = new IncomingSms();
+    sms.setText("some text");
 
-        assertTrue( result );
+    boolean result = subject.accept(incomingSms);
 
-        result = dataValueSMSListener.accept( null );
+    assertTrue(result);
+  }
 
-        assertFalse( result );
-    }
+  @Test
+  void testAcceptFalse() {
+    IncomingSms sms = new IncomingSms();
+    sms.setText("some text");
 
-    @Test
-    public void testReceive()
-    {
-        incomingSms.setUser( user );
-        dataValueSMSListener.receive( incomingSms );
+    boolean result = subject.accept(sms);
 
-        assertNotNull( updatedIncomingSms );
-        assertEquals( SmsMessageStatus.PROCESSED, updatedIncomingSms.getStatus() );
-        assertTrue( updatedIncomingSms.isParsed() );
-    }
+    assertFalse(result);
+  }
 
-    @Test( expected = SMSParserException.class )
-    public void testIfDataSetIsLocked() throws Exception
-    {
-        incomingSms.setUser( user );
-        when( dataSetService.isLocked( any(DataSet.class ), any(), any(), any(), any() ) ).thenReturn( true );
-        dataValueSMSListener.receive( incomingSms );
+  @Test
+  void testReceive() {
+    mockServices();
+    incomingSms.setCreatedBy(user);
+    subject.receive(incomingSms, UserDetails.fromUser(user));
 
-        verify( smsCommandService, times( 1 ) ).getSMSCommand( anyString(), any() );
-        verify( dataSetService, times( 1 ) ).isLocked( any(DataSet.class ), any(), any(), any(), any() );
-        verify( incomingSmsService, never() ).update( any() );
-    }
+    assertNotNull(updatedIncomingSms);
+    assertEquals(SmsMessageStatus.PROCESSED, updatedIncomingSms.getStatus());
+    assertTrue(updatedIncomingSms.isParsed());
+  }
 
-    @Test
-    public void testIfUserHasNoOu()
-    {
-        incomingSms.setUser( userWithNoOu );
-        when( userService.getUser( anyString() ) ).thenReturn( userWithNoOu );
-        dataValueSMSListener.receive( incomingSms );
+  @Test
+  void testIfDataSetIsLocked() {
+    ArgumentCaptor<IncomingSms> incomingSmsCaptor = ArgumentCaptor.forClass(IncomingSms.class);
 
-        assertEquals( message, SMSCommand.NO_USER_MESSAGE );
-        assertNull( updatedIncomingSms );
-        verify( dataSetService, never() ).isLocked( any(DataSet.class ), any(), any(), any(), any() );
-    }
+    mockSmsSender();
 
-    @Test
-    public void testIfUserHasMultipleOUs()
-    {
-        incomingSms.setUser( userwithMultipleOu );
-        when( userService.getUser( anyString() ) ).thenReturn( userwithMultipleOu );
+    // Mock for userService
+    when(userService.getUser(anyString())).thenReturn(user);
 
-        dataValueSMSListener.receive( incomingSms );
+    // Mock for dataElementCategoryService
+    when(dataElementCategoryService.getDefaultCategoryOptionCombo())
+        .thenReturn(defaultCategoryOptionCombo);
 
-        assertEquals( message, SMSCommand.MORE_THAN_ONE_ORGUNIT_MESSAGE );
-        assertNull( updatedIncomingSms );
-        verify( dataSetService, never() ).isLocked( any(DataSet.class ), any(), any(), any(), any() );
+    // Mock for smsCommandService
+    when(smsCommandService.getSMSCommand(anyString(), any())).thenReturn(keyValueCommand);
 
-        keyValueCommand.setMoreThanOneOrgUnitMessage( MORE_THAN_ONE_OU );
-        dataValueSMSListener.receive( incomingSms );
+    incomingSms.setUser(user);
+    when(dataSetService.getLockStatus(any(DataSet.class), any(), any(), any()))
+        .thenReturn(LockStatus.OPEN);
+    subject.receive(incomingSms, UserDetails.fromUser(user));
 
-        // system will use custom message
-        assertEquals( message, MORE_THAN_ONE_OU );
-    }
+    verify(smsCommandService, times(1)).getSMSCommand(anyString(), any());
+    verify(incomingSmsService, times(1)).update(incomingSmsCaptor.capture());
 
-    @Test
-    public void testIfCommandHasCorrectFormat()
-    {
-        dataValueSMSListener.receive( incomingSmsForCustomSeparator );
+    assertEquals(incomingSmsCaptor.getValue().getText(), incomingSms.getText());
+    assertFalse(incomingSmsCaptor.getValue().isParsed());
+  }
 
-        assertEquals( message, SMSCommand.WRONG_FORMAT_MESSAGE );
-        assertNull( updatedIncomingSms );
-        verify( dataSetService, never() ).isLocked( any(DataSet.class ), any(), any(), any(), any() );
+  @Test
+  void testIfUserHasNoOu() {
+    mockSmsSender();
 
-        keyValueCommand.setWrongFormatMessage( WRONG_FORMAT );
-        dataValueSMSListener.receive( incomingSmsForCustomSeparator );
+    when(smsCommandService.getSMSCommand(anyString(), any())).thenReturn(keyValueCommand);
 
-        // system will use custom message
-        assertEquals( WRONG_FORMAT, message );
-    }
+    incomingSms.setCreatedBy(userWithNoOu);
 
-    @Test
-    public void testIfMandatoryParameterMissing()
-    {
-        keyValueCommand.getCodes().add( smsCodeForcompulsory );
-        incomingSmsForCompulsoryCode.setText( SMS_TEXT );
+    subject.receive(incomingSms, UserDetails.fromUser(userWithNoOu));
 
-        dataValueSMSListener.receive( incomingSmsForCompulsoryCode );
+    assertEquals(SMSCommand.NO_USER_MESSAGE, message);
+    assertNull(updatedIncomingSms);
+    verify(dataSetService, never()).getLockStatus(any(DataSet.class), any(), any(), any());
+  }
 
-        assertEquals( message, SMSCommand.PARAMETER_MISSING );
+  @Test
+  void testIfUserHasMultipleOUs() {
+    mockSmsSender();
 
-        incomingSmsForCompulsoryCode.setText( SMS_TEXT_FOR_COMPULSORY );
+    when(smsCommandService.getSMSCommand(anyString(), any())).thenReturn(keyValueCommand);
 
-        dataValueSMSListener.receive( incomingSmsForCompulsoryCode );
+    incomingSms.setCreatedBy(userwithMultipleOu);
 
-        assertEquals( keyValueCommand.getSuccessMessage(), message );
-    }
+    subject.receive(incomingSms, UserDetails.fromUser(userwithMultipleOu));
 
-    @Test
-    public void testDefaultSeparator()
-    {
-        keyValueCommand.setSeparator( null );
-        keyValueCommand.setCodeValueSeparator( null );
+    assertEquals(SMSCommand.MORE_THAN_ONE_ORGUNIT_MESSAGE, message);
+    assertNull(updatedIncomingSms);
+    verify(dataSetService, never()).getLockStatus(any(DataSet.class), any(), any(), any());
 
-        // = is default separator
-        dataValueSMSListener.receive( incomingSms );
+    keyValueCommand.setMoreThanOneOrgUnitMessage(MORE_THAN_ONE_OU);
 
-        assertNotNull( updatedIncomingSms );
-        assertEquals( SmsMessageStatus.PROCESSED, updatedIncomingSms.getStatus() );
-        assertTrue( updatedIncomingSms.isParsed() );
-    }
+    subject.receive(incomingSms, UserDetails.fromUser(userwithMultipleOu));
 
-    @Test
-    public void testCustomSeparator()
-    {
-        keyValueCommand.setSeparator( "." );
-        keyValueCommand.setCodeValueSeparator( "." );
-        keyValueCommand.setWrongFormatMessage( null );
+    // system will use custom message
+    assertEquals(MORE_THAN_ONE_OU, message);
+  }
 
-        dataValueSMSListener.receive( incomingSmsForCustomSeparator );
+  @Test
+  void testIfCommandHasCorrectFormat() {
+    mockSmsSender();
 
-        assertNotNull( updatedIncomingSms );
-        assertEquals( SmsMessageStatus.PROCESSED, updatedIncomingSms.getStatus() );
-        assertTrue( updatedIncomingSms.isParsed() );
+    // Mock for smsCommandService
+    when(smsCommandService.getSMSCommand(anyString(), any())).thenReturn(keyValueCommand);
 
-        // when custom separator is empty space
-        keyValueCommand.setSeparator( " " );
-        keyValueCommand.setCodeValueSeparator( " " );
-        dataValueSMSListener.receive( incomingSmsForCustomSeparator );
+    subject.receive(incomingSmsForCustomSeparator, UserDetails.fromUser(user));
 
-        assertEquals( message, SMSCommand.WRONG_FORMAT_MESSAGE );
-    }
+    assertEquals(message, SMSCommand.WRONG_FORMAT_MESSAGE);
+    assertNull(updatedIncomingSms);
+    verify(dataSetService, never()).getLockStatus(any(DataSet.class), any(), any(), any());
 
-    private void setUpInstances()
-    {
-        organisationUnitA = createOrganisationUnit( 'O' );
-        organisationUnitB = createOrganisationUnit( 'P' );
-        dataSet = createDataSet( 'D' );
-        period = createPeriod( new Date(), new Date() );
+    keyValueCommand.setWrongFormatMessage(WRONG_FORMAT);
+    subject.receive(incomingSmsForCustomSeparator, UserDetails.fromUser(user));
 
-        user = createUser( 'U' );
-        user.setPhoneNumber( ORIGINATOR );
-        user.setOrganisationUnits( Sets.newHashSet(organisationUnitA) );
+    // system will use custom message
+    assertEquals(WRONG_FORMAT, message);
+  }
 
-        userWithNoOu = createUser( 'V' );
-        userWithNoOu.setPhoneNumber( null );
-        userWithNoOu.setOrganisationUnits( null );
+  @Test
+  void testIfMandatoryParameterMissing() {
+    mockSmsSender();
+    mockServices();
+    keyValueCommand.getCodes().add(smsCodeForcompulsory);
+    keyValueCommand.setSeparator(null);
+    keyValueCommand.setCodeValueSeparator(null);
+    incomingSmsForCompulsoryCode.setText(SMS_TEXT);
 
-        userwithMultipleOu = createUser( 'W' );
-        userwithMultipleOu.setPhoneNumber( ORIGINATOR );
-        userwithMultipleOu.setOrganisationUnits( Sets.newHashSet( organisationUnitA, organisationUnitB ) );
+    subject.receive(incomingSmsForCompulsoryCode, UserDetails.fromUser(user));
 
-        dataElement = createDataElement( 'D' );
-        dataElement.setValueType(ValueType.TEXT );
-        defaultCategoryOptionCombo = createCategoryOptionCombo( 'D' );
-        categoryOptionCombo = createCategoryOptionCombo( 'C' );
+    assertEquals(message, SMSCommand.PARAMETER_MISSING);
 
-        dataElementB = createDataElement( 'B' );
-        dataElementB.setValueType(ValueType.TEXT );
+    incomingSmsForCompulsoryCode.setText(SMS_TEXT_FOR_COMPULSORY);
 
-        fetchedDataValue = createDataValue( dataElement, period, organisationUnitA, FETCHED_DATA_VALUE, categoryOptionCombo );
+    subject.receive(incomingSmsForCompulsoryCode, UserDetails.fromUser(user));
 
-        fetchedCompleteDataSetRegistration = new CompleteDataSetRegistration( dataSet, period, organisationUnitA, categoryOptionCombo, new Date(), STORED_BY );
+    assertEquals(keyValueCommand.getSuccessMessage(), message);
 
-        smsCode = new SMSCode();
-        smsCode.setCode( "de" );
-        smsCode.setDataElement( dataElement );
+    incomingSmsForCompulsoryCode.setText(SMS_TEXT_FOR_COMPULSORY2);
 
-        smsCodeForcompulsory = new SMSCode();
-        smsCodeForcompulsory.setCode( "deb" );
-        smsCodeForcompulsory.setDataElement( dataElementB );
-        smsCodeForcompulsory.setCompulsory( true );
+    subject.receive(incomingSmsForCompulsoryCode, UserDetails.fromUser(user));
 
-        smsSpecialCharacter = new SMSSpecialCharacter();
-        smsSpecialCharacter.setName( "special" );
-        smsSpecialCharacter.setValue( "spc1" );
+    assertEquals(keyValueCommand.getSuccessMessage(), message);
+  }
 
-        keyValueCommand = new SMSCommand();
-        keyValueCommand.setName( DATA_ENTRY_COMMAND );
-        keyValueCommand.setParserType( ParserType.KEY_VALUE_PARSER );
-        keyValueCommand.setDataset( dataSet );
-        keyValueCommand.setCodes( Sets.newHashSet( smsCode ) );
-        keyValueCommand.setSuccessMessage( SUCCESS_MESSAGE );
+  @Test
+  void testIfOrgUnitNotInDataSet() {
+    when(userService.getUser(anyString())).thenReturn(user);
+    when(smsCommandService.getSMSCommand(anyString(), any())).thenReturn(keyValueCommand);
+    doAnswer(
+            invocation -> {
+              updatedIncomingSms = (IncomingSms) invocation.getArguments()[0];
+              return updatedIncomingSms;
+            })
+        .when(incomingSmsService)
+        .update(any());
 
-        response = new OutboundMessageResponse();
-        response.setResponseObject( GatewayResponse.SUCCESS );
-        response.setOk( true );
+    keyValueCommand.setSeparator(null);
+    keyValueCommand.setCodeValueSeparator(null);
+    keyValueCommand.setDataset(dataSetB);
 
-        incomingSms = new IncomingSms();
-        incomingSms.setText( SMS_TEXT );
-        incomingSms.setOriginator( ORIGINATOR );
-        incomingSms.setUser( user );
+    subject.receive(incomingSms, UserDetails.fromUser(user));
 
-        incomingSmsForCompulsoryCode = new IncomingSms();
-        incomingSmsForCompulsoryCode.setText( SMS_TEXT_FOR_COMPULSORY );
-        incomingSmsForCompulsoryCode.setOriginator( ORIGINATOR );
-        incomingSmsForCompulsoryCode.setUser( user );
+    assertNotNull(updatedIncomingSms);
+    assertEquals(SmsMessageStatus.FAILED, updatedIncomingSms.getStatus());
+    assertFalse(updatedIncomingSms.isParsed());
+    verify(dataSetService, times(0))
+        .getLockStatus(
+            any(DataSet.class),
+            any(Period.class),
+            any(OrganisationUnit.class),
+            any(CategoryOptionCombo.class));
+  }
 
-        incomingSmsForCustomSeparator = new IncomingSms();
-        incomingSmsForCustomSeparator.setText( SMS_TEXT_FOR_CUSTOM_SEPARATOR );
-        incomingSmsForCustomSeparator.setOriginator( ORIGINATOR );
-        incomingSmsForCustomSeparator.setUser( user );
-    }
+  @Test
+  void testDefaultSeparator() {
+    mockServices();
+    keyValueCommand.setSeparator(null);
+    keyValueCommand.setCodeValueSeparator(null);
+
+    // = is default separator
+    subject.receive(incomingSms, UserDetails.fromUser(user));
+
+    assertNotNull(updatedIncomingSms);
+    assertEquals(SmsMessageStatus.PROCESSED, updatedIncomingSms.getStatus());
+    assertTrue(updatedIncomingSms.isParsed());
+  }
+
+  @Test
+  void testCustomSeparator() {
+    mockSmsSender();
+    mockServices();
+    keyValueCommand.setSeparator(".");
+    keyValueCommand.setCodeValueSeparator(".");
+    keyValueCommand.setWrongFormatMessage(null);
+
+    subject.receive(incomingSmsForCustomSeparator, UserDetails.fromUser(user));
+
+    assertNotNull(updatedIncomingSms);
+    assertEquals(SmsMessageStatus.PROCESSED, updatedIncomingSms.getStatus());
+    assertTrue(updatedIncomingSms.isParsed());
+
+    // when custom separator is empty space
+    keyValueCommand.setSeparator(" ");
+    keyValueCommand.setCodeValueSeparator(" ");
+    subject.receive(incomingSmsForCustomSeparator, UserDetails.fromUser(user));
+
+    assertEquals(SMSCommand.WRONG_FORMAT_MESSAGE, message);
+  }
 }

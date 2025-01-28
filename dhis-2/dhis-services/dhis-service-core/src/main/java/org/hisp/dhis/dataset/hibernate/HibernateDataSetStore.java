@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,90 +25,103 @@ package org.hisp.dhis.dataset.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataset.hibernate;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.common.collect.Lists;
-import org.hibernate.criterion.Restrictions;
+import jakarta.persistence.EntityManager;
+import java.util.Collection;
+import java.util.List;
+import javax.annotation.Nonnull;
+import org.hibernate.query.Query;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
+import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.dataentryform.DataEntryForm;
 import org.hisp.dhis.dataset.DataSet;
+import org.hisp.dhis.dataset.DataSetElement;
 import org.hisp.dhis.dataset.DataSetStore;
-import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.period.PeriodService;
 import org.hisp.dhis.period.PeriodType;
-
-import java.util.List;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Kristian Nordal
  */
-public class HibernateDataSetStore
-    extends HibernateIdentifiableObjectStore<DataSet>
-    implements DataSetStore
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Repository("org.hisp.dhis.dataset.DataSetStore")
+public class HibernateDataSetStore extends HibernateIdentifiableObjectStore<DataSet>
+    implements DataSetStore {
+  // -------------------------------------------------------------------------
+  // Dependencies
+  // -------------------------------------------------------------------------
 
-    private PeriodService periodService;
+  private final PeriodService periodService;
 
-    public void setPeriodService( PeriodService periodService )
-    {
-        this.periodService = periodService;
+  public HibernateDataSetStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService,
+      PeriodService periodService) {
+    super(entityManager, jdbcTemplate, publisher, DataSet.class, aclService, true);
+
+    checkNotNull(periodService);
+
+    this.periodService = periodService;
+  }
+
+  // -------------------------------------------------------------------------
+  // DataSet
+  // -------------------------------------------------------------------------
+
+  @Override
+  public void save(@Nonnull DataSet dataSet) {
+    PeriodType periodType = periodService.reloadPeriodType(dataSet.getPeriodType());
+
+    dataSet.setPeriodType(periodType);
+
+    super.save(dataSet);
+  }
+
+  @Override
+  public void update(@Nonnull DataSet dataSet) {
+    PeriodType periodType = periodService.reloadPeriodType(dataSet.getPeriodType());
+
+    dataSet.setPeriodType(periodType);
+
+    super.update(dataSet);
+  }
+
+  @Override
+  public List<DataSet> getDataSetsByDataEntryForm(DataEntryForm dataEntryForm) {
+    if (dataEntryForm == null) {
+      return Lists.newArrayList();
     }
 
-    // -------------------------------------------------------------------------
-    // DataSet
-    // -------------------------------------------------------------------------
+    final String hql = "from DataSet d where d.dataEntryForm = :dataEntryForm";
 
-    @Override
-    public void save( DataSet dataSet )
-    {
-        PeriodType periodType = periodService.reloadPeriodType( dataSet.getPeriodType() );
+    Query<DataSet> query = getQuery(hql);
 
-        dataSet.setPeriodType( periodType );
+    return query.setParameter("dataEntryForm", dataEntryForm).list();
+  }
 
-        super.save( dataSet );
-    }
+  @Override
+  public List<DataSetElement> getDataSetElementsByDataElement(
+      Collection<DataElement> dataElements) {
+    return getQuery(
+            """
+            from DataSetElement dse where dse.dataElement in :dataElements
+            """,
+            DataSetElement.class)
+        .setParameter("dataElements", dataElements)
+        .list();
+  }
 
-    @Override
-    public void update( DataSet dataSet )
-    {
-        PeriodType periodType = periodService.reloadPeriodType( dataSet.getPeriodType() );
-
-        dataSet.setPeriodType( periodType );
-
-        super.update( dataSet );
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public List<DataSet> getDataSetsByPeriodType( PeriodType periodType )
-    {
-        periodType = periodService.reloadPeriodType( periodType );
-
-        return getCriteria( Restrictions.eq( "periodType", periodType ) ).list();
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public List<DataSet> getDataSetsForMobile( OrganisationUnit source )
-    {
-        String hql = "from DataSet d where :source in elements(d.sources) and d.mobile = true";
-        
-        return getQuery( hql ).setEntity( "source", source ).list();
-    }
-
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<DataSet> getDataSetsByDataEntryForm( DataEntryForm dataEntryForm )
-    {
-        if ( dataEntryForm == null )
-        {
-            return Lists.newArrayList();
-        }
-
-        final String hql = "from DataSet d where d.dataEntryForm = :dataEntryForm";
-
-        return getQuery( hql ).setEntity( "dataEntryForm", dataEntryForm ).list();
-    }
+  @Override
+  public List<DataSet> getDataSetsNotAssignedToOrganisationUnits() {
+    return getQuery("from DataSet ds where size(ds.sources) = 0").list();
+  }
 }

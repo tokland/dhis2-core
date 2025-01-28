@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset.notifications;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,23 +25,27 @@ package org.hisp.dhis.dataset.notifications;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataset.notifications;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import org.hisp.dhis.dataset.CompleteDataSetRegistration;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Component;
 
-/**
- * Created by zubair@dhis2.org on 18.01.18.
- */
+/** Created by zubair@dhis2.org on 18.01.18. */
+@Component("org.hisp.dhis.dataset.notifications.DataSetNotificationEventPublisher")
+public class DataSetNotificationEventPublisher {
+  private final ApplicationEventPublisher publisher;
 
-public class DataSetNotificationEventPublisher
-{
-    @Autowired
-    private ApplicationEventPublisher publisher;
+  public DataSetNotificationEventPublisher(ApplicationEventPublisher publisher) {
+    checkNotNull(publisher);
 
-    public void publishEvent( CompleteDataSetRegistration registration )
-    {
-        DataSetNotificationEvent event = new DataSetNotificationEvent( this, registration );
-        publisher.publishEvent( event );
-    }
+    this.publisher = publisher;
+  }
+
+  public void publishEvent(CompleteDataSetRegistration registration) {
+    DataSetNotificationEvent event = new DataSetNotificationEvent(this, registration);
+    publisher.publishEvent(event);
+  }
 }

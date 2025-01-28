@@ -1,7 +1,5 @@
-package org.hisp.dhis.security.spring2fa;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,22 +25,21 @@ package org.hisp.dhis.security.spring2fa;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.security.spring2fa;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.web.authentication.WebAuthenticationDetails;
-
-import javax.servlet.http.HttpServletRequest;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Henning Håkonsen
  */
+@Component
 public class TwoFactorWebAuthenticationDetailsSource
-    implements AuthenticationDetailsSource<HttpServletRequest, WebAuthenticationDetails>
-{
-    @Override
-    public WebAuthenticationDetails buildDetails( HttpServletRequest request )
-    {
-        return new TwoFactorWebAuthenticationDetails( request );
-    }
+    implements AuthenticationDetailsSource<HttpServletRequest, WebAuthenticationDetails> {
+  @Override
+  public WebAuthenticationDetails buildDetails(HttpServletRequest request) {
+    return new TwoFactorWebAuthenticationDetails(request);
+  }
 }
-

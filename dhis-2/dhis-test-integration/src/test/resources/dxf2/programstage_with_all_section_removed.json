@@ -1,0 +1,52 @@
+{
+  "programs": [
+    {
+      "id": "JEMRBUHgpqA",
+      "name": "test Program",
+      "shortName": "test Program",
+      "programType": "WITH_REGISTRATION",
+      "programStages": [
+        {
+          "id": "NpsdDv6kKSO"
+        }
+      ]
+    }
+  ],
+  "programStages": [
+    {
+      "programStageSections": [],
+      "lastUpdated": "2019-01-28T11:23:20.850",
+      "id": "NpsdDv6kKSO",
+      "created": "2019-01-28T11:23:20.850",
+      "name": "ProgramA",
+      "allowGenerateNextVisit": false,
+      "preGenerateUID": false,
+      "openAfterEnrollment": false,
+      "repeatable": false,
+      "remindCompleted": false,
+      "displayGenerateEventBox": true,
+      "generatedByEnrollmentDate": false,
+      "validationStrategy": "ON_COMPLETE",
+      "autoGenerateEvent": true,
+      "hideDueDate": false,
+      "blockEntryForm": false,
+      "minDaysFromStart": 0,
+      "lastUpdatedBy": {
+        "id": "T12jeH7KPzk"
+      },
+      "user": {
+        "id": "T12jeH7KPzk"
+      },
+      "notificationTemplates": [],
+      "translations": [],
+      "attributeValues": [],
+      "sharing": {
+        "public": "rw------",
+        "external": false,
+        "owner": "T12jeH7KPzk",
+        "users": {},
+        "userGroups": {}
+      }
+    }
+  ]
+}

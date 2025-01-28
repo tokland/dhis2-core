@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,8 +25,11 @@ package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
 
-import org.hisp.dhis.common.IdentifiableObject;
+import java.util.function.Consumer;
+import java.util.regex.Pattern;
+import lombok.AllArgsConstructor;
 import org.hisp.dhis.common.IdentifiableObjectManager;
 import org.hisp.dhis.document.Document;
 import org.hisp.dhis.dxf2.metadata.objectbundle.ObjectBundle;
@@ -37,96 +38,56 @@ import org.hisp.dhis.feedback.ErrorReport;
 import org.hisp.dhis.fileresource.FileResource;
 import org.hisp.dhis.fileresource.FileResourceDomain;
 import org.hisp.dhis.fileresource.FileResourceService;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Pattern;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Kristian Wærstad <kristian@dhis2.com>
  */
-public class DocumentObjectBundleHook extends AbstractObjectBundleHook {
+@Component
+@AllArgsConstructor
+public class DocumentObjectBundleHook extends AbstractObjectBundleHook<Document> {
 
-    private static final Pattern URL_PATTERN = Pattern.compile("^https?://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]");
+  private static final Pattern URL_PATTERN =
+      Pattern.compile("^https?://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]");
 
-    @Autowired
-    private FileResourceService fileResourceService;
+  private final FileResourceService fileResourceService;
 
-    @Autowired
-    private IdentifiableObjectManager idObjectManager;
+  private final IdentifiableObjectManager idObjectManager;
 
-    @Override
-    public List<ErrorReport> validate (IdentifiableObject object, ObjectBundle bundle)
-    {
-        if ( !Document.class.isInstance( object ) )
-        {
-            return new ArrayList<>();
-        }
+  @Override
+  public void validate(Document document, ObjectBundle bundle, Consumer<ErrorReport> addReports) {
+    FileResource fileResource = fileResourceService.getFileResource(document.getUrl());
 
-        List<ErrorReport> errors = new ArrayList<>();
+    if (document.getUrl() == null) {
+      addReports.accept(new ErrorReport(Document.class, ErrorCode.E4000, "url"));
+    } else if (document.isExternal() && !URL_PATTERN.matcher(document.getUrl()).matches()) {
+      addReports.accept(new ErrorReport(Document.class, ErrorCode.E4004, "url", document.getUrl()));
+    } else if (!document.isExternal() && fileResource == null) {
+      addReports.accept(new ErrorReport(Document.class, ErrorCode.E4015, "url", document.getUrl()));
+    } else if (!document.isExternal() && fileResource.isAssigned()) {
+      addReports.accept(new ErrorReport(Document.class, ErrorCode.E4016, "url", document.getUrl()));
+    }
+  }
 
-        Document document = (Document) object;
+  @Override
+  public void postCreate(Document document, ObjectBundle bundle) {
+    saveDocument(document);
+  }
 
-        FileResource fileResource = fileResourceService.getFileResource( document.getUrl() );
+  @Override
+  public void postUpdate(Document document, ObjectBundle bundle) {
+    saveDocument(document);
+  }
 
-        if ( document.getUrl() == null )
-        {
-            errors.add( new ErrorReport( Document.class, ErrorCode.E4000, "url" ) );
-        }
-        else if ( document.isExternal() && !URL_PATTERN.matcher( document.getUrl() ).matches() )
-        {
-            errors.add( new ErrorReport( Document.class, ErrorCode.E4004, "url", document.getUrl() ) );
-        }
-        else if ( !document.isExternal() && fileResource == null )
-        {
-            errors.add( new ErrorReport( Document.class, ErrorCode.E4015, "url", document.getUrl() ) );
-        }
-        else if ( !document.isExternal() && fileResource.isAssigned() )
-        {
-            errors.add( new ErrorReport( Document.class, ErrorCode.E4016, "url", document.getUrl() ) );
-        }
-
-        return errors;
+  private void saveDocument(Document document) {
+    if (!document.isExternal()) {
+      FileResource fileResource = fileResourceService.getFileResource(document.getUrl());
+      fileResource.setDomain(FileResourceDomain.DOCUMENT);
+      fileResource.setAssigned(true);
+      document.setFileResource(fileResource);
+      fileResourceService.updateFileResource(fileResource);
     }
 
-    @Override
-    public void postCreate( IdentifiableObject object, ObjectBundle bundle )
-    {
-        if ( !Document.class.isInstance( object ) )
-        {
-            return;
-        }
-
-        Document document = (Document) object;
-
-        saveDocument( document );
-    }
-
-    @Override
-    public void postUpdate( IdentifiableObject object, ObjectBundle bundle )
-    {
-        if ( !Document.class.isInstance( object ) )
-        {
-            return;
-        }
-
-        Document document = (Document) object;
-
-        saveDocument( document );
-    }
-
-    private void saveDocument( Document document )
-    {
-        if ( !document.isExternal() )
-        {
-            FileResource fileResource = fileResourceService.getFileResource( document.getUrl() );
-            fileResource.setDomain( FileResourceDomain.DOCUMENT );
-            fileResource.setAssigned( true );
-            document.setFileResource( fileResource );
-            fileResourceService.updateFileResource( fileResource );
-        }
-
-        idObjectManager.save( document );
-    }
+    idObjectManager.save(document);
+  }
 }

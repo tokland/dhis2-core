@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.datavalueset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,80 +25,96 @@ package org.hisp.dhis.dxf2.datavalueset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.dataset.DataSet;
-import org.hisp.dhis.datavalue.DataExportParams;
-import org.hisp.dhis.dxf2.importsummary.ImportSummary;
-import org.hisp.dhis.dxf2.common.ImportOptions;
-import org.hisp.dhis.common.IdSchemes;
-import org.hisp.dhis.node.types.RootNode;
-import org.hisp.dhis.period.Period;
-import org.hisp.dhis.scheduling.JobConfiguration;
+package org.hisp.dhis.dxf2.datavalueset;
 
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Writer;
 import java.util.Date;
 import java.util.List;
-import java.util.Set;
+import org.hisp.dhis.common.IdSchemes;
+import org.hisp.dhis.dataset.DataSet;
+import org.hisp.dhis.datavalue.DataExportParams;
+import org.hisp.dhis.dxf2.common.ImportOptions;
+import org.hisp.dhis.dxf2.importsummary.ImportSummary;
+import org.hisp.dhis.node.types.RootNode;
+import org.hisp.dhis.period.Period;
+import org.hisp.dhis.scheduling.JobConfiguration;
 
 /**
  * @author Lars Helge Overland
  */
-public interface DataValueSetService
-{
-    /**
-     * Returns a data export object for the given parameters.
-     * 
-     * @param dataSets data sets.
-     * @param dataElementGroups the data element groups.
-     * @param periods the periods.
-     * @param startDate the start date.
-     * @param endDate the end date.
-     * @param organisationUnits the organisation units.
-     * @param includeChildren whether to include org unit children.
-     * @param organisationUnitGroups the organisation unit groupps.
-     * @param attributeOptionCombos the attribute option combos.
-     * @param includeDeleted whether to include deleted data values.
-     * @param lastUpdated filter data values updated after a time stamp.
-     * @param lastUpdatedDuration the last updated duration filter.
-     * @param limit max number of data values to return.
-     * @param idSchemes the identifier schemes.
-     * @return
-     */
-    DataExportParams getFromUrl( Set<String> dataSets, Set<String> dataElementGroups, Set<String> periods, Date startDate, Date endDate, 
-        Set<String> organisationUnits, boolean includeChildren, Set<String> organisationUnitGroups, Set<String> attributeOptionCombos,
-        boolean includeDeleted, Date lastUpdated, String lastUpdatedDuration, Integer limit, IdSchemes idSchemes );
-    
-    void validate( DataExportParams params );
-    
-    void decideAccess( DataExportParams params );
-    
-    void writeDataValueSetXml( DataExportParams params, OutputStream out );
+public interface DataValueSetService {
+  /**
+   * Returns a {@link DataExportParams} based on the given {@link DataValueSetQueryParams}.
+   *
+   * @param params the {@link DataValueSetQueryParams}.
+   * @return a {@link DataExportParams}.
+   */
+  DataExportParams getFromUrl(DataValueSetQueryParams params);
 
-    void writeDataValueSetJson( DataExportParams params, OutputStream out );
+  void validate(DataExportParams params);
 
-    void writeDataValueSetJson( Date lastUpdated, OutputStream outputStream, IdSchemes idSchemes );
+  void decideAccess(DataExportParams params);
 
-    void writeDataValueSetCsv( DataExportParams params, Writer writer );
+  void exportDataValueSetXml(DataExportParams params, OutputStream out);
 
-    RootNode getDataValueSetTemplate( DataSet dataSet, Period period, List<String> orgUnits, boolean writeComments, String ouScheme, String deScheme );
+  void exportDataValueSetJson(DataExportParams params, OutputStream out);
 
-    ImportSummary saveDataValueSet( InputStream in );
+  /**
+   * Query for {@link DataValueSet DataValueSets} and write result as JSON.
+   *
+   * @param lastUpdated specifies the date to filter complete data sets last updated after
+   * @param outputStream the stream to write to
+   * @param idSchemes idSchemes
+   */
+  void exportDataValueSetJson(Date lastUpdated, OutputStream outputStream, IdSchemes idSchemes);
 
-    ImportSummary saveDataValueSetJson( InputStream in );
+  /**
+   * Query for {@link DataValueSet DataValueSets} and write result as JSON.
+   *
+   * @param lastUpdated specifies the date to filter complete data sets last updated after
+   * @param outputStream the stream to write to
+   * @param idSchemes idSchemes
+   * @param pageSize pageSize
+   * @param page page
+   */
+  void exportDataValueSetJson(
+      Date lastUpdated, OutputStream outputStream, IdSchemes idSchemes, int pageSize, int page);
 
-    ImportSummary saveDataValueSet( InputStream in, ImportOptions importOptions );
+  void exportDataValueSetCsv(DataExportParams params, Writer writer);
 
-    ImportSummary saveDataValueSetJson( InputStream in, ImportOptions importOptions );
+  RootNode getDataValueSetTemplate(
+      DataSet dataSet,
+      Period period,
+      List<String> orgUnits,
+      boolean writeComments,
+      String ouScheme,
+      String deScheme);
 
-    ImportSummary saveDataValueSetCsv( InputStream in, ImportOptions importOptions );
+  ImportSummary importDataValueSetXml(InputStream in);
 
-    ImportSummary saveDataValueSet( InputStream in, ImportOptions importOptions, JobConfiguration jobId );
+  ImportSummary importDataValueSetJson(InputStream in);
 
-    ImportSummary saveDataValueSetJson( InputStream in, ImportOptions importOptions, JobConfiguration jobId );
+  ImportSummary importDataValueSetXml(InputStream in, ImportOptions importOptions);
 
-    ImportSummary saveDataValueSetCsv( InputStream in, ImportOptions importOptions, JobConfiguration id );
+  ImportSummary importDataValueSetJson(InputStream in, ImportOptions importOptions);
 
-    ImportSummary saveDataValueSetPdf( InputStream in, ImportOptions importOptions, JobConfiguration id );
+  ImportSummary importDataValueSetCsv(InputStream in, ImportOptions importOptions);
+
+  ImportSummary importDataValueSetPdf(InputStream in, ImportOptions importOptions);
+
+  ImportSummary importDataValueSet(DataValueSet dataValueSet, ImportOptions importOptions);
+
+  ImportSummary importDataValueSetXml(
+      InputStream in, ImportOptions importOptions, JobConfiguration jobId);
+
+  ImportSummary importDataValueSetJson(
+      InputStream in, ImportOptions importOptions, JobConfiguration jobId);
+
+  ImportSummary importDataValueSetCsv(
+      InputStream in, ImportOptions importOptions, JobConfiguration id);
+
+  ImportSummary importDataValueSetPdf(
+      InputStream in, ImportOptions importOptions, JobConfiguration id);
 }

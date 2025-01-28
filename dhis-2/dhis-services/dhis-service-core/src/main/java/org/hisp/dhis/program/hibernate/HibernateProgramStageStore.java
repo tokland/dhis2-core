@@ -1,7 +1,5 @@
-package org.hisp.dhis.program.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,47 +25,70 @@ package org.hisp.dhis.program.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program.hibernate;
 
 import com.google.common.collect.Lists;
-import org.hibernate.criterion.Restrictions;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import java.util.List;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.dataentryform.DataEntryForm;
 import org.hisp.dhis.program.Program;
 import org.hisp.dhis.program.ProgramStage;
 import org.hisp.dhis.program.ProgramStageStore;
-
-import java.util.List;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Chau Thu Tran
  */
-public class HibernateProgramStageStore
-    extends HibernateIdentifiableObjectStore<ProgramStage>
-    implements ProgramStageStore
-{
-    // -------------------------------------------------------------------------
-    // Implemented methods
-    // -------------------------------------------------------------------------
+@Repository("org.hisp.dhis.program.ProgramStageStore")
+public class HibernateProgramStageStore extends HibernateIdentifiableObjectStore<ProgramStage>
+    implements ProgramStageStore {
+  public HibernateProgramStageStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, ProgramStage.class, aclService, true);
+  }
 
-    @Override
-    public ProgramStage getByNameAndProgram( String name, Program program )
-    {
-        return (ProgramStage) getCriteria( 
-            Restrictions.eq( "name", name ), 
-            Restrictions.eq( "program", program ) ).uniqueResult();
+  // -------------------------------------------------------------------------
+  // Implemented methods
+  // -------------------------------------------------------------------------
+
+  @Override
+  public ProgramStage getByNameAndProgram(String name, Program program) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getSingleResult(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("name"), name))
+            .addPredicate(root -> builder.equal(root.get("program"), program)));
+  }
+
+  @Override
+  public List<ProgramStage> getByDataEntryForm(DataEntryForm dataEntryForm) {
+    if (dataEntryForm == null) {
+      return Lists.newArrayList();
     }
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<ProgramStage> getByDataEntryForm( DataEntryForm dataEntryForm )
-    {
-        if ( dataEntryForm == null )
-        {
-            return Lists.newArrayList();
-        }
+    final String hql = "from ProgramStage p where p.dataEntryForm = :dataEntryForm";
 
-        final String hql = "from ProgramStage p where p.dataEntryForm = :dataEntryForm";
+    return getQuery(hql).setParameter("dataEntryForm", dataEntryForm).list();
+  }
 
-        return getQuery( hql ).setEntity( "dataEntryForm", dataEntryForm ).list();
+  @Override
+  public List<ProgramStage> getByProgram(Program program) {
+    if (program == null) {
+      return Lists.newArrayList();
     }
+
+    final String hql = "from ProgramStage p where p.program = :program";
+
+    return getQuery(hql).setParameter("program", program).list();
+  }
 }

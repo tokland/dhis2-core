@@ -1,7 +1,5 @@
-package org.hisp.dhis.common;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,24 +25,28 @@ package org.hisp.dhis.common;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.common;
 
 /**
  * @author Lars Helge Overland
  */
-public enum DimensionItemType
-{
-    DATA_ELEMENT,
-    DATA_ELEMENT_OPERAND,
-    INDICATOR,
-    REPORTING_RATE,
-    PROGRAM_DATA_ELEMENT,
-    PROGRAM_ATTRIBUTE,
-    PROGRAM_INDICATOR,
-    PERIOD,
-    ORGANISATION_UNIT,
-    CATEGORY_OPTION,
-    OPTION_GROUP,
-    DATA_ELEMENT_GROUP,
-    ORGANISATION_UNIT_GROUP,
-    CATEGORY_OPTION_GROUP
+public enum DimensionItemType {
+  DATA_ELEMENT,
+  DATA_ELEMENT_OPERAND,
+  INDICATOR,
+  REPORTING_RATE,
+  PROGRAM_DATA_ELEMENT,
+  PROGRAM_DATA_ELEMENT_OPTION,
+  PROGRAM_ATTRIBUTE,
+  PROGRAM_ATTRIBUTE_OPTION,
+  PROGRAM_INDICATOR,
+  PERIOD,
+  ORGANISATION_UNIT,
+  CATEGORY_OPTION,
+  OPTION_GROUP,
+  DATA_ELEMENT_GROUP,
+  ORGANISATION_UNIT_GROUP,
+  CATEGORY_OPTION_GROUP,
+  EXPRESSION_DIMENSION_ITEM,
+  SUBEXPRESSION_DIMENSION_ITEM
 }

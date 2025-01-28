@@ -1,7 +1,5 @@
-package org.hisp.dhis.render;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,12 +25,23 @@ package org.hisp.dhis.render;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.render;
+
+import lombok.AllArgsConstructor;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public enum RenderFormat
-{
-    JSON,
-    XML
+@AllArgsConstructor
+public enum RenderFormat {
+  JSON("json"),
+  XML("xml"),
+  ADX_XML("adx+xml"),
+  CSV("csv");
+
+  private String format;
+
+  public boolean isEqual(String format) {
+    return this.format.equals(format);
+  }
 }

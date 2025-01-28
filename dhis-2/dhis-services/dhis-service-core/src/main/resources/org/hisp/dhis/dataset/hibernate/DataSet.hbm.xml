@@ -17,13 +17,15 @@
 
     <property name="name" column="name" not-null="true" unique="false" length="230" />
 
-    <property name="shortName" unique="false" length="50" />
+    <property name="shortName" column="shortname" not-null="true" unique="true" length="50" />
 
     <property name="description" type="text" />
 
     <property name="formName" type="text" />
 
     <property name="style" type="jbObjectStyle" column="style" />
+
+    <property name="displayOptions" type="jbPlainString" column="displayoptions" length="50000" />
 
     <many-to-one name="periodType" lazy="false" class="org.hisp.dhis.period.PeriodType" column="periodtypeid"
       not-null="true" foreign-key="fk_dataset_periodtypeid" />
@@ -48,6 +50,7 @@
     </set>
 
     <set name="compulsoryDataElementOperands" table="datasetoperands" cascade="all-delete-orphan">
+      <cache usage="read-write" />
       <key column="datasetid" foreign-key="fk_datasetoperands_datasetid" />
       <many-to-many class="org.hisp.dhis.dataelement.DataElementOperand" column="dataelementoperandid"
         foreign-key="fk_dataset_dataelementoperandid" />
@@ -97,6 +100,8 @@
 
     <property name="openFuturePeriods" column="openfutureperiods" />
 
+    <property name="openPeriodsAfterCoEndDate" column="openperiodsaftercoenddate" />
+
     <property name="fieldCombinationRequired" />
 
     <property name="validCompleteOnly" />
@@ -113,6 +118,8 @@
     
     <property name="compulsoryFieldsCompleteOnly" />
 
+    <property name="translations" type="jblTranslations"/>
+
     <list name="legendSets" table="datasetlegendsets">
       <cache usage="read-write" />
       <key column="datasetid" />
@@ -122,35 +129,13 @@
 
     <!-- Dynamic attribute values -->
 
-    <set name="attributeValues" table="datasetattributevalues" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="datasetid" />
-      <many-to-many class="org.hisp.dhis.attribute.AttributeValue" column="attributevalueid" unique="true" />
-    </set>
+    <property name="attributeValues" type="jsbAttributeValues"/>
 
-    <!-- Object Translation -->
-    <set name="translations" table="datasettranslations" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="datasetid" foreign-key="fk_objecttranslation_datasetid" />
-      <many-to-many class="org.hisp.dhis.translation.ObjectTranslation" column="objecttranslationid" unique="true" />
-    </set>
+    <many-to-one name="createdBy" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_dataset_userid" />
 
-    <!-- Access properties -->
-    <many-to-one name="user" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_dataset_userid" />
-
-    <property name="publicAccess" length="8" />
-
-    <set name="userGroupAccesses" table="datasetusergroupaccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="datasetid" />
-      <many-to-many class="org.hisp.dhis.user.UserGroupAccess" column="usergroupaccessid" unique="true" />
-    </set>
-
-    <set name="userAccesses" table="datasetuseraccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="datasetid" />
-      <many-to-many class="org.hisp.dhis.user.UserAccess" column="useraccessid" unique="true" />
-    </set>
+    <!-- Sharing -->
+    
+    <property name="sharing" type="jsbObjectSharing"/>
 
   </class>
 

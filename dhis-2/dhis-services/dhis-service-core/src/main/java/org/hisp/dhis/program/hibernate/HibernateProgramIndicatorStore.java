@@ -1,7 +1,5 @@
-package org.hisp.dhis.program.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,16 +25,70 @@ package org.hisp.dhis.program.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program.hibernate;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import java.util.List;
+import javax.annotation.Nonnull;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.program.ProgramIndicator;
 import org.hisp.dhis.program.ProgramIndicatorStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.hisp.dhis.system.util.SqlUtils;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Chau Thu Tran
  */
+@Repository("org.hisp.dhis.program.ProgramIndicatorStore")
 public class HibernateProgramIndicatorStore
-    extends HibernateIdentifiableObjectStore<ProgramIndicator>
-    implements ProgramIndicatorStore
-{
+    extends HibernateIdentifiableObjectStore<ProgramIndicator> implements ProgramIndicatorStore {
+  public HibernateProgramIndicatorStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, ProgramIndicator.class, aclService, true);
+  }
+
+  @Override
+  public List<ProgramIndicator> getProgramIndicatorsWithNoExpression() {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getList(
+        builder, newJpaParameters().addPredicate(root -> builder.isNull(root.get("expression"))));
+  }
+
+  @Override
+  public List<ProgramIndicator> getAllWithExpressionContainingStrings(
+      @Nonnull List<String> searchStrings) {
+    String multiLike = SqlUtils.likeAny("pi.expression", searchStrings);
+
+    return getQuery(
+            """
+            select pi from ProgramIndicator pi
+            where %s
+            group by pi
+            """
+                .formatted(multiLike))
+        .getResultList();
+  }
+
+  @Override
+  public List<ProgramIndicator> getAllWithFilterContainingStrings(
+      @Nonnull List<String> searchStrings) {
+    String multiLike = SqlUtils.likeAny("pi.filter", searchStrings);
+
+    return getQuery(
+            """
+            select pi from ProgramIndicator pi
+            where %s
+            group by pi
+            """
+                .formatted(multiLike))
+        .getResultList();
+  }
 }

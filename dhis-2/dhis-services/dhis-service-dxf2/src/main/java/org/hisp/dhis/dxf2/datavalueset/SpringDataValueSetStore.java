@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.datavalueset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,314 +25,464 @@ package org.hisp.dhis.dxf2.datavalueset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.datavalueset;
 
-import com.csvreader.CsvWriter;
-import org.hisp.staxwax.factory.XMLFactory;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static org.hisp.dhis.common.IdentifiableObjectUtils.getIdentifiers;
+import static org.hisp.dhis.commons.util.TextUtils.getCommaDelimitedString;
+import static org.hisp.dhis.util.DateUtils.toLongGmtDate;
+import static org.hisp.dhis.util.DateUtils.toMediumDate;
+
+import com.google.common.base.Preconditions;
+import java.io.OutputStream;
+import java.io.Writer;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.Date;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.hisp.dhis.calendar.Calendar;
 import org.hisp.dhis.common.IdScheme;
 import org.hisp.dhis.common.IdSchemes;
 import org.hisp.dhis.commons.util.TextUtils;
 import org.hisp.dhis.datavalue.DataExportParams;
-import org.hisp.dhis.dxf2.datavalue.DataValue;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.period.PeriodType;
-import org.hisp.dhis.system.util.DateUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.hisp.dhis.query.JpaQueryUtils;
+import org.hisp.dhis.security.acl.AclService;
+import org.hisp.dhis.system.util.CsvUtils;
+import org.hisp.dhis.user.CurrentUserUtil;
+import org.hisp.dhis.user.User;
+import org.hisp.dhis.user.UserDetails;
+import org.hisp.dhis.user.UserService;
+import org.hisp.dhis.util.DateUtils;
+import org.hisp.staxwax.factory.XMLFactory;
+import org.springframework.jdbc.UncategorizedSQLException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowCallbackHandler;
-
-import java.io.OutputStream;
-import java.io.Writer;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Date;
-
-import static org.hisp.dhis.common.IdentifiableObjectUtils.getIdentifiers;
-import static org.hisp.dhis.commons.util.TextUtils.getCommaDelimitedString;
-import static org.hisp.dhis.system.util.DateUtils.getLongGmtDateString;
-import static org.hisp.dhis.system.util.DateUtils.getMediumDateString;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Lars Helge Overland
  */
-public class SpringDataValueSetStore
-    implements DataValueSetStore
-{
-    private static final Log log = LogFactory.getLog( SpringDataValueSetStore.class );
+@Slf4j
+@Repository("org.hisp.dhis.dxf2.datavalueset.DataValueSetStore")
+public class SpringDataValueSetStore implements DataValueSetStore {
+  private final JdbcTemplate jdbcTemplate;
+  private final UserService userService;
 
-    private static final char CSV_DELIM = ',';
+  public SpringDataValueSetStore(UserService userService, JdbcTemplate jdbcTemplate) {
+    checkNotNull(userService);
+    checkNotNull(jdbcTemplate);
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    this.userService = userService;
+    this.jdbcTemplate = jdbcTemplate;
+  }
 
-    //--------------------------------------------------------------------------
-    // DataValueSetStore implementation
-    //--------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // DataValueSetStore implementation
+  // --------------------------------------------------------------------------
+
+  @Override
+  public void exportDataValueSetXml(DataExportParams params, Date completeDate, OutputStream out) {
+    try (DataValueSetWriter writer = new XmlDataValueSetWriter(XMLFactory.getXMLWriter(out))) {
+      exportDataValueSet(getDataValueSql(params), params, completeDate, writer);
+    }
+  }
+
+  @Override
+  public void exportDataValueSetJson(DataExportParams params, Date completeDate, OutputStream out) {
+
+    try (DataValueSetWriter writer = new JsonDataValueSetWriter(out)) {
+      exportDataValueSet(getDataValueSql(params), params, completeDate, writer);
+    }
+  }
+
+  @Override
+  public void exportDataValueSetCsv(DataExportParams params, Date completeDate, Writer out) {
+    try (DataValueSetWriter writer = new CsvDataValueSetWriter(CsvUtils.getWriter(out))) {
+      exportDataValueSet(getDataValueSql(params), params, completeDate, writer);
+    }
+  }
+
+  @Override
+  public void exportDataValueSetJson(Date lastUpdated, OutputStream out, IdSchemes idSchemes) {
+    try (DataValueSetWriter writer = new JsonDataValueSetWriter(out)) {
+      exportDataValueSet(
+          buildDataValueSql(lastUpdated, idSchemes), new DataExportParams(), null, writer);
+    }
+  }
+
+  @Override
+  public void exportDataValueSetJson(
+      Date lastUpdated, OutputStream out, IdSchemes idSchemes, int pageSize, int page) {
+    try (DataValueSetWriter writer = new JsonDataValueSetWriter(out)) {
+      final int offset = (page - 1) * pageSize;
+      final String sql =
+          buildDataValueSql(lastUpdated, idSchemes)
+              + "order by pe.startdate asc, dv.created asc, deid asc limit "
+              + pageSize
+              + " offset "
+              + offset;
+
+      exportDataValueSet(sql, new DataExportParams(), null, writer);
+    }
+  }
+
+  private String buildDataValueSql(Date lastUpdated, IdSchemes idSchemes) {
+    String deScheme = idSchemes.getDataElementIdScheme().getIdentifiableString().toLowerCase();
+    String ouScheme = idSchemes.getOrgUnitIdScheme().getIdentifiableString().toLowerCase();
+    String ocScheme =
+        idSchemes.getCategoryOptionComboIdScheme().getIdentifiableString().toLowerCase();
+    String aocScheme =
+        idSchemes.getAttributeOptionComboIdScheme().getIdentifiableString().toLowerCase();
+
+    final String sql =
+        "select de."
+            + deScheme
+            + " as deid, pe.startdate as pestart, pt.name as ptname, ou."
+            + ouScheme
+            + " as ouid, "
+            + "coc."
+            + ocScheme
+            + " as cocid, aoc."
+            + aocScheme
+            + " as aocid, "
+            + "dv.value, dv.storedby, dv.created, dv.lastupdated, dv.comment, dv.followup, dv.deleted "
+            + "from datavalue dv "
+            + "join dataelement de on (dv.dataelementid=de.dataelementid) "
+            + "join period pe on (dv.periodid=pe.periodid) "
+            + "join periodtype pt on (pe.periodtypeid=pt.periodtypeid) "
+            + "join organisationunit ou on (dv.sourceid=ou.organisationunitid) "
+            + "join categoryoptioncombo coc on (dv.categoryoptioncomboid=coc.categoryoptioncomboid) "
+            + "join categoryoptioncombo aoc on (dv.attributeoptioncomboid=aoc.categoryoptioncomboid) "
+            + "where dv.lastupdated >= '"
+            + DateUtils.toLongDate(lastUpdated)
+            + "' ";
+
+    return sql;
+  }
+
+  private void exportDataValueSet(
+      String sql, DataExportParams params, Date completeDate, final DataValueSetWriter writer) {
+    if (params.isSingleDataValueSet()) {
+      IdSchemes idScheme =
+          params.getOutputIdSchemes() != null ? params.getOutputIdSchemes() : new IdSchemes();
+      IdScheme ouScheme = idScheme.getOrgUnitIdScheme();
+      IdScheme dataSetScheme = idScheme.getDataSetIdScheme();
+
+      writer.writeHeader(
+          params.getFirstDataSet().getPropertyValue(dataSetScheme),
+          toLongGmtDate(completeDate),
+          params.getFirstPeriod().getIsoDate(),
+          params.getFirstOrganisationUnit().getPropertyValue(ouScheme));
+    } else {
+      writer.writeHeader();
+    }
+
+    final Calendar calendar = PeriodType.getCalendar();
+    jdbcTemplate.query(
+        sql, (ResultSet rs) -> writer.writeValue(new ResultSetDataValueEntry(rs, calendar)));
+  }
+
+  // --------------------------------------------------------------------------
+  // Supportive methods
+  // --------------------------------------------------------------------------
+
+  private String getDataValueSql(DataExportParams params) {
+    Preconditions.checkArgument(!params.getAllDataElements().isEmpty());
+
+    IdSchemes idScheme =
+        params.getOutputIdSchemes() != null ? params.getOutputIdSchemes() : new IdSchemes();
+
+    String deScheme = idScheme.getDataElementIdScheme().getIdentifiableString().toLowerCase();
+    String ouScheme = idScheme.getOrgUnitIdScheme().getIdentifiableString().toLowerCase();
+    String cocScheme =
+        idScheme.getCategoryOptionComboIdScheme().getIdentifiableString().toLowerCase();
+    String aocScheme =
+        idScheme.getAttributeOptionComboIdScheme().getIdentifiableString().toLowerCase();
+
+    String dataElements = getCommaDelimitedString(getIdentifiers(params.getAllDataElements()));
+    String orgUnits = getCommaDelimitedString(getIdentifiers(params.getOrganisationUnits()));
+    String orgUnitGroups =
+        getCommaDelimitedString(getIdentifiers(params.getOrganisationUnitGroups()));
+    String deGroups = getCommaDelimitedString(getIdentifiers(params.getDataElementGroups()));
+
+    // ----------------------------------------------------------------------
+    // Identifier schemes
+    // ----------------------------------------------------------------------
+
+    String deSql =
+        idScheme.getDataElementIdScheme().isAttribute()
+            ? "de.attributevalues #>> '{\""
+                + idScheme.getDataElementIdScheme().getAttribute()
+                + "\", \"value\" }'  as deid"
+            : "de." + deScheme + " as deid";
+
+    String ouSql =
+        idScheme.getOrgUnitIdScheme().isAttribute()
+            ? "ou.attributevalues #>> '{\""
+                + idScheme.getOrgUnitIdScheme().getAttribute()
+                + "\", \"value\" }'  as ouid"
+            : "ou." + ouScheme + " as ouid";
+
+    String cocSql =
+        idScheme.getCategoryOptionComboIdScheme().isAttribute()
+            ? "coc.attributevalues #>> '{\""
+                + idScheme.getCategoryOptionComboIdScheme().getAttribute()
+                + "\", \"value\" }'  as cocid"
+            : "coc." + cocScheme + " as cocid";
+
+    String aocSql =
+        idScheme.getAttributeOptionComboIdScheme().isAttribute()
+            ? "aoc.attributevalues #>> '{\""
+                + idScheme.getAttributeOptionComboIdScheme().getAttribute()
+                + "\", \"value\" }'  as aocid"
+            : "aoc." + aocScheme + " as aocid";
+
+    // ----------------------------------------------------------------------
+    // Data values
+    // ----------------------------------------------------------------------
+
+    String sql =
+        "select "
+            + deSql
+            + ", pe.startdate as pestart, pt.name as ptname, "
+            + ouSql
+            + ", "
+            + cocSql
+            + ", "
+            + aocSql
+            + ", "
+            + "dv.value, dv.storedby, dv.created, dv.lastupdated, dv.comment, dv.followup, dv.deleted "
+            + "from datavalue dv "
+            + "inner join dataelement de on (dv.dataelementid=de.dataelementid) "
+            + "inner join period pe on (dv.periodid=pe.periodid) "
+            + "inner join periodtype pt on (pe.periodtypeid=pt.periodtypeid) "
+            + "inner join organisationunit ou on (dv.sourceid=ou.organisationunitid) "
+            + "inner join categoryoptioncombo coc on (dv.categoryoptioncomboid=coc.categoryoptioncomboid) "
+            + "inner join categoryoptioncombo aoc on (dv.attributeoptioncomboid=aoc.categoryoptioncomboid) ";
+
+    // ----------------------------------------------------------------------
+    // Filters
+    // ----------------------------------------------------------------------
+
+    if (params.hasOrganisationUnitGroups()) {
+      sql +=
+          "left join orgunitgroupmembers ougm on (ou.organisationunitid=ougm.organisationunitid) ";
+    }
+
+    sql += "where ";
+
+    if (!params.hasDataElementGroups()) {
+      sql += "de.dataelementid in (" + dataElements + ") ";
+    } else {
+      sql +=
+          "dv.dataelementid in ("
+              + "select distinct degm.dataelementid from dataelementgroupmembers degm "
+              + "where degm.dataelementgroupid in ("
+              + deGroups
+              + ")) ";
+    }
+
+    if (params.isIncludeDescendants()) {
+      sql += "and (";
+
+      for (OrganisationUnit parent : params.getOrganisationUnits()) {
+        sql += "ou.path like '" + parent.getStoredPath() + "%' or ";
+      }
+
+      sql = TextUtils.removeLastOr(sql) + ") ";
+    } else {
+      sql += "and (";
+
+      if (params.hasOrganisationUnits()) {
+        sql += "dv.sourceid in (" + orgUnits + ") ";
+      }
+
+      if (params.hasOrganisationUnits() && params.hasOrganisationUnitGroups()) {
+        sql += "or ";
+      }
+
+      if (params.hasOrganisationUnitGroups()) {
+        sql += "ougm.orgunitgroupid in (" + orgUnitGroups + ") ";
+      }
+
+      sql += ") ";
+    }
+
+    if (!params.isIncludeDeleted()) {
+      sql += "and dv.deleted is false ";
+    }
+
+    if (params.hasStartEndDate()) {
+      sql +=
+          "and (pe.startdate >= '"
+              + toMediumDate(params.getStartDate())
+              + "' and pe.enddate <= '"
+              + toMediumDate(params.getEndDate())
+              + "') ";
+    } else if (params.hasPeriods()) {
+      sql +=
+          "and dv.periodid in ("
+              + getCommaDelimitedString(getIdentifiers(params.getPeriods()))
+              + ") ";
+    }
+
+    if (params.hasAttributeOptionCombos()) {
+      sql +=
+          "and dv.attributeoptioncomboid in ("
+              + getCommaDelimitedString(getIdentifiers(params.getAttributeOptionCombos()))
+              + ") ";
+    }
+
+    if (params.hasLastUpdated()) {
+      sql += "and dv.lastupdated >= '" + toLongGmtDate(params.getLastUpdated()) + "' ";
+    } else if (params.hasLastUpdatedDuration()) {
+      sql +=
+          "and dv.lastupdated >= '"
+              + toLongGmtDate(DateUtils.nowMinusDuration(params.getLastUpdatedDuration()))
+              + "' ";
+    }
+
+    User currentUser = userService.getUserByUsername(CurrentUserUtil.getCurrentUsername());
+    if (currentUser != null && !currentUser.isSuper()) {
+      sql += getAttributeOptionComboClause(currentUser);
+    }
+
+    if (params.hasLimit()) {
+      sql += "limit " + params.getLimit();
+    }
+
+    log.debug("Get data value set SQL: " + sql);
+
+    return sql;
+  }
+
+  /**
+   * Returns an attribute option combo filter SQL clause. The filter enforces that only attribute
+   * option combinations which the given user has access to are returned.
+   *
+   * @param user the user.
+   * @return an SQL filter clause.
+   */
+  private String getAttributeOptionComboClause(User user) {
+    return "and dv.attributeoptioncomboid not in ("
+        + "select distinct(cocco.categoryoptioncomboid) "
+        + "from categoryoptioncombos_categoryoptions as cocco "
+        +
+        // Get inaccessible category options
+        "where cocco.categoryoptionid not in ( "
+        + "select co.categoryoptionid "
+        + "from categoryoption co  "
+        + " where "
+        + JpaQueryUtils.generateSQlQueryForSharingCheck(
+            "co.sharing", UserDetails.fromUser(user), AclService.LIKE_READ_DATA)
+        + ") )";
+  }
+
+  @AllArgsConstructor
+  static final class ResultSetDataValueEntry implements DataValueEntry {
+    private final ResultSet rs;
+
+    private final Calendar calendar;
 
     @Override
-    public void writeDataValueSetXml( DataExportParams params, Date completeDate, OutputStream out )
-    {
-        DataValueSet dataValueSet = new StreamingXmlDataValueSet( XMLFactory.getXMLWriter( out ) );
-
-        String sql = getDataValueSql( params );
-
-        writeDataValueSet( sql, params, completeDate, dataValueSet );
-
-        IOUtils.closeQuietly( out );
+    public String getDataElement() {
+      return getString("deid");
     }
 
     @Override
-    public void writeDataValueSetJson( DataExportParams params, Date completeDate, OutputStream out )
-    {
-        DataValueSet dataValueSet = new StreamingJsonDataValueSet( out );
-
-        String sql = getDataValueSql( params );
-
-        writeDataValueSet( sql, params, completeDate, dataValueSet );
-
-        IOUtils.closeQuietly( out );
+    public String getPeriod() {
+      PeriodType pt = PeriodType.getPeriodTypeByName(getString("ptname"));
+      return pt.createPeriod(getDate("pestart"), calendar).getIsoDate();
     }
 
     @Override
-    public void writeDataValueSetCsv( DataExportParams params, Date completeDate, Writer writer )
-    {
-        DataValueSet dataValueSet = new StreamingCsvDataValueSet( new CsvWriter( writer, CSV_DELIM ) );
-
-        String sql = getDataValueSql( params );
-
-        writeDataValueSet( sql, params, completeDate, dataValueSet );
-
-        IOUtils.closeQuietly( writer );
+    public String getOrgUnit() {
+      return getString("ouid");
     }
 
     @Override
-    public void writeDataValueSetJson( Date lastUpdated, OutputStream outputStream, IdSchemes idSchemes )
-    {
-        String deScheme = idSchemes.getDataElementIdScheme().getIdentifiableString().toLowerCase();
-        String ouScheme = idSchemes.getOrgUnitIdScheme().getIdentifiableString().toLowerCase();
-        String ocScheme = idSchemes.getCategoryOptionComboIdScheme().getIdentifiableString().toLowerCase();
-
-        DataValueSet dataValueSet = new StreamingJsonDataValueSet( outputStream );
-
-        final String sql =
-            "select de." + deScheme + " as deid, pe.startdate as pestart, pt.name as ptname, ou." + ouScheme + " as ouid, " +
-            "coc." + ocScheme + " as cocid, aoc." + ocScheme + " as aocid, " +
-            "dv.value, dv.storedby, dv.created, dv.lastupdated, dv.comment, dv.followup, dv.deleted " +
-            "from datavalue dv " +
-            "join dataelement de on (dv.dataelementid=de.dataelementid) " +
-            "join period pe on (dv.periodid=pe.periodid) " +
-            "join periodtype pt on (pe.periodtypeid=pt.periodtypeid) " +
-            "join organisationunit ou on (dv.sourceid=ou.organisationunitid) " +
-            "join categoryoptioncombo coc on (dv.categoryoptioncomboid=coc.categoryoptioncomboid) " +
-            "join categoryoptioncombo aoc on (dv.attributeoptioncomboid=aoc.categoryoptioncomboid) " +
-            "where dv.lastupdated >= '" + DateUtils.getLongDateString( lastUpdated ) + "'";
-
-        writeDataValueSet( sql, new DataExportParams(), null, dataValueSet );
+    public String getCategoryOptionCombo() {
+      return getString("cocid");
     }
 
-    private void writeDataValueSet( String sql, DataExportParams params, Date completeDate, final DataValueSet dataValueSet )
-    {
-        if ( params.isSingleDataValueSet() )
-        {
-            IdSchemes idScheme = params.getOutputIdSchemes() != null ? params.getOutputIdSchemes() : new IdSchemes();
-            IdScheme ouScheme = idScheme.getOrgUnitIdScheme();
-            IdScheme dataSetScheme = idScheme.getDataSetIdScheme();
-            
-            dataValueSet.setDataSet( params.getFirstDataSet().getPropertyValue( dataSetScheme ) );
-            dataValueSet.setCompleteDate( getLongGmtDateString( completeDate ) );
-            dataValueSet.setPeriod( params.getFirstPeriod().getIsoDate() );
-            dataValueSet.setOrgUnit( params.getFirstOrganisationUnit().getPropertyValue( ouScheme ) );
-        }
-
-        final Calendar calendar = PeriodType.getCalendar();
-
-        jdbcTemplate.query( sql, new RowCallbackHandler()
-        {
-            @Override
-            public void processRow( ResultSet rs ) throws SQLException
-            {
-                DataValue dataValue = dataValueSet.getDataValueInstance();
-                PeriodType pt = PeriodType.getPeriodTypeByName( rs.getString( "ptname" ) );
-                boolean deleted = rs.getBoolean( "deleted" );
-
-                dataValue.setDataElement( rs.getString( "deid" ) );
-                dataValue.setPeriod( pt.createPeriod( rs.getDate( "pestart" ), calendar ).getIsoDate() );
-                dataValue.setOrgUnit( rs.getString( "ouid" ) );
-                dataValue.setCategoryOptionCombo( rs.getString( "cocid" ) );
-                dataValue.setAttributeOptionCombo( rs.getString( "aocid" ) );
-                dataValue.setValue( rs.getString( "value" ) );
-                dataValue.setStoredBy( rs.getString( "storedby" ) );
-                dataValue.setCreated( getLongGmtDateString( rs.getTimestamp( "created" ) ) );
-                dataValue.setLastUpdated( getLongGmtDateString( rs.getTimestamp( "lastupdated" ) ) );
-                dataValue.setComment( rs.getString( "comment" ) );
-                dataValue.setFollowup( rs.getBoolean( "followup" ) );
-
-                if ( deleted )
-                {
-                    dataValue.setDeleted( deleted );
-                }
-                
-                dataValue.close();
-            }
-        } );
-
-        dataValueSet.close();
+    @Override
+    public String getAttributeOptionCombo() {
+      return getString("aocid");
     }
 
-    //--------------------------------------------------------------------------
-    // Supportive methods
-    //--------------------------------------------------------------------------
-
-    private String getDataValueSql( DataExportParams params )
-    {
-        IdSchemes idScheme = params.getOutputIdSchemes() != null ? params.getOutputIdSchemes() : new IdSchemes();
-
-        String deScheme = idScheme.getDataElementIdScheme().getIdentifiableString().toLowerCase();
-        String ouScheme = idScheme.getOrgUnitIdScheme().getIdentifiableString().toLowerCase();
-        String cocScheme = idScheme.getCategoryOptionComboIdScheme().getIdentifiableString().toLowerCase();
-
-        String dataElements = getCommaDelimitedString( getIdentifiers( params.getAllDataElements() ) );
-        String orgUnits = getCommaDelimitedString( getIdentifiers( params.getOrganisationUnits() ) );
-        String orgUnitGroups = getCommaDelimitedString( getIdentifiers( params.getOrganisationUnitGroups() ) );
-
-        //----------------------------------------------------------------------
-        // Identifier schemes
-        //----------------------------------------------------------------------
-
-        String deSql = idScheme.getDataElementIdScheme().isAttribute() ? 
-            "coalesce((" +
-            "select av.value as deid from attributevalue av " +
-            "inner join dataelementattributevalues deav on av.attributevalueid=deav.attributevalueid " +
-            "inner join attribute at on av.attributeid=at.attributeid and at.uid='" + idScheme.getDataElementIdScheme().getAttribute() + "' " +
-            "where dv.dataelementid=deav.dataelementid " +
-            "limit 1), de.uid) as deid" :
-            "de." + deScheme + " as deid";
-        
-        String ouSql = idScheme.getOrgUnitIdScheme().isAttribute() ? 
-            "coalesce((" +
-            "select av.value as ouid from attributevalue av " +
-            "inner join organisationunitattributevalues ouav on av.attributevalueid=ouav.attributevalueid " +
-            "inner join attribute at on av.attributeid=at.attributeid and at.uid='" + idScheme.getOrgUnitIdScheme().getAttribute() + "' " +
-            "where dv.sourceid=ouav.organisationunitid " +
-            "limit 1), ou.uid) as ouid" :
-            "ou." + ouScheme + " as ouid";
-        
-        String cocSql = idScheme.getCategoryOptionComboIdScheme().isAttribute() ?
-            "coalesce((" +
-            "select av.value as cocid from attributevalue av " +
-            "inner join categoryoptioncomboattributevalues cocav on av.attributevalueid=cocav.attributevalueid " +
-            "inner join attribute at on av.attributeid=at.attributeid and at.uid='" + idScheme.getCategoryOptionComboIdScheme().getAttribute() + "' " +
-            "where dv.categoryoptioncomboid=cocav.categoryoptioncomboid " +
-            "limit 1), coc.uid) as cocid" :
-            "coc." + cocScheme + " as cocid";
-
-        String aocSql = idScheme.getCategoryOptionComboIdScheme().isAttribute() ?
-            "coalesce((" +
-            "select av.value as aocid from attributevalue av " +
-            "inner join categoryoptioncomboattributevalues cocav on av.attributevalueid=cocav.attributevalueid " +
-            "inner join attribute at on av.attributeid=at.attributeid and at.uid='" + idScheme.getCategoryOptionComboIdScheme().getAttribute() + "' " +
-            "where dv.attributeoptioncomboid=cocav.categoryoptioncomboid " +
-            "limit 1), aoc.uid) as aocid" :
-            "aoc." + cocScheme + " as aocid";
-
-        //----------------------------------------------------------------------
-        // Data values
-        //----------------------------------------------------------------------
-
-        String sql =
-            "select " + deSql + ", pe.startdate as pestart, pt.name as ptname, " + 
-            ouSql + ", " + cocSql + ", " + aocSql + ", " +
-            "dv.value, dv.storedby, dv.created, dv.lastupdated, dv.comment, dv.followup, dv.deleted " +
-            "from datavalue dv " +
-            "inner join dataelement de on (dv.dataelementid=de.dataelementid) " +
-            "inner join period pe on (dv.periodid=pe.periodid) " +
-            "inner join periodtype pt on (pe.periodtypeid=pt.periodtypeid) " +
-            "inner join organisationunit ou on (dv.sourceid=ou.organisationunitid) " +
-            "inner join categoryoptioncombo coc on (dv.categoryoptioncomboid=coc.categoryoptioncomboid) " +
-            "inner join categoryoptioncombo aoc on (dv.attributeoptioncomboid=aoc.categoryoptioncomboid) ";
-
-        //----------------------------------------------------------------------
-        // Filters
-        //----------------------------------------------------------------------
-
-        if ( params.hasOrganisationUnitGroups() )
-        {
-            sql += "left join orgunitgroupmembers ougm on (ou.organisationunitid=ougm.organisationunitid) ";
-        }
-
-        sql += "where de.dataelementid in (" + dataElements + ") ";
-
-        if ( params.isIncludeChildren() )
-        {
-            sql += "and (";
-
-            for ( OrganisationUnit parent : params.getOrganisationUnits() )
-            {
-                sql += "ou.path like '" + parent.getPath() + "%' or ";
-            }
-
-            sql = TextUtils.removeLastOr( sql ) + ") ";
-        }
-        else
-        {
-            sql += "and (";
-
-            if ( params.hasOrganisationUnits() )
-            {
-                sql += "dv.sourceid in (" + orgUnits + ") ";
-            }
-
-            if ( params.hasOrganisationUnits() && params.hasOrganisationUnitGroups() )
-            {
-                sql += "or ";
-            }
-
-            if ( params.hasOrganisationUnitGroups() )
-            {
-                sql += "ougm.orgunitgroupid in (" + orgUnitGroups + ") ";
-            }
-
-            sql += ") ";
-        }
-        
-        if ( !params.isIncludeDeleted() )
-        {
-            sql += "and dv.deleted is false ";
-        }
-
-        if ( params.hasStartEndDate() )
-        {
-            sql += "and (pe.startdate >= '" + getMediumDateString( params.getStartDate() ) + "' and pe.enddate <= '" + getMediumDateString( params.getEndDate() ) + "') ";
-        }
-        else if ( params.hasPeriods() )
-        {
-            sql += "and dv.periodid in (" + getCommaDelimitedString( getIdentifiers( params.getPeriods() ) ) + ") ";
-        }
-
-        if ( params.hasAttributeOptionCombos() )
-        {
-            sql += "and dv.attributeoptioncomboid in (" + getCommaDelimitedString( getIdentifiers( params.getAttributeOptionCombos() ) ) + ") ";
-        }
-
-        if ( params.hasLastUpdated() )
-        {
-            sql += "and dv.lastupdated >= '" + getLongGmtDateString( params.getLastUpdated() ) + "' ";
-        }
-        else if ( params.hasLastUpdatedDuration() )
-        {
-            sql += "and dv.lastupdated >= '" + getLongGmtDateString( DateUtils.nowMinusDuration( params.getLastUpdatedDuration() ) ) + "' ";
-        }
-
-        if ( params.hasLimit() )
-        {
-            sql += "limit " + params.getLimit();
-        }
-
-        log.debug( "Get data value set SQL: " + sql );
-
-        return sql;
+    @Override
+    public String getValue() {
+      return getString("value");
     }
+
+    @Override
+    public String getStoredBy() {
+      return getString("storedby");
+    }
+
+    @Override
+    public String getCreated() {
+      return toLongGmtDate(getTimestamp("created"));
+    }
+
+    @Override
+    public String getLastUpdated() {
+      return toLongGmtDate(getTimestamp("lastupdated"));
+    }
+
+    @Override
+    public String getComment() {
+      return getString("comment");
+    }
+
+    @Override
+    public boolean getFollowup() {
+      return getBoolean("followup");
+    }
+
+    @Override
+    public Boolean getDeleted() {
+      boolean deleted = getBoolean("deleted");
+      return deleted ? true : null;
+    }
+
+    private String getString(String column) {
+      try {
+        return rs.getString(column);
+      } catch (SQLException ex) {
+        throw toRuntimeException(column, ex);
+      }
+    }
+
+    private Date getDate(String column) {
+      try {
+        return rs.getDate(column);
+      } catch (SQLException ex) {
+        throw toRuntimeException(column, ex);
+      }
+    }
+
+    private Timestamp getTimestamp(String column) {
+      try {
+        return rs.getTimestamp(column);
+      } catch (SQLException ex) {
+        throw toRuntimeException(column, ex);
+      }
+    }
+
+    private boolean getBoolean(String column) {
+      try {
+        return rs.getBoolean(column);
+      } catch (SQLException ex) {
+        throw toRuntimeException(column, ex);
+      }
+    }
+
+    private UncategorizedSQLException toRuntimeException(String column, SQLException ex) {
+      return new UncategorizedSQLException("Failed to read column " + column, null, ex);
+    }
+  }
 }

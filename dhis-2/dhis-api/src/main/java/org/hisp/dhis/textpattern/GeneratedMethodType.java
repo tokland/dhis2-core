@@ -1,7 +1,5 @@
-package org.hisp.dhis.textpattern;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,28 +25,25 @@ package org.hisp.dhis.textpattern;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.textpattern;
 
 import java.util.regex.Pattern;
 
 /**
  * @author Stian Sandvold
  */
-public class GeneratedMethodType
-    extends BaseMethodType
-{
+public class GeneratedMethodType extends BaseMethodType {
 
-    GeneratedMethodType( Pattern pattern )
-    {
-        super( pattern );
-    }
+  GeneratedMethodType(Pattern pattern) {
+    super(pattern);
+  }
 
-    @Override
-    public String getValueRegex( String format )
-    {
-        format = format.replaceAll( "#", "[0-9]" );
-        format = format.replaceAll( "X", "[A-Z]" );
-        format = format.replaceAll( "x", "[a-z]" );
-        format = format.replaceAll( "\\*", "[a-zA-Z0-9]" );
-        return format;
-    }
+  @Override
+  public String getValueRegex(String format) {
+    format = format.replaceAll("#", "[0-9]");
+    format = format.replaceAll("X", "[A-Z]");
+    format = format.replaceAll("x", "[a-z]");
+    format = format.replaceAll("\\*", "[a-zA-Z0-9]");
+    return format;
+  }
 }

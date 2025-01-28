@@ -1,7 +1,5 @@
-package org.hisp.dhis.schema;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,31 +25,34 @@ package org.hisp.dhis.schema;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.schema;
 
+import com.google.common.collect.Lists;
 import java.util.List;
 import java.util.Map;
 
 /**
+ * The {@link PropertyIntrospectorService} is the {@link Property} introspection provider.
+ *
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public interface PropertyIntrospectorService
-{
-    /**
-     * Returns all exposed properties on wanted class.
-     *
-     * @param klass Class to get properties for
-     * @return List of properties for Class
-     */
-    List<Property> getProperties( Class<?> klass );
+@FunctionalInterface
+public interface PropertyIntrospectorService {
+  /**
+   * Returns properties as a map property-name => Property class
+   *
+   * @param klass Class to get properties for
+   * @return Map with key property-name and value Property
+   */
+  Map<String, Property> getPropertiesMap(Class<?> klass);
 
-    /**
-     * Returns properties as a map property-name => Property class
-     *
-     * @param klass Class to get properties for
-     * @return Map with key property-name and value Property
-     */
-    Map<String, Property> getPropertiesMap( Class<?> klass );
-
-    // TODO should probably be moved out of PropertyIntrospectorService, useful other places also
-    Class<?> getConcreteClass( Class<?> klass );
+  /**
+   * Returns all exposed properties on wanted class.
+   *
+   * @param klass Class to get properties for
+   * @return List of properties for Class
+   */
+  default List<Property> getProperties(Class<?> klass) {
+    return Lists.newArrayList(getPropertiesMap(klass).values());
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.schema;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,329 +25,496 @@ package org.hisp.dhis.schema;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.schema;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.stream.Collectors.toSet;
 
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import com.google.common.base.CaseFormat;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import org.hibernate.MappingException;
-import org.hibernate.SessionFactory;
-import org.hibernate.metamodel.spi.MetamodelImplementor;
-import org.hisp.dhis.commons.util.TextUtils;
-import org.hisp.dhis.schema.descriptors.*;
-import org.hisp.dhis.security.Authority;
-import org.hisp.dhis.system.util.AnnotationUtils;
-import org.hisp.dhis.system.util.ReflectionUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.event.ContextRefreshedEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.core.OrderComparator;
-import org.springframework.util.StringUtils;
-
+import jakarta.persistence.EntityManagerFactory;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static java.util.stream.Collectors.toSet;
+import java.util.concurrent.ConcurrentHashMap;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.hibernate.MappingException;
+import org.hibernate.metamodel.spi.MetamodelImplementor;
+import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.persister.entity.SingleTableEntityPersister;
+import org.hisp.dhis.common.AnalyticalObject;
+import org.hisp.dhis.common.BaseAnalyticalObject;
+import org.hisp.dhis.common.BaseDimensionalItemObject;
+import org.hisp.dhis.common.BaseDimensionalObject;
+import org.hisp.dhis.common.BaseIdentifiableObject;
+import org.hisp.dhis.common.BaseNameableObject;
+import org.hisp.dhis.common.DimensionalItemObject;
+import org.hisp.dhis.common.DimensionalObject;
+import org.hisp.dhis.common.IdentifiableObject;
+import org.hisp.dhis.common.NameableObject;
+import org.hisp.dhis.commons.util.TextUtils;
+import org.hisp.dhis.schema.descriptors.AccessSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.AggregateDataExchangeSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.AnalyticsPeriodBoundarySchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.AnalyticsTableHookSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ApiTokenSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.AttributeSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.AxisSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.CategoryComboSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.CategoryDimensionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.CategoryOptionComboSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.CategoryOptionGroupSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.CategoryOptionGroupSetDimensionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.CategoryOptionGroupSetSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.CategoryOptionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.CategorySchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ConstantSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DashboardItemSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DashboardSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DataApprovalLevelSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DataApprovalWorkflowSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DataElementGroupSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DataElementGroupSetDimensionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DataElementGroupSetSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DataElementOperandSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DataElementSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DataEntryFormSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DataInputPeriodSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DataSetElementSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DataSetNotificationTemplateSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DataSetSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DatastoreEntrySchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.DocumentSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.EventChartSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.EventFilterSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.EventHookSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.EventRepetitionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.EventReportSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.EventVisualizationSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ExpressionDimensionItemSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ExpressionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ExternalFileResourceSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ExternalMapLayerSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.FileResourceSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.IconSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.IndicatorGroupSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.IndicatorGroupSetSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.IndicatorSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.IndicatorTypeSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.InterpretationCommentSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.InterpretationSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ItemConfigSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.JobConfigurationSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.LayoutSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.LegendDefinitionsSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.LegendSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.LegendSetSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.MapSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.MapViewSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.MessageConversationSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.MetadataVersionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.MinMaxDataElementSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ObjectStyleSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.OptionGroupSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.OptionGroupSetSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.OptionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.OptionSetSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.OrganisationUnitGroupSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.OrganisationUnitGroupSetDimensionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.OrganisationUnitGroupSetSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.OrganisationUnitLevelSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.OrganisationUnitSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.OutlierAnalysisSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.PredictorGroupSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.PredictorSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramDataElementDimensionItemSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramIndicatorGroupSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramIndicatorSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramNotificationTemplateSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramRuleActionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramRuleSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramRuleVariableSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramSectionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramStageDataElementSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramStageSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramStageSectionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramStageWorkingListSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramTrackedEntityAttributeDimensionItemSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ProgramTrackedEntityAttributeSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.PushAnalysisSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.RelationshipConstraintSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.RelationshipTypeSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ReportSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ReportingRateSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.RouteSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.SectionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.SeriesKeySchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.SharingSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.SmsCommandSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.SqlViewSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.TrackedEntityAttributeSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.TrackedEntityDataElementDimensionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.TrackedEntityFilterSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.TrackedEntityProgramIndicatorDimensionSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.TrackedEntityTypeAttributeSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.TrackedEntityTypeSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.UserAccessSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.UserGroupAccessSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.UserGroupSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.UserRoleSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.UserSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ValidationNotificationTemplateSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ValidationResultSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ValidationRuleGroupSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.ValidationRuleSchemaDescriptor;
+import org.hisp.dhis.schema.descriptors.VisualizationSchemaDescriptor;
+import org.hisp.dhis.security.Authority;
+import org.hisp.dhis.system.util.AnnotationUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.core.OrderComparator;
+import org.springframework.stereotype.Service;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com> descriptors
  */
-public class DefaultSchemaService
-    implements SchemaService
-{
-    private ImmutableList<SchemaDescriptor> descriptors = new ImmutableList.Builder<SchemaDescriptor>().
-        add( new MetadataVersionSchemaDescriptor() ).
-        add( new AnalyticsTableHookSchemaDescriptor() ).
-        add( new AttributeSchemaDescriptor() ).
-        add( new AttributeValueSchemaDescriptor() ).
-        add( new CategoryComboSchemaDescriptor() ).
-        add( new CategoryOptionComboSchemaDescriptor() ).
-        add( new CategoryOptionGroupSchemaDescriptor() ).
-        add( new CategoryOptionGroupSetSchemaDescriptor() ).
-        add( new CategoryOptionSchemaDescriptor() ).
-        add( new CategorySchemaDescriptor() ).
-        add( new ChartSchemaDescriptor() ).
-        add( new ColorSchemaDescriptor() ).
-        add( new ColorSetSchemaDescriptor() ).
-        add( new ConstantSchemaDescriptor() ).
-        add( new DashboardItemSchemaDescriptor() ).
-        add( new DashboardSchemaDescriptor() ).
-        add( new DataApprovalLevelSchemaDescriptor() ).
-        add( new DataApprovalWorkflowSchemaDescriptor() ).
-        add( new DataElementGroupSchemaDescriptor() ).
-        add( new DataElementGroupSetSchemaDescriptor() ).
-        add( new DataElementOperandSchemaDescriptor() ).
-        add( new DataElementSchemaDescriptor() ).
-        add( new DataEntryFormSchemaDescriptor() ).
-        add( new DataSetSchemaDescriptor() ).
-        add( new DataSetElementSchemaDescriptor() ).
-        add( new DataSetNotificationTemplateSchemaDescriptor() ).
-        add( new DocumentSchemaDescriptor() ).
-        add( new EventChartSchemaDescriptor() ).
-        add( new EventReportSchemaDescriptor() ).
-        add( new FileResourceSchemaDescriptor() ).
-        add( new IndicatorGroupSchemaDescriptor() ).
-        add( new IndicatorGroupSetSchemaDescriptor() ).
-        add( new IndicatorSchemaDescriptor() ).
-        add( new IndicatorTypeSchemaDescriptor() ).
-        add( new InterpretationCommentSchemaDescriptor() ).
-        add( new InterpretationSchemaDescriptor() ).
-        add( new LegendSchemaDescriptor() ).
-        add( new LegendSetSchemaDescriptor() ).
-        add( new ExternalMapLayerSchemaDescriptor() ).
-        add( new MapSchemaDescriptor() ).
-        add( new MapViewSchemaDescriptor() ).
-        add( new MessageConversationSchemaDescriptor() ).
-        add( new OAuth2ClientSchemaDescriptor() ).
-        add( new OptionSchemaDescriptor() ).
-        add( new OptionSetSchemaDescriptor() ).
-        add( new OrganisationUnitGroupSchemaDescriptor() ).
-        add( new OrganisationUnitGroupSetSchemaDescriptor() ).
-        add( new OrganisationUnitLevelSchemaDescriptor() ).
-        add( new OrganisationUnitSchemaDescriptor() ).
-        add( new PredictorSchemaDescriptor() ).
-        add( new ProgramDataElementDimensionItemSchemaDescriptor() ).
-        add( new ProgramIndicatorSchemaDescriptor() ).
-        add( new AnalyticsPeriodBoundarySchemaDescriptor() ).
-        add( new ProgramRuleActionSchemaDescriptor() ).
-        add( new ProgramRuleSchemaDescriptor() ).
-        add( new ProgramRuleVariableSchemaDescriptor() ).
-        add( new ProgramSchemaDescriptor() ).
-        add( new ProgramStageDataElementSchemaDescriptor() ).
-        add( new ProgramStageSchemaDescriptor() ).
-        add( new ProgramStageSectionSchemaDescriptor() ).
-        add( new ProgramSectionSchemaDescriptor() ).
-        add( new ProgramTrackedEntityAttributeSchemaDescriptor() ).
-        add( new ProgramTrackedEntityAttributeDimensionItemSchemaDescriptor() ).
-        add( new ProgramNotificationTemplateSchemaDescriptor() ).
-        add( new RelationshipTypeSchemaDescriptor() ).
-        add( new ReportSchemaDescriptor() ).
-        add( new ReportTableSchemaDescriptor() ).
-        add( new SectionSchemaDescriptor() ).
-        add( new SqlViewSchemaDescriptor() ).
-        add( new TrackedEntityAttributeSchemaDescriptor() ).
-        add( new TrackedEntityInstanceSchemaDescriptor() ).
-        add( new TrackedEntityInstanceFilterSchemaDescriptor() ).
-        add( new TrackedEntityTypeSchemaDescriptor() ).
-        add( new TrackedEntityTypeAttributeSchemaDescriptor() ).
-        add( new TrackedEntityDataElementDimensionSchemaDescriptor() ).
-        add( new TrackedEntityProgramIndicatorDimensionSchemaDescriptor() ).
-        add( new UserCredentialsSchemaDescriptor() ).
-        add( new UserGroupSchemaDescriptor() ).
-        add( new UserRoleSchemaDescriptor() ).
-        add( new UserSchemaDescriptor() ).
-        add( new ValidationRuleGroupSchemaDescriptor() ).
-        add( new ValidationRuleSchemaDescriptor() ).
-        add( new ValidationNotificationTemplateSchemaDescriptor() ).
-        add( new PushAnalysisSchemaDescriptor() ).
-        add( new ProgramIndicatorGroupSchemaDescriptor() ).
-        add( new ExternalFileResourceSchemaDescriptor() ).
-        add( new OptionGroupSchemaDescriptor() ).
-        add( new OptionGroupSetSchemaDescriptor() ).
-        add( new ProgramTrackedEntityAttributeGroupSchemaDescriptor() ).
-        add( new DataInputPeriodSchemaDescriptor() ).
-        add( new ReportingRateSchemaDescriptor() ).
-        add( new UserAccessSchemaDescriptor() ).
-        add( new UserGroupAccessSchemaDescriptor() ).
-        add( new MinMaxDataElementSchemaDescriptor() ).
-        add( new ValidationResultSchemaDescriptor() ).
-        add( new JobConfigurationSchemaDescriptor() ).
-        add( new SmsCommandSchemaDescriptor() ).
-        add( new CategoryDimensionSchemaDescriptor() ).
-        add( new CategoryOptionGroupSetDimensionSchemaDescriptor() ).
-        add( new DataElementGroupSetDimensionSchemaDescriptor() ).
-        add( new OrganisationUnitGroupSetDimensionSchemaDescriptor() ).
-        build();
+@Slf4j
+@Service("org.hisp.dhis.schema.SchemaService")
+public class DefaultSchemaService implements SchemaService {
+  // Simple alias map for our concrete implementations of the core interfaces
+  private static final Map<Class<?>, Class<?>> BASE_ALIAS_MAP =
+      Map.of(
+          IdentifiableObject.class, BaseIdentifiableObject.class,
+          NameableObject.class, BaseNameableObject.class,
+          DimensionalObject.class, BaseDimensionalObject.class,
+          DimensionalItemObject.class, BaseDimensionalItemObject.class,
+          AnalyticalObject.class, BaseAnalyticalObject.class);
 
-    private Map<Class<?>, Schema> classSchemaMap = new HashMap<>();
+  private final Map<Class<?>, SchemaDescriptor> descriptors = new ConcurrentHashMap<>();
 
-    private Map<String, Schema> singularSchemaMap = new HashMap<>();
+  private void init() {
+    register(new AggregateDataExchangeSchemaDescriptor());
+    register(new EventHookSchemaDescriptor());
+    register(new AnalyticsTableHookSchemaDescriptor());
+    register(new AttributeSchemaDescriptor());
+    register(new CategoryComboSchemaDescriptor());
+    register(new CategoryOptionComboSchemaDescriptor());
+    register(new CategoryOptionGroupSchemaDescriptor());
+    register(new CategoryOptionGroupSetSchemaDescriptor());
+    register(new CategoryOptionSchemaDescriptor());
+    register(new CategorySchemaDescriptor());
+    register(new ConstantSchemaDescriptor());
+    register(new DashboardItemSchemaDescriptor());
+    register(new DashboardSchemaDescriptor());
+    register(new DataApprovalLevelSchemaDescriptor());
+    register(new DataApprovalWorkflowSchemaDescriptor());
+    register(new DataElementGroupSchemaDescriptor());
+    register(new DataElementGroupSetSchemaDescriptor());
+    register(new DataElementOperandSchemaDescriptor());
+    register(new DataElementSchemaDescriptor());
+    register(new DataEntryFormSchemaDescriptor());
+    register(new DataSetSchemaDescriptor());
+    register(new DataSetElementSchemaDescriptor());
+    register(new DataSetNotificationTemplateSchemaDescriptor());
+    register(new DocumentSchemaDescriptor());
+    register(new EventChartSchemaDescriptor());
+    register(new EventReportSchemaDescriptor());
+    register(new EventVisualizationSchemaDescriptor());
+    register(new ExpressionSchemaDescriptor());
+    register(new ExpressionDimensionItemSchemaDescriptor());
+    register(new FileResourceSchemaDescriptor());
+    register(new IconSchemaDescriptor());
+    register(new IndicatorGroupSchemaDescriptor());
+    register(new IndicatorGroupSetSchemaDescriptor());
+    register(new IndicatorSchemaDescriptor());
+    register(new IndicatorTypeSchemaDescriptor());
+    register(new InterpretationCommentSchemaDescriptor());
+    register(new InterpretationSchemaDescriptor());
+    register(new LegendSchemaDescriptor());
+    register(new LegendSetSchemaDescriptor());
+    register(new ExternalMapLayerSchemaDescriptor());
+    register(new MapSchemaDescriptor());
+    register(new MapViewSchemaDescriptor());
+    register(new MessageConversationSchemaDescriptor());
+    register(new MetadataVersionSchemaDescriptor());
+    register(new OptionSchemaDescriptor());
+    register(new OptionSetSchemaDescriptor());
+    register(new OrganisationUnitGroupSchemaDescriptor());
+    register(new OrganisationUnitGroupSetSchemaDescriptor());
+    register(new OrganisationUnitLevelSchemaDescriptor());
+    register(new OrganisationUnitSchemaDescriptor());
+    register(new PredictorSchemaDescriptor());
+    register(new PredictorGroupSchemaDescriptor());
+    register(new ProgramDataElementDimensionItemSchemaDescriptor());
+    register(new ProgramIndicatorSchemaDescriptor());
+    register(new AnalyticsPeriodBoundarySchemaDescriptor());
+    register(new ProgramRuleActionSchemaDescriptor());
+    register(new ProgramRuleSchemaDescriptor());
+    register(new ProgramRuleVariableSchemaDescriptor());
+    register(new ProgramSchemaDescriptor());
+    register(new ProgramStageDataElementSchemaDescriptor());
+    register(new ProgramStageSchemaDescriptor());
+    register(new ProgramStageSectionSchemaDescriptor());
+    register(new ProgramStageWorkingListSchemaDescriptor());
+    register(new ProgramSectionSchemaDescriptor());
+    register(new ProgramTrackedEntityAttributeSchemaDescriptor());
+    register(new ProgramTrackedEntityAttributeDimensionItemSchemaDescriptor());
+    register(new ProgramNotificationTemplateSchemaDescriptor());
+    register(new RelationshipTypeSchemaDescriptor());
+    register(new ReportSchemaDescriptor());
+    register(new SectionSchemaDescriptor());
+    register(new SqlViewSchemaDescriptor());
+    register(new TrackedEntityAttributeSchemaDescriptor());
+    register(new TrackedEntityFilterSchemaDescriptor());
+    register(new TrackedEntityTypeSchemaDescriptor());
+    register(new TrackedEntityTypeAttributeSchemaDescriptor());
+    register(new TrackedEntityDataElementDimensionSchemaDescriptor());
+    register(new TrackedEntityProgramIndicatorDimensionSchemaDescriptor());
+    register(new UserGroupSchemaDescriptor());
+    register(new UserRoleSchemaDescriptor());
+    register(new UserSchemaDescriptor());
+    register(new ValidationRuleGroupSchemaDescriptor());
+    register(new ValidationRuleSchemaDescriptor());
+    register(new ValidationNotificationTemplateSchemaDescriptor());
+    register(new PushAnalysisSchemaDescriptor());
+    register(new ProgramIndicatorGroupSchemaDescriptor());
+    register(new ExternalFileResourceSchemaDescriptor());
+    register(new OptionGroupSchemaDescriptor());
+    register(new OptionGroupSetSchemaDescriptor());
+    register(new DataInputPeriodSchemaDescriptor());
+    register(new ReportingRateSchemaDescriptor());
+    register(new UserAccessSchemaDescriptor());
+    register(new UserGroupAccessSchemaDescriptor());
+    register(new MinMaxDataElementSchemaDescriptor());
+    register(new ValidationResultSchemaDescriptor());
+    register(new JobConfigurationSchemaDescriptor());
+    register(new SmsCommandSchemaDescriptor());
+    register(new CategoryDimensionSchemaDescriptor());
+    register(new CategoryOptionGroupSetDimensionSchemaDescriptor());
+    register(new DataElementGroupSetDimensionSchemaDescriptor());
+    register(new OrganisationUnitGroupSetDimensionSchemaDescriptor());
+    register(new DatastoreEntrySchemaDescriptor());
+    register(new EventFilterSchemaDescriptor());
+    register(new VisualizationSchemaDescriptor());
+    register(new ApiTokenSchemaDescriptor());
+    register(new AccessSchemaDescriptor());
+    register(new ObjectStyleSchemaDescriptor());
+    register(new RelationshipConstraintSchemaDescriptor());
+    register(new SharingSchemaDescriptor());
+    register(new AxisSchemaDescriptor());
+    register(new EventRepetitionSchemaDescriptor());
+    register(new LegendDefinitionsSchemaDescriptor());
+    register(new SeriesKeySchemaDescriptor());
+    register(new OutlierAnalysisSchemaDescriptor());
+    register(new ItemConfigSchemaDescriptor());
+    register(new LayoutSchemaDescriptor());
+    register(new RouteSchemaDescriptor());
+  }
 
-    private Map<String, Schema> pluralSchemaMap = new HashMap<>();
+  private final Map<Class<?>, Schema> classSchemaMap = new HashMap<>();
 
-    private Map<Class<?>, Schema> dynamicClassSchemaMap = new HashMap<>();
+  private final Map<String, Schema> singularSchemaMap = new HashMap<>();
 
-    @Autowired
-    private PropertyIntrospectorService propertyIntrospectorService;
+  private final Map<String, Schema> pluralSchemaMap = new HashMap<>();
 
-    @Autowired
-    private SessionFactory sessionFactory;
+  private final Map<Class<?>, Schema> dynamicClassSchemaMap = new HashMap<>();
 
-    @EventListener
-    public void handleContextRefresh( ContextRefreshedEvent contextRefreshedEvent )
-    {
-        for ( SchemaDescriptor descriptor : descriptors )
-        {
-            Schema schema = descriptor.getSchema();
+  private final PropertyIntrospectorService propertyIntrospectorService;
 
-            MetamodelImplementor metamodelImplementor = (MetamodelImplementor) sessionFactory.getMetamodel();
+  private final EntityManagerFactory entityManagerFactory;
 
-            try
-            {
-                metamodelImplementor.entityPersister( schema.getKlass() );
-                schema.setPersisted( true );
-            }
-            catch ( MappingException e )
-            {
-                // class is not persisted with Hibernate
-                schema.setPersisted( false );
-            }
+  @Autowired
+  public DefaultSchemaService(
+      PropertyIntrospectorService propertyIntrospectorService,
+      EntityManagerFactory entityManagerFactory) {
+    checkNotNull(propertyIntrospectorService);
+    checkNotNull(entityManagerFactory);
 
-            schema.setDisplayName( TextUtils.getPrettyClassName( schema.getKlass() ) );
+    this.propertyIntrospectorService = propertyIntrospectorService;
+    this.entityManagerFactory = entityManagerFactory;
+    init();
+  }
 
-            if ( schema.getProperties().isEmpty() )
-            {
-                schema.setPropertyMap( Maps.newHashMap( propertyIntrospectorService.getPropertiesMap( schema.getKlass() ) ) );
-            }
+  @Override
+  public void register(SchemaDescriptor descriptor) {
+    descriptors.putIfAbsent(descriptor.getSchema().getKlass(), descriptor);
+  }
 
-            classSchemaMap.put( schema.getKlass(), schema );
-            singularSchemaMap.put( schema.getSingular(), schema );
-            pluralSchemaMap.put( schema.getPlural(), schema );
-
-            updateSelf( schema );
-
-            schema.getPersistedProperties();
-            schema.getNonPersistedProperties();
-            schema.getReadableProperties();
-            schema.getEmbeddedObjectProperties();
-        }
+  @Override
+  public Class<?> getConcreteClass(Class<?> klass) {
+    if (BASE_ALIAS_MAP.containsKey(klass)) {
+      return BASE_ALIAS_MAP.get(klass);
     }
 
-    @Override
-    public Schema getSchema( Class<?> klass )
-    {
-        if ( klass == null )
-        {
-            return null;
-        }
+    return klass;
+  }
 
-        klass = ReflectionUtils.getRealClass( klass );
+  @EventListener
+  public void handleContextRefresh(ContextRefreshedEvent contextRefreshedEvent) {
+    for (SchemaDescriptor descriptor : descriptors.values()) {
+      Schema schema = descriptor.getSchema();
 
-        if ( classSchemaMap.containsKey( klass ) )
-        {
-            return classSchemaMap.get( klass );
-        }
+      MetamodelImplementor metamodelImplementor =
+          (MetamodelImplementor) entityManagerFactory.getMetamodel();
 
-        if ( dynamicClassSchemaMap.containsKey( klass ) )
-        {
-            return dynamicClassSchemaMap.get( klass );
-        }
+      try {
+        EntityPersister entityPersister = metamodelImplementor.entityPersister(schema.getKlass());
 
-        return null;
-    }
-
-    @Override
-    public Schema getDynamicSchema( Class<?> klass )
-    {
-        if ( klass == null )
-        {
-            return null;
+        if (entityPersister instanceof SingleTableEntityPersister) {
+          schema.setTableName(((SingleTableEntityPersister) entityPersister).getTableName());
         }
 
-        Schema schema = getSchema( klass );
+        schema.setPersisted(true);
+      } catch (MappingException e) {
+        // Class is not persisted with Hibernate
+        schema.setPersisted(false);
+      }
 
-        if ( schema != null )
-        {
-            return schema;
-        }
+      schema.setDisplayName(TextUtils.getPrettyClassName(schema.getKlass()));
 
-        klass = propertyIntrospectorService.getConcreteClass( ReflectionUtils.getRealClass( klass ) );
+      if (schema.getProperties().isEmpty()) {
+        schema.setPropertyMap(
+            Maps.newHashMap(propertyIntrospectorService.getPropertiesMap(schema.getKlass())));
+      }
 
-        String name = getName( klass );
+      classSchemaMap.put(schema.getKlass(), schema);
+      singularSchemaMap.put(schema.getSingular(), schema);
+      pluralSchemaMap.put(schema.getPlural(), schema);
 
-        schema = new Schema( klass, name, name + "s" );
-        schema.setDisplayName( beautify( schema ) );
-        schema.setPropertyMap( new HashMap<>( propertyIntrospectorService.getPropertiesMap( schema.getKlass() ) ) );
+      updateSelf(schema);
 
-        updateSelf( schema );
+      schema.getPersistedProperties();
+      schema.getNonPersistedProperties();
+      schema.getReadableProperties();
+      schema.getEmbeddedObjectProperties();
+    }
+  }
 
-        dynamicClassSchemaMap.put( klass, schema );
-
-        return schema;
+  @Override
+  public Schema getSchema(Class<?> klass) {
+    if (klass == null) {
+      log.error("getSchema() Error, input class should not be null!");
+      return null;
     }
 
-    private String getName( Class<?> klass )
-    {
-        if ( AnnotationUtils.isAnnotationPresent( klass, JacksonXmlRootElement.class ) )
-        {
-            JacksonXmlRootElement rootElement = AnnotationUtils.getAnnotation( klass, JacksonXmlRootElement.class );
-
-            if ( !StringUtils.isEmpty( rootElement.localName() ) )
-            {
-                return rootElement.localName();
-            }
-        }
-
-        return CaseFormat.UPPER_CAMEL.to( CaseFormat.LOWER_CAMEL, klass.getSimpleName() );
+    if (classSchemaMap.containsKey(klass)) {
+      return classSchemaMap.get(klass);
     }
 
-    @Override
-    public Schema getSchemaBySingularName( String name )
-    {
-        return singularSchemaMap.get( name );
+    if (dynamicClassSchemaMap.containsKey(klass)) {
+      return dynamicClassSchemaMap.get(klass);
     }
 
-    @Override
-    public Schema getSchemaByPluralName( String name )
-    {
-        return pluralSchemaMap.get( name );
+    return null;
+  }
+
+  @Override
+  public Schema getDynamicSchema(Class<?> klass) {
+    if (klass == null) {
+      log.error("getDynamicSchema() Error, input class should not be null!");
+      return null;
     }
 
-    @Override
-    public List<Schema> getSchemas()
-    {
-        return Lists.newArrayList( classSchemaMap.values() );
+    Schema schema = getSchema(klass);
+
+    if (schema != null) {
+      return schema;
     }
 
-    @Override
-    public List<Schema> getSortedSchemas()
-    {
-        List<Schema> schemas = Lists.newArrayList( classSchemaMap.values() );
-        schemas.sort( OrderComparator.INSTANCE );
+    // Lookup the implementation class of core interfaces, if the input
+    // klass is a core interface
+    klass = getConcreteClass(klass);
 
-        return schemas;
+    String name = getName(klass);
+
+    schema = new Schema(klass, name, name + "s");
+    schema.setDisplayName(beautify(schema));
+    schema.setPropertyMap(
+        new HashMap<>(propertyIntrospectorService.getPropertiesMap(schema.getKlass())));
+
+    updateSelf(schema);
+
+    dynamicClassSchemaMap.put(klass, schema);
+
+    return schema;
+  }
+
+  private String getName(Class<?> klass) {
+    if (AnnotationUtils.isAnnotationPresent(klass, JacksonXmlRootElement.class)) {
+      JacksonXmlRootElement rootElement =
+          AnnotationUtils.getAnnotation(klass, JacksonXmlRootElement.class);
+
+      if (!StringUtils.isEmpty(rootElement.localName())) {
+        return rootElement.localName();
+      }
     }
 
-    @Override
-    public List<Schema> getMetadataSchemas()
-    {
-        List<Schema> schemas = getSchemas();
+    return CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, klass.getSimpleName());
+  }
 
-        schemas.removeIf( schema -> !schema.isMetadata() );
-        schemas.sort( OrderComparator.INSTANCE );
+  @Override
+  public Schema getSchemaBySingularName(String name) {
+    return singularSchemaMap.get(name);
+  }
 
-        return schemas;
+  @Override
+  public Schema getSchemaByPluralName(String name) {
+    return pluralSchemaMap.get(name);
+  }
+
+  @Override
+  public List<Schema> getSchemas() {
+    return Lists.newArrayList(classSchemaMap.values());
+  }
+
+  @Override
+  public List<Schema> getSortedSchemas() {
+    List<Schema> schemas = Lists.newArrayList(classSchemaMap.values());
+    schemas.sort(OrderComparator.INSTANCE);
+
+    return schemas;
+  }
+
+  @Override
+  public List<Schema> getMetadataSchemas() {
+    List<Schema> schemas = getSchemas();
+
+    schemas.removeIf(schema -> !schema.isMetadata());
+    schemas.sort(OrderComparator.INSTANCE);
+
+    return schemas;
+  }
+
+  @Override
+  public Set<String> collectAuthorities() {
+    return getSchemas().stream()
+        .map(Schema::getAuthorities)
+        .flatMap(Collection::stream)
+        .map(Authority::getAuthorities)
+        .flatMap(Collection::stream)
+        .collect(toSet());
+  }
+
+  private void updateSelf(Schema schema) {
+    if (schema.hasProperty(PROPERTY_SCHEMA)) {
+      Property property = schema.getProperty(PROPERTY_SCHEMA);
+      schema.setName(property.getName());
+      schema.setCollectionName(schema.getPlural());
+      schema.setNamespace(property.getNamespace());
+      schema.getPropertyMap().remove(PROPERTY_SCHEMA);
     }
+  }
 
-    @Override
-    public Set<String> collectAuthorities()
-    {
-        return getSchemas().stream()
-            .map( Schema::getAuthorities ).flatMap( Collection::stream )
-            .map( Authority::getAuthorities ).flatMap( Collection::stream )
-            .collect( toSet() );
-    }
-
-    private void updateSelf( Schema schema )
-    {
-        if ( schema.haveProperty( "__self__" ) )
-        {
-            Property property = schema.getProperty( "__self__" );
-            schema.setName( property.getName() );
-            schema.setCollectionName( schema.getPlural() );
-            schema.setNamespace( property.getNamespace() );
-
-            schema.getPropertyMap().remove( "__self__" );
-        }
-    }
-
-    private String beautify( Schema schema )
-    {
-        String[] camelCaseWords = org.apache.commons.lang3.StringUtils.capitalize( schema.getPlural() ).split( "(?=[A-Z])" );
-        return org.apache.commons.lang3.StringUtils.join( camelCaseWords, " " ).trim();
-    }
+  private String beautify(Schema schema) {
+    String[] camelCaseWords =
+        org.apache.commons.lang3.StringUtils.capitalize(schema.getPlural()).split("(?=[A-Z])");
+    return org.apache.commons.lang3.StringUtils.join(camelCaseWords, " ").trim();
+  }
 }

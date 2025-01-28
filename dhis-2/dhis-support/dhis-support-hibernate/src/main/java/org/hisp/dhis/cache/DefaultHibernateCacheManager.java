@@ -1,7 +1,5 @@
-package org.hisp.dhis.cache;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,62 +25,66 @@ package org.hisp.dhis.cache;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.cache;
 
+import jakarta.persistence.EntityManagerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.hisp.dhis.common.event.ApplicationCacheClearedEvent;
+import org.springframework.context.event.EventListener;
 
 /**
  * @author Lars Helge Overland
  */
-public class DefaultHibernateCacheManager
-    implements HibernateCacheManager
-{
-    private static final Log log = LogFactory.getLog( DefaultHibernateCacheManager.class );
-    
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Slf4j
+public class DefaultHibernateCacheManager implements HibernateCacheManager {
+  // -------------------------------------------------------------------------
+  // Dependencies
+  // -------------------------------------------------------------------------
 
-    private SessionFactory sessionFactory;
+  private EntityManagerFactory entityManagerFactory;
 
-    public void setSessionFactory( SessionFactory sessionFactory )
-    {
-        this.sessionFactory = sessionFactory;
-    }
+  public void setSessionFactory(EntityManagerFactory entityManagerFactory) {
+    this.entityManagerFactory = entityManagerFactory;
+  }
 
-    // -------------------------------------------------------------------------
-    // HibernateCacheManager implementation
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // HibernateCacheManager implementation
+  // -------------------------------------------------------------------------
 
-    @Override
-    public void clearObjectCache()
-    {
-        sessionFactory.getCache().evictEntityRegions();
-        sessionFactory.getCache().evictCollectionRegions();
-     }
-    
-    @Override
-    public void clearQueryCache()
-    {
-        sessionFactory.getCache().evictDefaultQueryRegion();
-        sessionFactory.getCache().evictQueryRegions();
-    }
-    
-    @Override
-    public void clearCache()
-    {
-        clearObjectCache();        
-        clearQueryCache();
-        
-        log.info( "Cleared Hibernate caches" );
-    }
-    
-    @Override
-    public Statistics getStatistics()
-    {
-        return sessionFactory.getStatistics();
-    }
+  @Override
+  public void clearObjectCache() {
+    getSessionFactory().getCache().evictEntityData();
+    getSessionFactory().getCache().evictCollectionData();
+  }
+
+  @Override
+  public void clearQueryCache() {
+    getSessionFactory().getCache().evictDefaultQueryRegion();
+    getSessionFactory().getCache().evictQueryRegions();
+  }
+
+  @Override
+  public void clearCache() {
+    clearObjectCache();
+    clearQueryCache();
+
+    log.info("Hibernate caches cleared");
+  }
+
+  @Override
+  @EventListener
+  public void handleApplicationCachesCleared(ApplicationCacheClearedEvent event) {
+    clearCache();
+  }
+
+  @Override
+  public Statistics getStatistics() {
+    return getSessionFactory().getStatistics();
+  }
+
+  private SessionFactory getSessionFactory() {
+    return entityManagerFactory.unwrap(SessionFactory.class);
+  }
 }

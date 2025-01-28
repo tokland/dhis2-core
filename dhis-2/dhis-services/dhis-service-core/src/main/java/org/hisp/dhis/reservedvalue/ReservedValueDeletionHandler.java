@@ -1,7 +1,5 @@
-package org.hisp.dhis.reservedvalue;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,29 +25,24 @@ package org.hisp.dhis.reservedvalue;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.reservedvalue;
 
+import lombok.AllArgsConstructor;
 import org.hisp.dhis.system.deletion.DeletionHandler;
 import org.hisp.dhis.trackedentity.TrackedEntityAttribute;
+import org.springframework.stereotype.Component;
 
-public class ReservedValueDeletionHandler extends DeletionHandler
-{
+@Component
+@AllArgsConstructor
+public class ReservedValueDeletionHandler extends DeletionHandler {
+  private final ReservedValueService reservedValueService;
 
-    private final ReservedValueStore reservedValueStore;
+  @Override
+  protected void register() {
+    whenDeleting(TrackedEntityAttribute.class, this::deleteTrackedEntityAttribute);
+  }
 
-    public ReservedValueDeletionHandler( ReservedValueStore reservedValueStore )
-    {
-        this.reservedValueStore = reservedValueStore;
-    }
-
-    @Override
-    protected String getClassName()
-    {
-        return ReservedValue.class.getSimpleName();
-    }
-
-    @Override
-    public void deleteTrackedEntityAttribute( TrackedEntityAttribute attribute )
-    {
-        reservedValueStore.deleteReservedValueByUid( attribute.getUid() );
-    }
+  private void deleteTrackedEntityAttribute(TrackedEntityAttribute attribute) {
+    reservedValueService.deleteReservedValueByUid(attribute.getUid());
+  }
 }

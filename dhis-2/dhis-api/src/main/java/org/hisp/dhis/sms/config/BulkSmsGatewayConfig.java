@@ -1,7 +1,5 @@
-package org.hisp.dhis.sms.config;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,56 +25,22 @@ package org.hisp.dhis.sms.config;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.sms.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import java.io.Serial;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
  */
+@JsonTypeName("bulksms")
+public class BulkSmsGatewayConfig extends SmsGatewayConfig {
+  @Serial private static final long serialVersionUID = 5249703354480948250L;
 
-public class BulkSmsGatewayConfig
-    extends SmsGatewayConfig
-{
-    private static final long serialVersionUID = 5249703354480948250L;
-
-    private final String URL_TEMPLATE_FOR_BATCHSMS = "https://bulksms.vsms.net/eapi/submission/send_batch/1/1.0";
-
-    private final String URL_TEMPLATE = "https://bulksms.vsms.net/eapi/submission/send_sms/2/2.0";
-
-    @JsonProperty( value = "urlTemplateForBatchSms" )
-    public String getUrlTemplateForBatchSms()
-    {
-        return this.URL_TEMPLATE_FOR_BATCHSMS;
-    }
-
-    @Override
-    @JsonProperty( value = "urlTemplate" )
-    public String getUrlTemplate()
-    {
-        return this.URL_TEMPLATE;
-    }
-
-    @JsonProperty( value = "name" )
-    public String getName()
-    {
-        return super.getName();
-    }
-
-    @JsonProperty( value = "default" )
-    public boolean getStatus()
-    {
-        return super.isDefault();
-    }
-
-    @Override
-    public boolean isInbound()
-    {
-        return false;
-    }
-
-    @Override
-    public boolean isOutbound()
-    {
-        return true;
-    }
+  @Override
+  @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+  public String getUrlTemplate() {
+    return "https://api.bulksms.com/v1/messages";
+  }
 }

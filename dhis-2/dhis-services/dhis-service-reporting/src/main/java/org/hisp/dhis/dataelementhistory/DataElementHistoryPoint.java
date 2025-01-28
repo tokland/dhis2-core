@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataelementhistory;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,52 +25,45 @@ package org.hisp.dhis.dataelementhistory;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataelementhistory;
 
 import org.hisp.dhis.period.Period;
 
 /**
  * @author Torgeir Lorange Ostby
- * @version $Id: DataElementHistoryPoint.java 2869 2007-02-20 14:26:09Z andegje $
  */
-public class DataElementHistoryPoint
-{
-    private Period period;
+public class DataElementHistoryPoint {
+  private Period period;
 
-    private Double value;
+  private Double value;
 
-    private double average;
+  private double average;
 
-    // -------------------------------------------------------------------------
-    // Getters and setters
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Getters and setters
+  // -------------------------------------------------------------------------
 
-    public double getAverage()
-    {
-        return average;
-    }
+  public double getAverage() {
+    return average;
+  }
 
-    public void setAverage( double average )
-    {
-        this.average = average;
-    }
+  public void setAverage(double average) {
+    this.average = average;
+  }
 
-    public Period getPeriod()
-    {
-        return period;
-    }
+  public Period getPeriod() {
+    return period;
+  }
 
-    public void setPeriod( Period period )
-    {
-        this.period = period;
-    }
+  public void setPeriod(Period period) {
+    this.period = period;
+  }
 
-    public Double getValue()
-    {
-        return value;
-    }
+  public Double getValue() {
+    return value;
+  }
 
-    public void setValue( Double value )
-    {
-        this.value = value;
-    }
+  public void setValue(Double value) {
+    this.value = value;
+  }
 }

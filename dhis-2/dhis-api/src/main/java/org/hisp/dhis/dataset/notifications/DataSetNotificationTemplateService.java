@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset.notifications;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,28 +25,24 @@ package org.hisp.dhis.dataset.notifications;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.dataset.DataSet;
-import org.hisp.dhis.program.notification.NotificationTrigger;
+package org.hisp.dhis.dataset.notifications;
 
 import java.util.List;
+import org.hisp.dhis.dataset.DataSet;
 
-/**
- * Created by zubair@dhis2.org on 20.07.17.
- */
-public interface DataSetNotificationTemplateService
-{
-    DataSetNotificationTemplate get( int id );
+/** Created by zubair@dhis2.org on 20.07.17. */
+public interface DataSetNotificationTemplateService {
+  DataSetNotificationTemplate get(long id);
 
-    DataSetNotificationTemplate get( String uid );
+  DataSetNotificationTemplate get(String uid);
 
-    List<DataSetNotificationTemplate> getCompleteNotifications( DataSet dataSet );
+  List<DataSetNotificationTemplate> getCompleteNotifications(DataSet dataSet);
 
-    List<DataSetNotificationTemplate> getScheduledNotifications( NotificationTrigger trigger );
+  List<DataSetNotificationTemplate> getScheduledNotifications(DataSetNotificationTrigger trigger);
 
-    List<DataSetNotificationTemplate> getAll();
+  List<DataSetNotificationTemplate> getAll();
 
-    void save( DataSetNotificationTemplate template );
+  void save(DataSetNotificationTemplate template);
 
-    void delete( DataSetNotificationTemplate template );
+  void delete(DataSetNotificationTemplate template);
 }

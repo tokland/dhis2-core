@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.util;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +25,13 @@ package org.hisp.dhis.system.util;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.util;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
@@ -36,260 +40,205 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.text.SimpleDateFormat;
-import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
+import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-
 import org.hisp.dhis.commons.util.TextUtils;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
-import org.hisp.dhis.sms.parse.SMSParserException;
-import org.hisp.dhis.user.User;
 import org.hisp.dhis.sms.command.SMSCommand;
 import org.hisp.dhis.sms.incoming.IncomingSms;
+import org.hisp.dhis.sms.parse.SMSParserException;
+import org.hisp.dhis.user.User;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
  */
-public class SmsUtils
-{
-    private static final int MAX_CHAR = 160;
+@Slf4j
+public class SmsUtils {
+  private static final int MAX_CHAR = 160;
 
-    private static final String COMMAND_PATTERN = "([A-Za-z])\\w+";
+  private static final String COMMAND_PATTERN = "([A-Za-z])\\w+";
 
-    public static String getCommandString( IncomingSms sms )
-    {
-        return getCommandString( sms.getText() );
+  public static String getCommandString(IncomingSms sms) {
+    return getCommandString(sms.getText());
+  }
+
+  public static String getCommandString(String text) {
+    String commandString = null;
+
+    Pattern pattern = Pattern.compile(COMMAND_PATTERN);
+
+    Matcher matcher = pattern.matcher(text);
+
+    if (matcher.find()) {
+      commandString = matcher.group();
+      commandString = commandString.trim();
     }
 
-    public static String getCommandString( String text )
-    {
-        String commandString = null;
+    return commandString;
+  }
 
-        Pattern pattern = Pattern.compile( COMMAND_PATTERN );
+  public static boolean isBase64(IncomingSms sms) {
+    return isBase64(sms.getText());
+  }
 
-        Matcher matcher = pattern.matcher( text );
+  public static boolean isBase64(String text) {
+    try {
+      Base64.getDecoder().decode(text);
+      return true;
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
+  }
 
-        if ( matcher.find() )
-        {
-            commandString = matcher.group();
-            commandString.trim();
-        }
+  public static byte[] getBytes(IncomingSms sms) {
+    try {
+      byte[] bytes = Base64.getDecoder().decode(sms.getText());
+      return bytes;
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
 
-        return commandString;
+  public static String encode(String value) {
+    if (!StringUtils.isBlank(value)) {
+      try {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
+      } catch (UnsupportedEncodingException e) {
+        log.error("SMS text encoding failed: ", e);
+      }
     }
 
-    public static Set<OrganisationUnit> getOrganisationUnitsByPhoneNumber( String sender,
-        Collection<User> users )
-    {
-        Set<OrganisationUnit> orgUnits = new HashSet<>();
+    return value;
+  }
 
-        for ( User u : users )
-        {
-            if ( u.getOrganisationUnits() != null )
-            {
-                orgUnits.addAll( u.getOrganisationUnits() );
-            }
-        }
-
-        return orgUnits;
+  public static Date lookForDate(String message) {
+    if (!message.contains(" ")) {
+      return null;
     }
 
-    public static Date lookForDate( String message )
-    {
-        if ( !message.contains( " " ) )
-        {
-            return null;
-        }
+    Date date = null;
+    String[] messageSplit = message.trim().split(" ");
+    // The first element in the split is the sms command. If there are only
+    // two elements
+    // in the split assume the 2nd is data values, not date.
+    if (messageSplit.length <= 2) {
+      return null;
+    }
+    String dateString = messageSplit[1];
+    SimpleDateFormat format = new SimpleDateFormat("ddMM");
 
-        Date date = null;
-        String[] messageSplit = message.trim().split( " " );
-        // The first element in the split is the sms command. If there are only two elements
-        // in the split assume the 2nd is data values, not date.
-        if ( messageSplit.length <= 2 )
-        {
-            return null;
-        }
-        String dateString = messageSplit[1];
-        SimpleDateFormat format = new SimpleDateFormat( "ddMM" );
+    try {
+      Calendar cal = Calendar.getInstance();
+      date = format.parse(dateString);
+      cal.setTime(date);
+      int year = Calendar.getInstance().get(Calendar.YEAR);
+      int month = Calendar.getInstance().get(Calendar.MONTH);
 
-        try
-        {
-            Calendar cal = Calendar.getInstance();
-            date = format.parse( dateString );
-            cal.setTime( date );
-            int year = Calendar.getInstance().get( Calendar.YEAR );
-            int month = Calendar.getInstance().get( Calendar.MONTH );
+      if (cal.get(Calendar.MONTH) <= month) {
+        cal.set(Calendar.YEAR, year);
+      } else {
+        cal.set(Calendar.YEAR, year - 1);
+      }
 
-            if ( cal.get( Calendar.MONTH ) <= month )
-            {
-                cal.set( Calendar.YEAR, year );
-            }
-            else
-            {
-                cal.set( Calendar.YEAR, year - 1 );
-            }
-
-            date = cal.getTime();
-        }
-        catch ( Exception e )
-        {
-            // no date found
-        }
-
-        return date;
+      date = cal.getTime();
+    } catch (Exception e) {
+      // no date found
     }
 
-    public static User getUser( String sender, SMSCommand smsCommand, List<User> userList )
-    {
-        OrganisationUnit orgunit = null;
-        User user = null;
+    return date;
+  }
 
-        for ( User u : userList )
-        {
-            OrganisationUnit ou = u.getOrganisationUnit();
+  public static List<String> splitLongUnicodeString(String message, List<String> result) {
+    String firstTempString = null;
+    String secondTempString = null;
+    int indexToCut = 0;
 
-            if ( ou != null )
-            {
-                if ( orgunit == null )
-                {
-                    orgunit = ou;
-                }
-                else if ( orgunit.getId() == ou.getId() )
-                {
-                }
-                else
-                {
-                    if ( StringUtils.isEmpty( smsCommand.getMoreThanOneOrgUnitMessage() ) )
-                    {
-                        throw new SMSParserException( SMSCommand.MORE_THAN_ONE_ORGUNIT_MESSAGE );
-                    }
-                    else
-                    {
-                        throw new SMSParserException( smsCommand.getMoreThanOneOrgUnitMessage() );
-                    }
-                }
-            }
+    firstTempString = message.substring(0, MAX_CHAR);
 
-            user = u;
-        }
+    indexToCut = firstTempString.lastIndexOf(" ");
 
-        if ( user == null )
-        {
-            throw new SMSParserException( "User is not associated with any orgunit. Please contact your supervisor." );
-        }
+    firstTempString = firstTempString.substring(0, indexToCut);
 
-        return user;
+    result.add(firstTempString);
+
+    secondTempString = message.substring(indexToCut + 1, message.length());
+
+    if (secondTempString.length() <= MAX_CHAR) {
+      result.add(secondTempString);
+      return result;
+    } else {
+      return splitLongUnicodeString(secondTempString, result);
+    }
+  }
+
+  public static Set<String> getRecipientsPhoneNumber(Collection<User> users) {
+    return users.parallelStream()
+        .filter(u -> u.getPhoneNumber() != null && !u.getPhoneNumber().isEmpty())
+        .map(u -> u.getPhoneNumber())
+        .collect(Collectors.toSet());
+  }
+
+  public static Set<String> getRecipientsEmail(Collection<User> users) {
+    Set<String> recipients = new HashSet<>();
+
+    for (User user : users) {
+      String email = user.getEmail();
+
+      if (StringUtils.trimToNull(email) != null) {
+        recipients.add(email);
+      }
+    }
+    return recipients;
+  }
+
+  public static OrganisationUnit selectOrganisationUnit(
+      Collection<OrganisationUnit> orgUnits,
+      Map<String, String> parsedMessage,
+      SMSCommand smsCommand) {
+    OrganisationUnit orgUnit = null;
+
+    for (OrganisationUnit o : orgUnits) {
+      if (orgUnits.size() == 1) {
+        orgUnit = o;
+      }
+      if (parsedMessage.containsKey("ORG") && o.getCode().equals(parsedMessage.get("ORG"))) {
+        orgUnit = o;
+        break;
+      }
     }
 
-    public static List<String> splitLongUnicodeString( String message, List<String> result )
-    {
-        String firstTempString = null;
-        String secondTempString = null;
-        int indexToCut = 0;
+    if (orgUnit == null && orgUnits.size() > 1) {
+      String messageListingOrgUnits = smsCommand.getMoreThanOneOrgUnitMessage();
 
-        firstTempString = message.substring( 0, MAX_CHAR );
+      for (Iterator<OrganisationUnit> i = orgUnits.iterator(); i.hasNext(); ) {
+        OrganisationUnit o = i.next();
+        messageListingOrgUnits += TextUtils.SPACE + o.getName() + ":" + o.getCode();
 
-        indexToCut = firstTempString.lastIndexOf( " " );
-
-        firstTempString = firstTempString.substring( 0, indexToCut );
-
-        result.add( firstTempString );
-
-        secondTempString = message.substring( indexToCut + 1, message.length() );
-
-        if ( secondTempString.length() <= MAX_CHAR )
-        {
-            result.add( secondTempString );
-            return result;
+        if (i.hasNext()) {
+          messageListingOrgUnits += ",";
         }
-        else
-        {
-            return splitLongUnicodeString( secondTempString, result );
-        }
+      }
+
+      throw new SMSParserException(messageListingOrgUnits);
     }
 
-    public static Set<String> getRecipientsPhoneNumber( Collection<User> users )
-    {
-        return users.parallelStream()
-            .filter( u -> u.getPhoneNumber() != null && !u.getPhoneNumber().isEmpty() )
-            .map( u -> u.getPhoneNumber() )
-            .collect( Collectors.toSet() );
+    return orgUnit;
+  }
+
+  public static String removePhoneNumberPrefix(String number) {
+    if (number == null) {
+      return null;
     }
 
-    public static Set<String> getRecipientsEmail( Collection<User> users )
-    {
-        Set<String> recipients = new HashSet<>();
-
-        for ( User user : users )
-        {
-            String email = user.getEmail();
-
-            if ( StringUtils.trimToNull( email ) != null )
-            {
-                recipients.add( email );
-            }
-        }
-        return recipients;
+    if (number.startsWith("00")) {
+      number = number.substring(2, number.length());
+    } else if (number.startsWith("+")) {
+      number = number.substring(1, number.length());
     }
 
-    public static OrganisationUnit selectOrganisationUnit( Collection<OrganisationUnit> orgUnits,
-        Map<String, String> parsedMessage, SMSCommand smsCommand )
-    {
-        OrganisationUnit orgUnit = null;
-
-        for ( OrganisationUnit o : orgUnits )
-        {
-            if ( orgUnits.size() == 1 )
-            {
-                orgUnit = o;
-            }
-            if ( parsedMessage.containsKey( "ORG" ) && o.getCode().equals( parsedMessage.get( "ORG" ) ) )
-            {
-                orgUnit = o;
-                break;
-            }
-        }
-
-        if ( orgUnit == null && orgUnits.size() > 1 )
-        {
-            String messageListingOrgUnits = smsCommand.getMoreThanOneOrgUnitMessage();
-
-            for ( Iterator<OrganisationUnit> i = orgUnits.iterator(); i.hasNext(); )
-            {
-                OrganisationUnit o = i.next();
-                messageListingOrgUnits += TextUtils.SPACE + o.getName() + ":" + o.getCode();
-
-                if ( i.hasNext() )
-                {
-                    messageListingOrgUnits += ",";
-                }
-            }
-
-            throw new SMSParserException( messageListingOrgUnits );
-        }
-
-        return orgUnit;
-    }
-
-    public static String removePhoneNumberPrefix( String number )
-    {
-        if ( number == null )
-        {
-            return null;
-        }
-
-        if ( number.startsWith( "00" ) )
-        {
-            number = number.substring( 2, number.length() );
-        }
-        else if ( number.startsWith( "+" ) )
-        {
-            number = number.substring( 1, number.length() );
-        }
-
-        return number;
-    }
+    return number;
+  }
 }

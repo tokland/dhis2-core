@@ -1,7 +1,5 @@
-package org.hisp.dhis.commons.timer;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.commons.timer;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.commons.timer;
 
 import java.util.concurrent.TimeUnit;
 
@@ -35,37 +34,31 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Morten Olav Hansen
  */
-public class SystemTimer
-    implements Timer
-{
-    private long internalStart = 0;
+public class SystemTimer implements Timer {
+  private long internalStart = 0;
 
-    private Long internalEnd;
+  private Long internalEnd;
 
-    @Override
-    public Timer start()
-    {
-        internalStart = System.nanoTime();
-        return this;
-    }
+  @Override
+  public Timer start() {
+    internalStart = System.nanoTime();
+    return this;
+  }
 
-    @Override
-    public Timer stop()
-    {
-        internalEnd = System.nanoTime();
-        return this;
-    }
+  @Override
+  public Timer stop() {
+    internalEnd = System.nanoTime();
+    return this;
+  }
 
-    @Override
-    public Long duration()
-    {
-        return internalEnd != null ? internalEnd - internalStart : System.nanoTime() - internalStart;
-    }
+  @Override
+  public Long duration() {
+    return internalEnd != null ? internalEnd - internalStart : System.nanoTime() - internalStart;
+  }
 
-    @Override
-    public String toString()
-    {
-        double seconds = TimeUnit.MILLISECONDS.convert( duration(), TimeUnit.NANOSECONDS ) / 1000.0f;
-        return String.format( "%.2f seconds", seconds );
-    }
+  @Override
+  public String toString() {
+    double seconds = duration() / (double) TimeUnit.SECONDS.toNanos(1);
+    return String.format("%f sec.", seconds);
+  }
 }

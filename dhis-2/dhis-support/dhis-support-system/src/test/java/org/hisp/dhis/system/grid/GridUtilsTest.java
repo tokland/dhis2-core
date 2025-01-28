@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.grid;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,33 +25,89 @@ package org.hisp.dhis.system.grid;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.grid;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import com.google.common.collect.Lists;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-
+import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.commons.io.IOUtils;
+import org.hisp.dhis.common.CodeGenerator;
+import org.hisp.dhis.common.DimensionalItemObject;
 import org.hisp.dhis.common.Grid;
-import org.junit.Test;
+import org.hisp.dhis.period.Period;
+import org.hisp.dhis.period.PeriodType;
+import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
-
-import static org.junit.Assert.*;
 
 /**
  * @author Lars Helge Overland
  */
-public class GridUtilsTest
-{
-    @Test
-    public void testFromHtml()
-        throws Exception
-    {
-        String html = IOUtils.toString( new ClassPathResource( "customform.html" ).getInputStream(), StandardCharsets.UTF_8 );
-        
-        List<Grid> grids = GridUtils.fromHtml( html, "TitleA" );
-        
-        assertNotNull( grids );
-        assertEquals( 6, grids.size() );
-        assertEquals( "TitleA", grids.get( 0 ).getTitle() );
-    }
+class GridUtilsTest {
+
+  @Test
+  void testFromHtml() throws Exception {
+    String html =
+        IOUtils.toString(
+            new ClassPathResource("customform.html").getInputStream(), StandardCharsets.UTF_8);
+    List<Grid> grids = GridUtils.fromHtml(html, "TitleA");
+    assertNotNull(grids);
+    assertEquals(6, grids.size());
+    assertEquals("TitleA", grids.get(0).getTitle());
+  }
+
+  @Test
+  void testGetGridIndexByDimensionItem() {
+    Period period1 = PeriodType.getPeriodFromIsoString("202010");
+    period1.setUid(CodeGenerator.generateUid());
+    Period period2 = PeriodType.getPeriodFromIsoString("202011");
+    period2.setUid(CodeGenerator.generateUid());
+    Period period3 = PeriodType.getPeriodFromIsoString("202012");
+    period3.setUid(CodeGenerator.generateUid());
+    List<DimensionalItemObject> periods = Lists.newArrayList(period1, period2, period3);
+    List<Object> row = new ArrayList<>(3);
+    // dimension
+    row.add(CodeGenerator.generateUid());
+    // period
+    row.add(period2.getIsoDate());
+    // value
+    row.add(10.22D);
+    assertEquals(1, GridUtils.getGridIndexByDimensionItem(row, periods, 2));
+    List<Object> row2 = new ArrayList<>(3);
+    // dimension
+    row2.add(CodeGenerator.generateUid());
+    // period
+    row2.add("201901");
+    // value
+    row2.add(10.22D);
+    assertEquals(2, GridUtils.getGridIndexByDimensionItem(row2, periods, 2));
+  }
+
+  @Test
+  void testToXls() {
+    List<Grid> grids = new ArrayList<>();
+    Grid gridA = new ListGrid();
+    gridA.setTitle("Grid");
+    grids.add(gridA);
+    Grid gridB = new ListGrid();
+    gridB.setTitle("Grid");
+    grids.add(gridA);
+    grids.add(gridB);
+    OutputStream outputStream = new ByteArrayOutputStream();
+    assertDoesNotThrow(() -> GridUtils.toXls(grids, outputStream));
+  }
+
+  @Test
+  void testToXlsx() {
+    Grid grid = new ListGrid();
+    grid.setTitle("Grid");
+    OutputStream outputStream = new ByteArrayOutputStream();
+    assertDoesNotThrow(() -> GridUtils.toXlsx(grid, outputStream));
+  }
 }

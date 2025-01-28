@@ -1,7 +1,5 @@
-package org.hisp.dhis.node.exception;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,14 +25,13 @@ package org.hisp.dhis.node.exception;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.node.exception;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class DuplicateNodeException extends RuntimeException
-{
-    public DuplicateNodeException()
-    {
-        super( "A node with that name already exists in the child list." );
-    }
+public class DuplicateNodeException extends RuntimeException {
+  public DuplicateNodeException() {
+    super("A node with that name already exists in the child list.");
+  }
 }

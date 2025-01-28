@@ -41,14 +41,33 @@
     <many-to-one name="programStage" class="org.hisp.dhis.program.ProgramStage"
       column="programstageid" foreign-key="fk_programruleaction_programstage" />
 
-    <many-to-one name="programNotificationTemplate" class="org.hisp.dhis.program.notification.ProgramNotificationTemplate"
-                 column="programnotificationtemplateid" foreign-key="fk_programruleaction_programnotification" />
+    <many-to-one name="notificationTemplate" class="org.hisp.dhis.program.notification.ProgramNotificationTemplate"
+                 column="notificationtemplateid" foreign-key="fk_programruleaction_notificationtemplate" not-null="false" />
 
+    <many-to-one name="option" class="org.hisp.dhis.option.Option"
+      column="optionid" foreign-key="fk_programruleaction_option" />             
+
+	<many-to-one name="optionGroup" class="org.hisp.dhis.option.OptionGroup"
+      column="optiongroupid" foreign-key="fk_programruleaction_optiongroup" />
+      
     <property name="location" />
 
     <property name="content" type="text" />
 
     <property name="data" type="text" />
+
+    <property name="programRuleActionEvaluationTime" column="evaluationtime" not-null="true">
+      <type name="org.hibernate.type.EnumType">
+        <param name="enumClass">org.hisp.dhis.programrule.ProgramRuleActionEvaluationTime</param>
+        <param name="useNamed">true</param>
+        <param name="type">12</param>
+      </type>
+    </property>
+
+    <property name="programRuleActionEvaluationEnvironments" column="environments"
+              type="jsbProgramRuleEvaluationEnvironments"/>
+
+    <property name="translations" type="jblTranslations"/>
 
   </class>
 

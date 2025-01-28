@@ -1,9 +1,5 @@
-package org.hisp.dhis.common;
-
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,13 +25,16 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.common;
+
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
  */
-
-@JacksonXmlRootElement( localName = "deliveryChannel", namespace = DxfNamespaces.DXF_2_0 )
-public enum DeliveryChannel
-{
-    SMS, EMAIL
+@JacksonXmlRootElement(localName = "deliveryChannel", namespace = DxfNamespaces.DXF_2_0)
+public enum DeliveryChannel {
+  SMS,
+  EMAIL,
+  HTTP
 }

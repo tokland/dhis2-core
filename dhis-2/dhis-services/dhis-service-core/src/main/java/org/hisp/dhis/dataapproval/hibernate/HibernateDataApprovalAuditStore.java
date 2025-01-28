@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataapproval.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,8 +25,18 @@ package org.hisp.dhis.dataapproval.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataapproval.hibernate;
 
-import org.apache.commons.collections.CollectionUtils;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static org.hisp.dhis.common.IdentifiableObjectUtils.getUids;
+import static org.hisp.dhis.commons.util.TextUtils.getQuotedCommaDelimitedString;
+import static org.hisp.dhis.util.DateUtils.toMediumDate;
+
+import jakarta.persistence.EntityManager;
+import java.util.List;
+import java.util.Set;
+import org.apache.commons.collections4.CollectionUtils;
+import org.hisp.dhis.category.CategoryOptionCombo;
 import org.hisp.dhis.commons.util.SqlHelper;
 import org.hisp.dhis.commons.util.TextUtils;
 import org.hisp.dhis.dataapproval.DataApprovalAudit;
@@ -36,100 +44,118 @@ import org.hisp.dhis.dataapproval.DataApprovalAuditQueryParams;
 import org.hisp.dhis.dataapproval.DataApprovalAuditStore;
 import org.hisp.dhis.hibernate.HibernateGenericStore;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
-import org.hisp.dhis.user.CurrentUserService;
-
-import java.util.List;
-import java.util.Set;
-
-import static org.hisp.dhis.common.IdentifiableObjectUtils.getUids;
-import static org.hisp.dhis.commons.util.TextUtils.getQuotedCommaDelimitedString;
-import static org.hisp.dhis.system.util.DateUtils.getMediumDateString;
+import org.hisp.dhis.user.CurrentUserUtil;
+import org.hisp.dhis.user.User;
+import org.hisp.dhis.user.UserService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Jim Grace
  */
-public class HibernateDataApprovalAuditStore
-    extends HibernateGenericStore<DataApprovalAudit>
-    implements DataApprovalAuditStore
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Repository("org.hisp.dhis.dataapproval.DataApprovalAuditStore")
+public class HibernateDataApprovalAuditStore extends HibernateGenericStore<DataApprovalAudit>
+    implements DataApprovalAuditStore {
+  // -------------------------------------------------------------------------
+  // Dependencies
+  // -------------------------------------------------------------------------
 
-    private CurrentUserService currentUserService;
+  private final UserService userService;
 
-    public void setCurrentUserService( CurrentUserService currentUserService )
-    {
-        this.currentUserService = currentUserService;
+  public HibernateDataApprovalAuditStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      UserService userService) {
+    super(entityManager, jdbcTemplate, publisher, DataApprovalAudit.class, false);
+
+    checkNotNull(userService);
+
+    this.userService = userService;
+  }
+
+  // -------------------------------------------------------------------------
+  // DataValueAuditStore implementation
+  // -------------------------------------------------------------------------
+
+  @Override
+  public void deleteDataApprovalAudits(OrganisationUnit organisationUnit) {
+    String hql = "delete from DataApprovalAudit d where d.organisationUnit = :unit";
+
+    entityManager.createQuery(hql).setParameter("unit", organisationUnit).executeUpdate();
+  }
+
+  @Override
+  public void deleteDataApprovalAudits(CategoryOptionCombo coc) {
+    String hql = "delete from DataApprovalAudit d where d.attributeOptionCombo = :coc";
+    entityManager.createQuery(hql).setParameter("coc", coc).executeUpdate();
+  }
+
+  @Override
+  public List<DataApprovalAudit> getDataApprovalAudits(DataApprovalAuditQueryParams params) {
+    SqlHelper hlp = new SqlHelper();
+
+    String hql = "select a from DataApprovalAudit a ";
+
+    if (params.hasWorkflows()) {
+      hql +=
+          hlp.whereAnd()
+              + " a.workflow.uid in ("
+              + getQuotedCommaDelimitedString(getUids(params.getWorkflows()))
+              + ") ";
     }
 
-    // -------------------------------------------------------------------------
-    // DataValueAuditStore implementation
-    // -------------------------------------------------------------------------
-
-    @Override
-    public void deleteDataApprovalAudits( OrganisationUnit organisationUnit )
-    {
-        String hql = "delete from DataApprovalAudit d where d.organisationUnit = :unit";
-
-        getSession().createQuery( hql ).
-            setEntity( "unit", organisationUnit ).executeUpdate();
+    if (params.hasLevels()) {
+      hql +=
+          hlp.whereAnd()
+              + " a.level.uid in ("
+              + getQuotedCommaDelimitedString(getUids(params.getLevels()))
+              + ") ";
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public List<DataApprovalAudit> getDataApprovalAudits( DataApprovalAuditQueryParams params )
-    {
-        SqlHelper hlp = new SqlHelper();
-
-        String hql = "select a from DataApprovalAudit a ";
-
-        if ( params.hasWorkflows() )
-        {
-            hql += hlp.whereAnd() + " a.workflow.uid in (" + getQuotedCommaDelimitedString( getUids( params.getWorkflows() ) ) + ") ";
-        }
-
-        if ( params.hasLevels() )
-        {
-            hql += hlp.whereAnd() + " a.level.uid in (" + getQuotedCommaDelimitedString( getUids( params.getLevels() ) ) + ") ";
-        }
-
-        if ( params.hasOrganisationUnits() )
-        {
-            hql += hlp.whereAnd() + " a.organisationUnit.uid in (" + getQuotedCommaDelimitedString( getUids( params.getOrganisationUnits() ) ) + ") ";
-        }
-
-        if ( params.hasAttributeOptionCombos() )
-        {
-            hql += hlp.whereAnd() + " a.attributeOptionCombo.uid in (" + getQuotedCommaDelimitedString( getUids( params.getAttributeOptionCombos() ) ) + ") ";
-        }
-
-        if ( params.hasStartDate() )
-        {
-            hql += hlp.whereAnd() + " a.period.startDate >= '" + getMediumDateString( params.getStartDate() ) + "' ";
-        }
-
-        if ( params.hasEndDate() )
-        {
-            hql += hlp.whereAnd() + " a.period.endDate <= '" + getMediumDateString( params.getEndDate() ) + "' ";
-        }
-
-        Set<OrganisationUnit> userOrgUnits = currentUserService.getCurrentUserOrganisationUnits();
-
-        if ( !CollectionUtils.isEmpty( userOrgUnits ) )
-        {
-            hql += hlp.whereAnd() + " (";
-
-            for ( OrganisationUnit userOrgUnit : userOrgUnits )
-            {
-                hql += "a.organisationUnit.path like '%" + userOrgUnit.getUid() + "%' or ";
-            }
-
-            hql = TextUtils.removeLastOr( hql ) + ") ";
-        }
-
-        hql += "order by a.workflow.name, a.organisationUnit.name, a.attributeOptionCombo.name, a.period.startDate, a.period.endDate, a.created";
-
-        return getQuery( hql ).list();
+    if (params.hasOrganisationUnits()) {
+      hql +=
+          hlp.whereAnd()
+              + " a.organisationUnit.uid in ("
+              + getQuotedCommaDelimitedString(getUids(params.getOrganisationUnits()))
+              + ") ";
     }
+
+    if (params.hasAttributeOptionCombos()) {
+      hql +=
+          hlp.whereAnd()
+              + " a.attributeOptionCombo.uid in ("
+              + getQuotedCommaDelimitedString(getUids(params.getAttributeOptionCombos()))
+              + ") ";
+    }
+
+    if (params.hasStartDate()) {
+      hql +=
+          hlp.whereAnd() + " a.period.startDate >= '" + toMediumDate(params.getStartDate()) + "' ";
+    }
+
+    if (params.hasEndDate()) {
+      hql += hlp.whereAnd() + " a.period.endDate <= '" + toMediumDate(params.getEndDate()) + "' ";
+    }
+
+    User currentUser = userService.getUserByUsername(CurrentUserUtil.getCurrentUsername());
+    Set<OrganisationUnit> userOrgUnits =
+        currentUser != null ? currentUser.getOrganisationUnits() : null;
+
+    if (!CollectionUtils.isEmpty(userOrgUnits)) {
+      hql += hlp.whereAnd() + " (";
+
+      for (OrganisationUnit userOrgUnit : userOrgUnits) {
+        hql += "a.organisationUnit.path like '%" + userOrgUnit.getUid() + "%' or ";
+      }
+
+      hql = TextUtils.removeLastOr(hql) + ") ";
+    }
+
+    hql +=
+        "order by a.workflow.name, a.organisationUnit.name, a.attributeOptionCombo.name, a.period.startDate, a.period.endDate, a.created";
+
+    return getQuery(hql).list();
+  }
 }

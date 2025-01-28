@@ -1,7 +1,5 @@
-package org.hisp.dhis.hierarchy;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,18 +25,15 @@ package org.hisp.dhis.hierarchy;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.hierarchy;
 
 /**
  * An Exception class that can be used for illegal operations on a hierarchy.
  *
  * @author Kristian Nordal
- * @version $Id: HierarchyViolationException.java 2869 2007-02-20 14:26:09Z andegje $
  */
-public class HierarchyViolationException
-    extends RuntimeException
-{
-    public HierarchyViolationException( String message )
-    {
-        super( message );
-    }
+public class HierarchyViolationException extends RuntimeException {
+  public HierarchyViolationException(String message) {
+    super(message);
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.analytics.table.scheduling;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,36 +25,39 @@ package org.hisp.dhis.analytics.table.scheduling;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.analytics.table.scheduling;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import org.hisp.dhis.analytics.AnalyticsTableGenerator;
-import org.hisp.dhis.scheduling.AbstractJob;
+import org.hisp.dhis.scheduling.Job;
 import org.hisp.dhis.scheduling.JobConfiguration;
+import org.hisp.dhis.scheduling.JobProgress;
 import org.hisp.dhis.scheduling.JobType;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 /**
+ * Job for resource table update.
+ *
  * @author Lars Helge Overland
  */
-public class ResourceTableJob
-    extends AbstractJob
-{
-    @Autowired
-    private AnalyticsTableGenerator analyticsTableGenerator;
+@Component("resourceTableJob")
+public class ResourceTableJob implements Job {
+  private final AnalyticsTableGenerator analyticsTableGenerator;
 
-    // -------------------------------------------------------------------------
-    // Implementation
-    // -------------------------------------------------------------------------
+  public ResourceTableJob(AnalyticsTableGenerator analyticsTableGenerator) {
+    checkNotNull(analyticsTableGenerator);
 
-    @Override
-    public JobType getJobType()
-    {
-        return JobType.RESOURCE_TABLE;
-    }
+    this.analyticsTableGenerator = analyticsTableGenerator;
+  }
 
-    @Override
-    public void execute( JobConfiguration jobConfiguration )
-    {
-        analyticsTableGenerator.generateResourceTables( jobConfiguration );
-    }
+  @Override
+  public JobType getJobType() {
+    return JobType.RESOURCE_TABLE;
+  }
 
+  @Override
+  public void execute(JobConfiguration jobConfiguration, JobProgress progress) {
+    analyticsTableGenerator.generateResourceTables(progress);
+  }
 }

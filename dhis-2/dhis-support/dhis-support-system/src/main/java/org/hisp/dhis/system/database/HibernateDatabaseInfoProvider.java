@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.database;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,128 +25,250 @@ package org.hisp.dhis.system.database;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.database;
 
-import org.hibernate.cfg.Configuration;
-import org.hisp.dhis.hibernate.HibernateConfigurationProvider;
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import java.util.Date;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.annotation.Nonnull;
+import javax.annotation.PostConstruct;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.hisp.dhis.commons.util.SystemUtils;
+import org.hisp.dhis.external.conf.ConfigurationKey;
+import org.hisp.dhis.external.conf.DhisConfigurationProvider;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
- * @version $Id$
  */
-public class HibernateDatabaseInfoProvider
-    implements DatabaseInfoProvider
-{
-    private static final String KEY_DIALECT = "hibernate.dialect";
-    private static final String KEY_DRIVER_CLASS = "hibernate.connection.driver_class";
-    private static final String KEY_URL = "hibernate.connection.url";
-    private static final String KEY_USERNAME = "hibernate.connection.username";
-    private static final String KEY_PASSWORD = "hibernate.connection.password";
-       
-    private static final String SEPARATOR = ".";
-    private static final String DIALECT_SUFFIX = "Dialect";
+@Slf4j
+@Component
+public class HibernateDatabaseInfoProvider implements DatabaseInfoProvider {
+  private static final String EXTENSION_MISSING_ERROR =
+      "%s extension is not installed. Execute \"CREATE EXTENSION %s;\" as a superuser and restart the application.";
 
-    private static final String DEL_A = "/";
-    private static final String DEL_B = ":";
-    private static final String DEL_C = "?";
+  private static final String POSTGIS_EXTENSION = "postgis";
 
-    private DatabaseInfo info;
-    
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+  private static final String PG_TRIGRAM_EXTENSION = "pg_trgm";
 
-    private HibernateConfigurationProvider hibernateConfigurationProvider;
-    
-    public void setHibernateConfigurationProvider( HibernateConfigurationProvider hibernateConfigurationProvider )
-    {
-        this.hibernateConfigurationProvider = hibernateConfigurationProvider;
+  private static final String BTREE_GIN_EXTENSION = "btree_gin";
+
+  private static final String POSTGRES_VERSION_REGEX = "^([a-zA-Z_-]+ \\d+\\.+\\d+)?[ ,].*$";
+
+  private static final Pattern POSTGRES_VERSION_PATTERN = Pattern.compile(POSTGRES_VERSION_REGEX);
+
+  private DatabaseInfo info;
+
+  // -------------------------------------------------------------------------
+  // Dependencies
+  // -------------------------------------------------------------------------
+
+  private final DhisConfigurationProvider config;
+
+  private final JdbcTemplate jdbcTemplate;
+
+  private final Environment environment;
+
+  public HibernateDatabaseInfoProvider(
+      DhisConfigurationProvider config, JdbcTemplate jdbcTemplate, Environment environment) {
+    checkNotNull(config);
+    checkNotNull(jdbcTemplate);
+    checkNotNull(environment);
+
+    this.config = config;
+    this.jdbcTemplate = jdbcTemplate;
+    this.environment = environment;
+  }
+
+  @PostConstruct
+  public void init() {
+    checkDatabaseConnectivity();
+
+    boolean spatialSupport = false;
+
+    boolean trigramSupport = false;
+
+    boolean btreeGinSupport = false;
+
+    if (!SystemUtils.isTestRun(environment.getActiveProfiles())) {
+      // Check if postgis extension is installed, fail startup if not
+      spatialSupport = isSpatialSupport();
+
+      if (!spatialSupport) {
+        log.error(String.format(EXTENSION_MISSING_ERROR, POSTGIS_EXTENSION, POSTGIS_EXTENSION));
+        throw new IllegalStateException(
+            String.format(EXTENSION_MISSING_ERROR, POSTGIS_EXTENSION, POSTGIS_EXTENSION));
+      }
+
+      // Check if pg_trgm extension is installed, fail startup if not
+      trigramSupport = isTrigramExtensionCreated();
+
+      if (!trigramSupport) {
+        log.error(
+            String.format(EXTENSION_MISSING_ERROR, PG_TRIGRAM_EXTENSION, PG_TRIGRAM_EXTENSION));
+        throw new IllegalStateException(
+            String.format(EXTENSION_MISSING_ERROR, PG_TRIGRAM_EXTENSION, PG_TRIGRAM_EXTENSION));
+      }
+
+      // Check if btree_gin extension is installed, fail startup if not
+      btreeGinSupport = isBtreeGinExtensionCreated();
+
+      if (!btreeGinSupport) {
+        log.error(String.format(EXTENSION_MISSING_ERROR, BTREE_GIN_EXTENSION, BTREE_GIN_EXTENSION));
+        throw new IllegalStateException(
+            String.format(EXTENSION_MISSING_ERROR, BTREE_GIN_EXTENSION, BTREE_GIN_EXTENSION));
+      }
     }
 
-    private JdbcTemplate jdbcTemplate;
-    
-    public void setJdbcTemplate( JdbcTemplate jdbcTemplate )
-    {
-        this.jdbcTemplate = jdbcTemplate;
-    }
-    
-    public void init()
-    {
-        Configuration config = hibernateConfigurationProvider.getConfiguration();
-        
-        boolean spatialSupport = isSpatialSupport();
-        
-        String dialect = config.getProperty( KEY_DIALECT );
-        String driverClass = config.getProperty( KEY_DRIVER_CLASS );
-        String url = config.getProperty( KEY_URL );
-        String user = config.getProperty( KEY_USERNAME );
-        String password = config.getProperty( KEY_PASSWORD );
+    String url = config.getProperty(ConfigurationKey.CONNECTION_URL);
+    String user = config.getProperty(ConfigurationKey.CONNECTION_USERNAME);
+    InternalDatabaseInfo internalInfo = getInternalDatabaseInfo();
 
-        info = new DatabaseInfo();
-        
-        if ( dialect != null && dialect.lastIndexOf( SEPARATOR ) != -1 && dialect.lastIndexOf( DIALECT_SUFFIX ) != -1 )
-        {
-            info.setType( dialect.substring( dialect.lastIndexOf( SEPARATOR ) + 1, dialect.lastIndexOf( DIALECT_SUFFIX ) ) );
-        }
-        
-        if ( url != null && url.lastIndexOf( DEL_B ) != -1 )
-        {
-            int startPos = url.lastIndexOf( DEL_A ) != -1 ? url.lastIndexOf( DEL_A ) : url.lastIndexOf( DEL_B );            
-            int endPos = url.lastIndexOf( DEL_C ) != -1 ? url.lastIndexOf( DEL_C ) : url.length();
-                    
-            info.setName( url.substring( startPos + 1, endPos ) );
-        }
-        
-        info.setUser( user );
-        info.setPassword( password );
-        info.setDialect( dialect );
-        info.setDriverClass( driverClass );
-        info.setUrl( url );
-        info.setSpatialSupport( spatialSupport );
-    }    
-    
-    // -------------------------------------------------------------------------
-    // DatabaseInfoProvider implementation
-    // -------------------------------------------------------------------------
+    info =
+        DatabaseInfo.builder()
+            .name(internalInfo.getDatabase())
+            .user(StringUtils.defaultIfEmpty(internalInfo.getUser(), user))
+            .url(url)
+            .spatialSupport(true) // Always true, for backwards compatibility
+            .databaseVersion(internalInfo.getVersion())
+            .build();
+  }
 
-    @Override
-    public DatabaseInfo getDatabaseInfo()
-    {   
-        return info;
+  // -------------------------------------------------------------------------
+  // DatabaseInfoProvider implementation
+  // -------------------------------------------------------------------------
+
+  @Override
+  public DatabaseInfo getDatabaseInfo() {
+    return info.toBuilder().time(now()).build();
+  }
+
+  @Override
+  public boolean isInMemory() {
+    return info.getUrl() != null && info.getUrl().contains(":mem:");
+  }
+
+  // -------------------------------------------------------------------------
+  // Supportive methods
+  // -------------------------------------------------------------------------
+
+  @Nonnull
+  private InternalDatabaseInfo getInternalDatabaseInfo() {
+    if (SystemUtils.isH2(environment.getActiveProfiles())) {
+      return new InternalDatabaseInfo();
     }
-    
-    @Override
-    public boolean isInMemory()
-    {
-        return info.getUrl() != null && info.getUrl().contains( ":mem:" );
+    try {
+      final InternalDatabaseInfo internalDatabaseInfo =
+          jdbcTemplate.queryForObject(
+              "select version(),current_catalog,current_user",
+              (rs, rowNum) -> {
+                String version = rs.getString(1);
+                final Matcher versionMatcher = POSTGRES_VERSION_PATTERN.matcher(version);
+
+                if (versionMatcher.find()) {
+                  version = versionMatcher.group(1);
+                }
+
+                return new InternalDatabaseInfo(version, rs.getString(2), rs.getString(3));
+              });
+
+      return internalDatabaseInfo == null ? new InternalDatabaseInfo() : internalDatabaseInfo;
+    } catch (Exception ex) {
+      log.error("An error occurred when retrieving database info.", ex);
+
+      return new InternalDatabaseInfo();
+    }
+  }
+
+  private void checkDatabaseConnectivity() {
+    jdbcTemplate.queryForObject("select 'checking db connection';", String.class);
+  }
+
+  private Date now() {
+    return jdbcTemplate.queryForObject("select now()", Date.class);
+  }
+
+  /**
+   * Attempts to create a spatial database extension. Checks if spatial operations are supported.
+   */
+  private boolean isSpatialSupport() {
+    try {
+      jdbcTemplate.execute("create extension postgis;");
+    } catch (Exception ex) {
+      // swallowing exception as this is just an attempt to create the
+      // extension if possible.
     }
 
-    // -------------------------------------------------------------------------
-    // Supportive methods
-    // -------------------------------------------------------------------------
+    try {
+      String version = jdbcTemplate.queryForObject("select postgis_full_version();", String.class);
 
-    /**
-     * Attempts to create a spatial database extension. Checks if spatial operations
-     * are supported.
-     */
-    private boolean isSpatialSupport()
-    {
-        try
-        {
-            jdbcTemplate.execute( "create extension postgis;" );
-        }
-        catch ( Exception ex )
-        {
-        }
-        
-        try
-        {
-            String version = jdbcTemplate.queryForObject( "select postgis_full_version();", String.class );
-            return version != null;
-        }
-        catch ( Exception ex )
-        {
-            return false;
-        }
+      return version != null;
+    } catch (Exception ex) {
+      log.error("Exception when checking postgis_full_version(), PostGIS not available");
+      log.debug("Exception when checking postgis_full_version()", ex);
+      return false;
     }
+  }
+
+  /** Attempts to create a pg_trgm database extension. Checks if extension is created */
+  private boolean isTrigramExtensionCreated() {
+    try {
+      jdbcTemplate.execute("create extension pg_trgm;");
+    } catch (Exception ex) {
+      // swallowing exception as this is just an attempt to create the
+      // extension if possible.
+    }
+
+    try {
+      String pg_trgm_ext_name =
+          jdbcTemplate.queryForObject(
+              "SELECT extname from pg_extension where extname='pg_trgm';", String.class);
+
+      return PG_TRIGRAM_EXTENSION.equals(pg_trgm_ext_name);
+    } catch (Exception ex) {
+      log.error("Exception when checking pg_trgm extension. Extension may not be created", ex);
+      return false;
+    }
+  }
+
+  /** Attempts to create a btree_gin database extension. Checks if extension is created */
+  private boolean isBtreeGinExtensionCreated() {
+    try {
+      jdbcTemplate.execute("create extension btree_gin;");
+    } catch (Exception ex) {
+      // swallowing exception as this is just an attempt to create the
+      // extension if possible.
+    }
+
+    try {
+      String btree_ext_name =
+          jdbcTemplate.queryForObject(
+              "SELECT extname from pg_extension where extname='btree_gin';", String.class);
+
+      return BTREE_GIN_EXTENSION.equals(btree_ext_name);
+    } catch (Exception ex) {
+      log.error("Exception when checking btree_gin extension. Extension may not be created", ex);
+      return false;
+    }
+  }
+
+  @Getter
+  @RequiredArgsConstructor
+  protected static class InternalDatabaseInfo {
+
+    private final String version;
+    private final String database;
+    private final String user;
+
+    public InternalDatabaseInfo() {
+      this("", "", "");
+    }
+  }
 }

@@ -1,0 +1,102 @@
+{
+  "dataElements": [
+    {
+      "code": "DataElementCodeA",
+      "created": "2016-03-04T03:37:12.714+0000",
+      "lastUpdated": "2016-03-04T03:37:12.733+0000",
+      "name": "DEA",
+      "id": "deabcdefghA",
+      "shortName": "DESA",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "description": "DEDA",
+      "zeroIsSignificant": false,
+      "valueType": "INTEGER",
+      "attributeValues": [],
+      "aggregationLevels": [],
+      "sharing": {
+        "public": "--------",
+        "external": false,
+        "owner": null,
+        "users": {},
+        "userGroups": {
+          "ugabcdefghA": {
+            "id": "ugabcdefghA",
+            "access": "r-------"
+          }
+        }
+      }
+    },
+    {
+      "code": "DataElementCodeB",
+      "created": "2016-03-04T03:37:12.720+0000",
+      "lastUpdated": "2016-03-04T03:37:12.741+0000",
+      "name": "DEB",
+      "id": "deabcdefghB",
+      "shortName": "DESB",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "description": "DEDB",
+      "zeroIsSignificant": false,
+      "valueType": "INTEGER",
+      "attributeValues": [],
+      "aggregationLevels": [],
+      "sharing": {
+        "public": "--------",
+        "external": false,
+        "owner": null,
+        "users": {},
+        "userGroups": {}
+      }
+    },
+    {
+      "code": "DataElementCodeC",
+      "created": "2016-03-04T03:37:12.725+0000",
+      "lastUpdated": "2016-03-04T03:37:12.743+0000",
+      "name": "DEC",
+      "id": "deabcdefghC",
+      "shortName": "DESC",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "description": "DEDC",
+      "zeroIsSignificant": false,
+      "valueType": "INTEGER",
+      "attributeValues": [],
+      "aggregationLevels": [],
+      "sharing": {
+        "public": "--------",
+        "external": false,
+        "owner": null,
+        "users": {},
+        "userGroups": {
+          "ugabcdefghA": {
+            "id": "ugabcdefghA",
+            "access": "r-------"
+          }
+        }
+      }
+    },
+    {
+      "code": "DataElementCodeD",
+      "created": "2016-03-04T03:37:12.729+0000",
+      "lastUpdated": "2016-03-04T03:37:12.745+0000",
+      "name": "DED",
+      "id": "deabcdefghD",
+      "shortName": "DESD",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "description": "DEDD",
+      "zeroIsSignificant": false,
+      "valueType": "INTEGER",
+      "attributeValues": [],
+      "aggregationLevels": [],
+      "sharing": {
+        "public": "--------",
+        "external": false,
+        "owner": null,
+        "users": {},
+        "userGroups": {}
+      }
+    }
+  ]
+}

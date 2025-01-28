@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.adx;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,41 +25,26 @@ package org.hisp.dhis.dxf2.adx;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.dxf2.importsummary.ImportConflict;
+package org.hisp.dhis.dxf2.adx;
 
 /**
  * Simple class for ADX checked exceptions which can wrap an ImportConflict.
- * 
+ *
  * @author bobj
  */
-public class AdxException
-    extends Exception
-{
-    protected String object;
+public class AdxException extends Exception {
+  private final String object;
 
-    public String getObject()
-    {
-        return object;
-    }
+  public String getObject() {
+    return object;
+  }
 
-    public AdxException()
-    {
-    }
-    
-    public AdxException( String msg )
-    {
-        super( msg );
-    }
+  public AdxException(String msg) {
+    this("ADX Error", msg);
+  }
 
-    public AdxException( String object, String msg )
-    {
-        super( msg );
-        this.object = object;
-    }
-
-    public ImportConflict getImportConflict()
-    {
-        return new ImportConflict( object, this.getMessage() );
-    }
+  public AdxException(String object, String msg) {
+    super(msg);
+    this.object = object;
+  }
 }

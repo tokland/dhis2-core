@@ -1,7 +1,5 @@
-package org.hisp.dhis.node.types;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,17 +25,24 @@ package org.hisp.dhis.node.types;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.node.types;
 
 import org.hisp.dhis.node.AbstractNode;
 import org.hisp.dhis.node.NodeType;
+import org.hisp.dhis.schema.Property;
 
 /**
+ * The Node services are being deprecated so please do not use in new code.
+ *
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class ComplexNode extends AbstractNode
-{
-    public ComplexNode( String name )
-    {
-        super( name, NodeType.COMPLEX );
-    }
+public class ComplexNode extends AbstractNode {
+  public ComplexNode(String name) {
+    super(name, NodeType.COMPLEX);
+  }
+
+  public ComplexNode(Property property, SimpleNode child) {
+    super(property.getName(), NodeType.COMPLEX, property, child);
+    setNamespace(property.getNamespace());
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.jobs;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,86 +25,65 @@ package org.hisp.dhis.dxf2.metadata.jobs;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.jobs;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.hisp.dhis.dxf2.metadata.feedback.ImportReport;
 import org.hisp.dhis.dxf2.metadata.sync.MetadataSyncSummary;
-import org.hisp.dhis.feedback.ErrorReport;
 import org.hisp.dhis.feedback.Status;
 import org.hisp.dhis.metadata.version.MetadataVersion;
+import org.springframework.context.annotation.Scope;
 import org.springframework.retry.RetryContext;
-
-import java.util.List;
+import org.springframework.stereotype.Component;
 
 /**
  * Defines retry mechanism for metadata sync scheduling
  *
  * @author aamerm
  */
+@Slf4j
+@Component("metadataRetryContext")
+@Scope("prototype")
+public class MetadataRetryContext {
+  private RetryContext retryContext;
 
-public class MetadataRetryContext
-{
-    private static final Log log = LogFactory.getLog( MetadataRetryContext.class );
+  public RetryContext getRetryContext() {
+    return retryContext;
+  }
 
-    private RetryContext retryContext;
+  public void setRetryContext(RetryContext retryContext) {
+    this.retryContext = retryContext;
+    log.info("Now trying. Current count: " + (retryContext.getRetryCount() + 1));
+  }
 
-    public RetryContext getRetryContext()
-    {
-        return retryContext;
+  public void updateRetryContext(String stepKey, String message, MetadataVersion version) {
+    retryContext.setAttribute(stepKey, message);
+
+    if (version != null) {
+      retryContext.setAttribute(MetadataSyncJob.VERSION_KEY, version);
     }
+  }
 
-    public void setRetryContext( RetryContext retryContext )
-    {
-        this.retryContext = retryContext;
-        log.info( "Now trying. Current count: " + (retryContext.getRetryCount() + 1) );
+  public void updateRetryContext(
+      String stepKey, String message, MetadataVersion version, MetadataSyncSummary summary) {
+    updateRetryContext(stepKey, message, version);
+
+    if (summary != null) {
+      setupImportReport(summary.getImportReport());
     }
+  }
 
-    public void updateRetryContext( String stepKey,
-        String message, MetadataVersion version )
-    {
-        retryContext.setAttribute( stepKey, message );
+  // ----------------------------------------------------------------------------------------
+  // Private Methods
+  // ----------------------------------------------------------------------------------------
 
-        if ( version != null )
-        {
-            retryContext.setAttribute( MetadataSyncJob.VERSION_KEY, version );
-        }
+  private void setupImportReport(ImportReport importReport) {
+    Status status = importReport.getStatus();
+
+    if (Status.ERROR == status) {
+      StringBuilder report = new StringBuilder();
+      importReport.forEachErrorReport(errorReport -> report.append(errorReport.toString() + "\n"));
+      retryContext.setAttribute(MetadataSyncJob.METADATA_SYNC_REPORT, report.toString());
     }
-
-    public void updateRetryContext( String stepKey, String message, MetadataVersion version, MetadataSyncSummary summary )
-    {
-        updateRetryContext( stepKey, message, version );
-
-        if ( summary != null )
-        {
-            setupImportReport( summary.getImportReport() );
-        }
-    }
-
-    //----------------------------------------------------------------------------------------
-    // Private Methods
-    //----------------------------------------------------------------------------------------
-
-    private void setupImportReport( ImportReport importReport )
-    {
-        Status status = importReport.getStatus();
-
-        if ( Status.ERROR.equals( status ) )
-        {
-            StringBuilder report = new StringBuilder();
-            List<ErrorReport> errorReports = importReport.getErrorReports();
-
-            for ( ErrorReport errorReport : errorReports )
-            {
-
-                if ( errorReport != null )
-                {
-                    report.append( errorReport.toString() + "\n" );
-                }
-
-            }
-
-            retryContext.setAttribute( MetadataSyncJob.METADATA_SYNC_REPORT, report.toString() );
-        }
-    }
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.validation;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,64 +25,49 @@ package org.hisp.dhis.validation;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.expression.Expression;
-import org.hisp.dhis.system.deletion.DeletionHandler;
-import org.springframework.beans.factory.annotation.Autowired;
+package org.hisp.dhis.validation;
 
 import java.util.Iterator;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.expression.Expression;
+import org.hisp.dhis.system.deletion.DeletionHandler;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
  */
-public class ValidationRuleDeletionHandler
-    extends DeletionHandler
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Component
+@RequiredArgsConstructor
+public class ValidationRuleDeletionHandler extends DeletionHandler {
+  private final ValidationRuleService validationRuleService;
 
-    @Autowired
-    private ValidationRuleService validationRuleService;
+  @Override
+  protected void register() {
+    whenDeletingEmbedded(Expression.class, this::deleteExpression);
+    whenDeleting(ValidationRuleGroup.class, this::deleteValidationRuleGroup);
+  }
 
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
+  private void deleteExpression(Expression expression) {
+    Iterator<ValidationRule> iterator = validationRuleService.getAllValidationRules().iterator();
 
-    @Override
-    public String getClassName()
-    {
-        return ValidationRule.class.getSimpleName();
+    while (iterator.hasNext()) {
+      ValidationRule rule = iterator.next();
+
+      Expression leftSide = rule.getLeftSide();
+      Expression rightSide = rule.getRightSide();
+
+      if ((leftSide != null && leftSide.equals(expression))
+          || (rightSide != null && rightSide.equals(expression))) {
+        iterator.remove();
+        validationRuleService.deleteValidationRule(rule);
+      }
     }
+  }
 
-    @Override
-    public void deleteExpression( Expression expression )
-    {
-        Iterator<ValidationRule> iterator = validationRuleService.getAllValidationRules().iterator();
-        
-        while ( iterator.hasNext() )
-        {
-            ValidationRule rule = iterator.next();
-            
-            Expression leftSide = rule.getLeftSide();
-            Expression rightSide = rule.getRightSide();
-
-            if ( (leftSide != null && leftSide.equals( expression )) ||
-                 (rightSide != null && rightSide.equals( expression )) )
-            {
-                iterator.remove();
-                validationRuleService.deleteValidationRule( rule );
-            }
-        }
+  private void deleteValidationRuleGroup(ValidationRuleGroup validationRuleGroup) {
+    for (ValidationRule rule : validationRuleGroup.getMembers()) {
+      rule.getGroups().remove(validationRuleGroup);
+      validationRuleService.updateValidationRule(rule);
     }
-    
-    @Override
-    public void deleteValidationRuleGroup( ValidationRuleGroup validationRuleGroup )
-    {
-        for ( ValidationRule rule : validationRuleGroup.getMembers() )
-        {
-            rule.getGroups().remove( validationRuleGroup );
-            validationRuleService.updateValidationRule( rule );
-        }
-    }
+  }
 }

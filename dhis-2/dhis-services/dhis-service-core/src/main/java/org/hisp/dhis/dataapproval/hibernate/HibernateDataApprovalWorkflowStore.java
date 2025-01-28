@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataapproval.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,16 +25,29 @@ package org.hisp.dhis.dataapproval.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataapproval.hibernate;
 
+import jakarta.persistence.EntityManager;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.dataapproval.DataApprovalWorkflow;
 import org.hisp.dhis.dataapproval.DataApprovalWorkflowStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Jim Grace
  */
+@Repository("org.hisp.dhis.dataapproval.DataApprovalWorkflowStore")
 public class HibernateDataApprovalWorkflowStore
     extends HibernateIdentifiableObjectStore<DataApprovalWorkflow>
-    implements DataApprovalWorkflowStore
-{
+    implements DataApprovalWorkflowStore {
+  public HibernateDataApprovalWorkflowStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, DataApprovalWorkflow.class, aclService, true);
+  }
 }

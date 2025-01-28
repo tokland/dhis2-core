@@ -1,7 +1,5 @@
-package org.hisp.dhis.mapgeneration.comparator;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,22 +25,19 @@ package org.hisp.dhis.mapgeneration.comparator;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.mapgeneration.comparator;
 
 import java.util.Comparator;
-
 import org.hisp.dhis.mapgeneration.Interval;
 
 /**
  * @author Lars Helge Overland
  */
-public class IntervalLowValueAscComparator
-    implements Comparator<Interval>
-{
-    public static final IntervalLowValueAscComparator INSTANCE = new IntervalLowValueAscComparator();
-    
-    @Override
-    public int compare( Interval i1, Interval i2 )
-    {
-        return new Double( i1.getValueLow() ).compareTo( new Double( i2.getValueLow() ) );
-    }
+public class IntervalLowValueAscComparator implements Comparator<Interval> {
+  public static final IntervalLowValueAscComparator INSTANCE = new IntervalLowValueAscComparator();
+
+  @Override
+  public int compare(Interval i1, Interval i2) {
+    return Double.valueOf(i1.getValueLow()).compareTo(Double.valueOf(i2.getValueLow()));
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.mapgeneration;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,36 +25,31 @@ package org.hisp.dhis.mapgeneration;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.mapgeneration;
 
-public class MapValue
-{
-    private String ou;
-    
-    private double value;
+public class MapValue {
+  private String ou;
 
-    public MapValue( String ou, double value )
-    {
-        this.ou = ou;
-        this.value = value;
-    }
+  private double value;
 
-    public String getOu()
-    {
-        return ou;
-    }
+  public MapValue(String ou, double value) {
+    this.ou = ou;
+    this.value = value;
+  }
 
-    public void setOu( String ou )
-    {
-        this.ou = ou;
-    }
+  public String getOu() {
+    return ou;
+  }
 
-    public double getValue()
-    {
-        return value;
-    }
+  public void setOu(String ou) {
+    this.ou = ou;
+  }
 
-    public void setValue( double value )
-    {
-        this.value = value;
-    }
+  public double getValue() {
+    return value;
+  }
+
+  public void setValue(double value) {
+    this.value = value;
+  }
 }

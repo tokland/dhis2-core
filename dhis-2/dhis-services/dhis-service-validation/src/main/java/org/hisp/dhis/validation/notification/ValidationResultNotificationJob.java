@@ -1,7 +1,5 @@
-package org.hisp.dhis.validation.notification;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,71 +25,33 @@ package org.hisp.dhis.validation.notification;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.validation.notification;
 
-import org.hisp.dhis.message.MessageService;
-import org.hisp.dhis.scheduling.AbstractJob;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.scheduling.Job;
 import org.hisp.dhis.scheduling.JobConfiguration;
+import org.hisp.dhis.scheduling.JobProgress;
 import org.hisp.dhis.scheduling.JobType;
-import org.hisp.dhis.system.notification.NotificationLevel;
-import org.hisp.dhis.system.notification.Notifier;
-import org.hisp.dhis.system.util.Clock;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.stereotype.Component;
 
 /**
- * @author Stian Sandvold
+ * @author Stian Sandvold (original)
+ * @author Jan Bernitt (job progress tracking)
  */
-public class ValidationResultNotificationJob
-    extends AbstractJob
-{
-    @Autowired
-    private ValidationNotificationService notificationService;
+@Component
+@RequiredArgsConstructor
+public class ValidationResultNotificationJob implements Job {
+  private final ValidationNotificationService notificationService;
 
-    @Autowired
-    private MessageService messageService;
+  @Override
+  public JobType getJobType() {
+    return JobType.VALIDATION_RESULTS_NOTIFICATION;
+  }
 
-    @Autowired
-    private Notifier notifier;
-
-    // -------------------------------------------------------------------------
-    // Implementation
-    // -------------------------------------------------------------------------
-
-    @Override
-    public JobType getJobType()
-    {
-        return JobType.VALIDATION_RESULTS_NOTIFICATION;
-    }
-
-    @Override
-    public void execute( JobConfiguration jobConfiguration )
-    {
-        final Clock clock = new Clock().startClock();
-
-        notifier.notify( jobConfiguration, "Sending new validation result notifications" );
-
-        try
-        {
-            runInternal();
-
-            notifier.notify( jobConfiguration, NotificationLevel.INFO,
-                "Sent validation result notifications: " + clock.time(), true );
-        }
-        catch ( RuntimeException ex )
-        {
-            notifier.notify( jobConfiguration, NotificationLevel.ERROR, "Process failed: " + ex.getMessage(), true );
-
-            messageService
-                .sendSystemErrorNotification( "Sending validation result notifications failed", ex );
-
-            throw ex;
-        }
-    }
-
-    @Transactional
-    void runInternal()
-    {
-        notificationService.sendUnsentNotifications();
-    }
-
+  @Override
+  public void execute(JobConfiguration jobConfiguration, JobProgress progress) {
+    progress.startingProcess("Validation result notification");
+    notificationService.sendUnsentNotifications(progress);
+    progress.completedProcess(null);
+  }
 }

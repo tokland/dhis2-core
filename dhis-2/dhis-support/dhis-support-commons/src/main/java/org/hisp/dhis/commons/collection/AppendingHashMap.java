@@ -1,7 +1,5 @@
-package org.hisp.dhis.commons.collection;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,40 +25,36 @@ package org.hisp.dhis.commons.collection;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.commons.collection;
 
 import java.util.HashMap;
 
 /**
- * HashMap that appends the content of the value the existing content when 
- * inserted, or inserts as usual if no entries match the key.
- * 
+ * HashMap that appends the content of the value the existing content when inserted, or inserts as
+ * usual if no entries match the key.
+ *
  * @author Lars Helge Overland
  */
-public class AppendingHashMap<K, V>
-    extends HashMap<K, String>
-{
-    /**
-     * Determines if a de-serialized file is compatible with this class.
-     */
-    private static final long serialVersionUID = 2579976271277075017L;
+public class AppendingHashMap<K, V> extends HashMap<K, String> {
+  /** Determines if a de-serialized file is compatible with this class. */
+  private static final long serialVersionUID = 2579976271277075017L;
 
-    /**
-     * Appends the content of the value the existing content when 
-     * inserted, or inserts as usual if no entries match the key.
-     * 
-     * @param key the key.
-     * @param value the value.
-     * @return the new value.
-     */
-    @Override
-    public String put( K key, String value )
-    {
-        final String existing = super.get( key );
-        
-        value = existing != null ? existing + value : value;
-        
-        super.put( key, value );
-        
-        return existing;
-    }
+  /**
+   * Appends the content of the value the existing content when inserted, or inserts as usual if no
+   * entries match the key.
+   *
+   * @param key the key.
+   * @param value the value.
+   * @return the new value.
+   */
+  @Override
+  public String put(K key, String value) {
+    final String existing = super.get(key);
+
+    value = existing != null ? existing + value : value;
+
+    super.put(key, value);
+
+    return existing;
+  }
 }

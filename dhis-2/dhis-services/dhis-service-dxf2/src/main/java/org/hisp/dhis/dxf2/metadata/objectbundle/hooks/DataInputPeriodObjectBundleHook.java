@@ -1,6 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,52 +25,38 @@ package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
 
-import org.hisp.dhis.common.IdentifiableObject;
+import lombok.AllArgsConstructor;
 import org.hisp.dhis.dataset.DataInputPeriod;
 import org.hisp.dhis.dxf2.metadata.objectbundle.ObjectBundle;
 import org.hisp.dhis.period.Period;
 import org.hisp.dhis.period.PeriodService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Stian Sandvold
  */
-public class DataInputPeriodObjectBundleHook
-    extends AbstractObjectBundleHook
-{
-    @Autowired
-    private PeriodService periodService;
+@Component
+@AllArgsConstructor
+public class DataInputPeriodObjectBundleHook extends AbstractObjectBundleHook<DataInputPeriod> {
+  private final PeriodService periodService;
 
-    @Override
-    public void preCreate( IdentifiableObject object, ObjectBundle bundle )
-    {
-        if ( !DataInputPeriod.class.isInstance( object ) )
-        {
-            return;
-        }
+  @Override
+  public void preCreate(DataInputPeriod object, ObjectBundle bundle) {
+    setPeriod(object);
+  }
 
-        setPeriod( object );
-    }
+  @Override
+  public void preUpdate(
+      DataInputPeriod object, DataInputPeriod persistedObject, ObjectBundle bundle) {
+    setPeriod(object);
+  }
 
-    @Override
-    public void preUpdate( IdentifiableObject object, IdentifiableObject persistedObject, ObjectBundle bundle )
-    {
-        if ( !DataInputPeriod.class.isInstance( object ) )
-        {
-            return;
-        }
+  private void setPeriod(DataInputPeriod dataInputPeriod) {
+    Period period = periodService.getPeriod(dataInputPeriod.getPeriod().getIsoDate());
 
-        setPeriod( object );
-    }
-
-    private void setPeriod( IdentifiableObject object )
-    {
-        DataInputPeriod dataInputPeriod = (DataInputPeriod) object;
-
-        Period period = periodService.getPeriod( dataInputPeriod.getPeriod().getIsoDate() );
-
-        dataInputPeriod.setPeriod( period );
-        sessionFactory.getCurrentSession().save( period );
-    }
+    dataInputPeriod.setPeriod(period);
+    getSession().save(period);
+  }
 }

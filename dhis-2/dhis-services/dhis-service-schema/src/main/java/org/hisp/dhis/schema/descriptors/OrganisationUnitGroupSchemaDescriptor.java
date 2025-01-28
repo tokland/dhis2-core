@@ -1,7 +1,5 @@
-package org.hisp.dhis.schema.descriptors;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,36 +25,39 @@ package org.hisp.dhis.schema.descriptors;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.schema.descriptors;
 
 import com.google.common.collect.Lists;
 import org.hisp.dhis.organisationunit.OrganisationUnitGroup;
-import org.hisp.dhis.security.Authority;
-import org.hisp.dhis.security.AuthorityType;
 import org.hisp.dhis.schema.Schema;
 import org.hisp.dhis.schema.SchemaDescriptor;
+import org.hisp.dhis.security.Authority;
+import org.hisp.dhis.security.AuthorityType;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class OrganisationUnitGroupSchemaDescriptor implements SchemaDescriptor
-{
-    public static final String SINGULAR = "organisationUnitGroup";
+public class OrganisationUnitGroupSchemaDescriptor implements SchemaDescriptor {
+  public static final String SINGULAR = "organisationUnitGroup";
 
-    public static final String PLURAL = "organisationUnitGroups";
+  public static final String PLURAL = "organisationUnitGroups";
 
-    public static final String API_ENDPOINT = "/" + PLURAL;
+  public static final String API_ENDPOINT = "/" + PLURAL;
 
-    @Override
-    public Schema getSchema()
-    {
-        Schema schema = new Schema( OrganisationUnitGroup.class, SINGULAR, PLURAL );
-        schema.setRelativeApiEndpoint( API_ENDPOINT );
-        schema.setOrder( 1120 );
+  @Override
+  public Schema getSchema() {
+    Schema schema = new Schema(OrganisationUnitGroup.class, SINGULAR, PLURAL);
+    schema.setRelativeApiEndpoint(API_ENDPOINT);
+    schema.setOrder(1120);
 
-        schema.getAuthorities().add( new Authority( AuthorityType.CREATE_PUBLIC, Lists.newArrayList( "F_ORGUNITGROUP_PUBLIC_ADD" ) ) );
-        schema.getAuthorities().add( new Authority( AuthorityType.CREATE_PRIVATE, Lists.newArrayList( "F_ORGUNITGROUP_PRIVATE_ADD" ) ) );
-        schema.getAuthorities().add( new Authority( AuthorityType.DELETE, Lists.newArrayList( "F_ORGUNITGROUP_DELETE" ) ) );
+    schema.add(
+        new Authority(
+            AuthorityType.CREATE_PUBLIC, Lists.newArrayList("F_ORGUNITGROUP_PUBLIC_ADD")));
+    schema.add(
+        new Authority(
+            AuthorityType.CREATE_PRIVATE, Lists.newArrayList("F_ORGUNITGROUP_PRIVATE_ADD")));
+    schema.add(new Authority(AuthorityType.DELETE, Lists.newArrayList("F_ORGUNITGROUP_DELETE")));
 
-        return schema;
-    }
+    return schema;
+  }
 }

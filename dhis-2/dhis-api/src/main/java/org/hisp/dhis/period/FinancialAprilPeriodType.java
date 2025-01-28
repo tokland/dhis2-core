@@ -1,7 +1,5 @@
-package org.hisp.dhis.period;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,56 +25,44 @@ package org.hisp.dhis.period;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.calendar.DateTimeUnit;
+package org.hisp.dhis.period;
 
 import java.util.Calendar;
+import org.hisp.dhis.calendar.DateTimeUnit;
 
 /**
  * @author Chau Thu Tran
  */
-public class FinancialAprilPeriodType
-    extends FinancialPeriodType
-{
-    /**
-     * Determines if a de-serialized file is compatible with this class.
-     */
-    private static final long serialVersionUID = 8790198046182231889L;
+public class FinancialAprilPeriodType extends FinancialPeriodType {
+  /** Determines if a de-serialized file is compatible with this class. */
+  private static final long serialVersionUID = 8790198046182231889L;
 
-    private static final String ISO_FORMAT = "yyyyApril";
+  private static final String ISO_FORMAT = "yyyyApril";
 
-    private static final String ISO8601_DURATION = "P1Y";
+  private static final String ISO8601_DURATION = "P1Y";
 
-    public static final String NAME = "FinancialApril";
+  @Override
+  public int getBaseMonth() {
+    return Calendar.APRIL;
+  }
 
-    @Override
-    protected int getBaseMonth()
-    {
-        return Calendar.APRIL;
-    }
+  @Override
+  public PeriodTypeEnum getPeriodTypeEnum() {
+    return PeriodTypeEnum.FINANCIAL_APRIL;
+  }
 
-    @Override
-    public String getName()
-    {
-        return NAME;
-    }
+  @Override
+  public String getIsoDate(DateTimeUnit dateTimeUnit, org.hisp.dhis.calendar.Calendar calendar) {
+    return String.format("%dApril", dateTimeUnit.getYear());
+  }
 
-    @Override
-    public String getIsoDate( DateTimeUnit dateTimeUnit, org.hisp.dhis.calendar.Calendar calendar )
-    {
-        return String.format( "%dApril", dateTimeUnit.getYear() );
-    }
+  @Override
+  public String getIsoFormat() {
+    return ISO_FORMAT;
+  }
 
-    @Override
-    public String getIsoFormat()
-    {
-        return ISO_FORMAT;
-    }
-
-    @Override
-    public String getIso8601Duration()
-    {
-        return ISO8601_DURATION;
-    }
-
+  @Override
+  public String getIso8601Duration() {
+    return ISO8601_DURATION;
+  }
 }

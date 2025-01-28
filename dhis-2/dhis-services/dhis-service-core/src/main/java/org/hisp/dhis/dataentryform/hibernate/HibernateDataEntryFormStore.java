@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataentryform.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,58 +25,53 @@ package org.hisp.dhis.dataentryform.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataentryform.hibernate;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import java.util.List;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.dataentryform.DataEntryForm;
 import org.hisp.dhis.dataentryform.DataEntryFormStore;
-import org.hisp.dhis.program.ProgramStage;
-
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
-import java.util.List;
+import org.hisp.dhis.hibernate.JpaQueryParameters;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Bharath Kumar
  */
-public class HibernateDataEntryFormStore
-    extends HibernateIdentifiableObjectStore<DataEntryForm>
-    implements DataEntryFormStore
-{
-    // -------------------------------------------------------------------------
-    // DataEntryFormStore implementation
-    // -------------------------------------------------------------------------
+@Repository("org.hisp.dhis.dataentryform.DataEntryFormStore")
+public class HibernateDataEntryFormStore extends HibernateIdentifiableObjectStore<DataEntryForm>
+    implements DataEntryFormStore {
+  public HibernateDataEntryFormStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, DataEntryForm.class, aclService, false);
+  }
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public DataEntryForm getDataEntryFormByName( String name )
-    {
-        CriteriaBuilder builder = getCriteriaBuilder();
-        CriteriaQuery query = getCriteriaQuery();
+  // -------------------------------------------------------------------------
+  // DataEntryFormStore implementation
+  // -------------------------------------------------------------------------
 
-        Root<DataEntryForm> dataEntryForm = query.from( DataEntryForm.class );
-        query.select( dataEntryForm );
-        query.where( builder.like( dataEntryForm.get( "name" ), name ) );
+  @Override
+  public DataEntryForm getDataEntryFormByName(String name) {
+    CriteriaBuilder builder = getCriteriaBuilder();
 
-        return ( DataEntryForm ) executeQuery( query ).getResultList().stream().findFirst().orElse( null );
-    }
+    JpaQueryParameters<DataEntryForm> parameters =
+        new JpaQueryParameters<DataEntryForm>()
+            .addPredicate(root -> builder.equal(root.get("name"), name));
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<DataEntryForm> listDistinctDataEntryFormByProgramStageIds( List<Integer> programStageIds )
-    {
-        CriteriaBuilder builder = getCriteriaBuilder();
-        CriteriaQuery query = getCriteriaQuery();
+    return getSingleResult(builder, parameters);
+  }
 
-        Root<ProgramStage> programStage = query.from( ProgramStage.class );
-        query.select( programStage.get( "dataEntryForm" ) ).distinct( true );
-        query.where(
-            builder.and(
-                programStage.get( "id" ).in( programStageIds ),
-                builder.isNotNull( programStage.get( "dataEntryForm" ) )
-            )
-        );
-
-        return sessionFactory.getCurrentSession().createQuery( query ).list();
-    }
+  @Override
+  public List<DataEntryForm> getDataEntryFormsHtmlContaining(String uid) {
+    return getQuery("FROM DataEntryForm d where d.htmlCode like :uid", DataEntryForm.class)
+        .setParameter("uid", "%" + uid + "%")
+        .getResultList();
+  }
 }

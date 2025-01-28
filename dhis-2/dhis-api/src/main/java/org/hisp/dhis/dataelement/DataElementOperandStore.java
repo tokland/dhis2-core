@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataelement;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,14 +25,35 @@ package org.hisp.dhis.dataelement;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataelement;
 
+import java.util.Collection;
+import java.util.List;
+import javax.annotation.Nonnull;
+import org.hisp.dhis.category.CategoryOptionCombo;
 import org.hisp.dhis.common.IdentifiableObjectStore;
+import org.hisp.dhis.common.UID;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public interface DataElementOperandStore
-    extends IdentifiableObjectStore<DataElementOperand>
-{
-    String ID = DataElementOperand.class.getName();
+public interface DataElementOperandStore extends IdentifiableObjectStore<DataElementOperand> {
+  String ID = DataElementOperand.class.getName();
+
+  /**
+   * Retrieve all {@link DataElementOperand}s with {@link DataElement}s
+   *
+   * @param dataElements {@link DataElement}s
+   * @return {@link DataElementOperand}s with references to {@link DataElement}s passed in
+   */
+  List<DataElementOperand> getByDataElement(Collection<DataElement> dataElements);
+
+  /**
+   * Retrieve all {@link DataElementOperand}s with {@link CategoryOptionCombo} {@link UID}s
+   *
+   * @param uids {@link CategoryOptionCombo} {@link UID}s
+   * @return {@link DataElementOperand}s with references to {@link CategoryOptionCombo} {@link UID}s
+   *     passed in
+   */
+  List<DataElementOperand> getByCategoryOptionCombo(@Nonnull Collection<UID> uids);
 }

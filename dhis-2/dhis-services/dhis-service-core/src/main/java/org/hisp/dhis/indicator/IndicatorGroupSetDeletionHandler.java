@@ -1,7 +1,5 @@
-package org.hisp.dhis.indicator;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,39 +25,25 @@ package org.hisp.dhis.indicator;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.indicator;
 
-import org.hisp.dhis.common.IdentifiableObjectManager;
-import org.hisp.dhis.system.deletion.DeletionHandler;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.hisp.dhis.system.deletion.IdObjectDeletionHandler;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
  */
-public class IndicatorGroupSetDeletionHandler
-    extends DeletionHandler
-{
-    @Autowired
-    private IdentifiableObjectManager idObjectManager;
-    
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
+@Component
+public class IndicatorGroupSetDeletionHandler extends IdObjectDeletionHandler<IndicatorGroup> {
+  @Override
+  protected void registerHandler() {
+    whenDeleting(IndicatorGroup.class, this::deleteIndicatorGroup);
+  }
 
-    @Override
-    public String getClassName()
-    {
-        return IndicatorGroupSet.class.getSimpleName();
+  private void deleteIndicatorGroup(IndicatorGroup indicatorGroup) {
+    for (IndicatorGroupSet groupSet : indicatorGroup.getGroupSets()) {
+      groupSet.getMembers().remove(indicatorGroup);
+      idObjectManager.updateNoAcl(groupSet);
     }
-    
-    @Override
-    public void deleteIndicatorGroup( IndicatorGroup indicatorGroup )
-    {
-        IndicatorGroupSet groupSet = indicatorGroup.getGroupSet();
-        
-        if ( groupSet != null )
-        {
-            groupSet.getMembers().remove( indicatorGroup );
-            idObjectManager.updateNoAcl( groupSet );
-        }
-    }
+  }
 }

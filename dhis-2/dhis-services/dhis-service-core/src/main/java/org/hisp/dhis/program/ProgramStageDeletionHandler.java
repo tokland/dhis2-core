@@ -1,7 +1,5 @@
-package org.hisp.dhis.program;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,62 +25,55 @@ package org.hisp.dhis.program;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.dataentryform.DataEntryForm;
-import org.hisp.dhis.system.deletion.DeletionHandler;
+package org.hisp.dhis.program;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.dataelement.DataElement;
+import org.hisp.dhis.dataentryform.DataEntryForm;
+import org.hisp.dhis.system.deletion.DeletionVeto;
+import org.hisp.dhis.system.deletion.IdObjectDeletionHandler;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
  */
-public class ProgramStageDeletionHandler
-    extends DeletionHandler
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Component
+@RequiredArgsConstructor
+public class ProgramStageDeletionHandler extends IdObjectDeletionHandler<ProgramStage> {
+  private final ProgramStageService programStageService;
 
-    private ProgramStageService programStageService;
+  @Override
+  protected void registerHandler() {
+    whenDeleting(Program.class, this::deleteProgram);
+    whenDeleting(DataEntryForm.class, this::deleteDataEntryForm);
+    whenVetoing(DataElement.class, this::allowDeleteDataElement);
+  }
 
-    public void setProgramStageService( ProgramStageService programStageService )
-    {
-        this.programStageService = programStageService;
+  private void deleteProgram(Program program) {
+    Iterator<ProgramStage> iterator = program.getProgramStages().iterator();
+
+    while (iterator.hasNext()) {
+      ProgramStage programStage = iterator.next();
+      iterator.remove();
+      programStageService.deleteProgramStage(programStage);
     }
+  }
 
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
+  private void deleteDataEntryForm(DataEntryForm dataEntryForm) {
+    List<ProgramStage> associatedProgramStages =
+        programStageService.getProgramStagesByDataEntryForm(dataEntryForm);
 
-    @Override
-    protected String getClassName()
-    {
-        return ProgramStage.class.getSimpleName();
+    for (ProgramStage programStage : associatedProgramStages) {
+      programStage.setDataEntryForm(null);
+      programStageService.updateProgramStage(programStage);
     }
+  }
 
-    @Override
-    public void deleteProgram( Program program )
-    {
-        Iterator<ProgramStage> iterator = program.getProgramStages().iterator();
-
-        while ( iterator.hasNext() )
-        {
-            ProgramStage programStage = iterator.next();
-            iterator.remove();
-            programStageService.deleteProgramStage( programStage );
-        }
-    }
-
-    @Override
-    public void deleteDataEntryForm( DataEntryForm dataEntryForm )
-    {
-        List<ProgramStage> associatedProgramStages = programStageService.getProgramStagesByDataEntryForm( dataEntryForm );
-
-        for ( ProgramStage programStage : associatedProgramStages )
-        {
-            programStage.setDataEntryForm( null );
-            programStageService.updateProgramStage( programStage );
-        }
-    }
+  private DeletionVeto allowDeleteDataElement(DataElement dataElement) {
+    String sql = "select 1 from programstagedataelement where dataelementid=:id limit 1";
+    return vetoIfExists(VETO, sql, Map.of("id", dataElement.getId()));
+  }
 }

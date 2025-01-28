@@ -1,7 +1,5 @@
-package org.hisp.dhis.dbms;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,434 +25,381 @@ package org.hisp.dhis.dbms;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dbms;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.hibernate.SessionFactory;
+import jakarta.persistence.EntityManager;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.hisp.dhis.cache.HibernateCacheManager;
 import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.rowset.SqlRowSet;
-
-import java.util.ArrayList;
-import java.util.List;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
  */
-public class HibernateDbmsManager
-    implements DbmsManager
-{
-    private static final Log log = LogFactory.getLog( HibernateDbmsManager.class );
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class HibernateDbmsManager implements DbmsManager {
+  // -------------------------------------------------------------------------
+  // Dependencies
+  // -------------------------------------------------------------------------
 
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+  private final JdbcTemplate jdbcTemplate;
 
-    private JdbcTemplate jdbcTemplate;
+  private final EntityManager entityManager;
 
-    public void setJdbcTemplate( JdbcTemplate jdbcTemplate )
-    {
-        this.jdbcTemplate = jdbcTemplate;
+  private final HibernateCacheManager cacheManager;
+
+  // -------------------------------------------------------------------------
+  // DbmsManager implementation
+  // -------------------------------------------------------------------------
+
+  @Override
+  public void emptyDatabase() {
+    emptyTable("keyjsonvalue");
+
+    emptyTable("maplegend");
+    emptyTable("maplegendset");
+
+    emptyTable("constant");
+    emptyTable("sqlview");
+
+    emptyTable("smscommandcodes");
+    emptyTable("smscodes");
+    emptyTable("smscommands");
+    emptyTable("incomingsms");
+
+    emptyTable("datavalueaudit");
+    emptyTable("datavalue");
+    emptyTable("completedatasetregistration");
+
+    emptyTable("pushanalysisrecipientusergroups");
+    emptyTable("pushanalysis");
+
+    emptyTable("potentialduplicate");
+
+    emptyTable("dashboarditem_users");
+    emptyTable("dashboarditem_resources");
+    emptyTable("dashboarditem_reports");
+    emptyTable("dashboard_items");
+    emptyTable("dashboarditem");
+    emptyTable("dashboard");
+
+    emptyTable("interpretation_comments");
+    emptyTable("interpretationcomment");
+    emptyTable("interpretation");
+
+    emptyTable("report");
+    emptyTable("datastatisticsevent");
+
+    emptyTable("visualization_yearlyseries");
+    emptyTable("visualization_rows");
+    emptyTable("visualization_periods");
+    emptyTable("visualization_orgunitlevels");
+    emptyTable("visualization_orgunitgroupsetdimensions");
+    emptyTable("visualization_organisationunits");
+    emptyTable("visualization_itemorgunitgroups");
+    emptyTable("visualization_filters");
+    emptyTable("visualization_dataelementgroupsetdimensions");
+    emptyTable("visualization_datadimensionitems");
+    emptyTable("visualization_columns");
+    emptyTable("visualization_categoryoptiongroupsetdimensions");
+    emptyTable("visualization_categorydimensions");
+    emptyTable("visualization_axis");
+    emptyTable("axis");
+    emptyTable("visualization");
+
+    emptyTable("eventreport_attributedimensions");
+    emptyTable("eventreport_columns");
+    emptyTable("eventreport_dataelementdimensions");
+    emptyTable("eventreport_filters");
+    emptyTable("eventreport_itemorgunitgroups");
+    emptyTable("eventreport_organisationunits");
+    emptyTable("eventreport_orgunitgroupsetdimensions");
+    emptyTable("eventreport_orgunitlevels");
+    emptyTable("eventreport_periods");
+    emptyTable("eventreport_programindicatordimensions");
+    emptyTable("eventreport_rows");
+    emptyTable("eventreport");
+
+    emptyTable("eventchart_attributedimensions");
+    emptyTable("eventchart_columns");
+    emptyTable("eventchart_dataelementdimensions");
+    emptyTable("eventchart_filters");
+    emptyTable("eventchart_itemorgunitgroups");
+    emptyTable("eventchart_organisationunits");
+    emptyTable("eventchart_orgunitgroupsetdimensions");
+    emptyTable("eventchart_orgunitlevels");
+    emptyTable("eventchart_periods");
+    emptyTable("eventchart_programindicatordimensions");
+    emptyTable("eventchart_rows");
+    emptyTable("eventchart");
+
+    emptyTable("eventvisualization_attributedimensions");
+    emptyTable("eventvisualization_columns");
+    emptyTable("eventvisualization_dataelementdimensions");
+    emptyTable("eventvisualization_filters");
+    emptyTable("eventvisualization_itemorgunitgroups");
+    emptyTable("eventvisualization_organisationunits");
+    emptyTable("eventvisualization_orgunitgroupsetdimensions");
+    emptyTable("eventvisualization_orgunitlevels");
+    emptyTable("eventvisualization_periods");
+    emptyTable("eventvisualization_programindicatordimensions");
+    emptyTable("eventvisualization_rows");
+    emptyTable("eventvisualization");
+
+    emptyTable("dataelementgroupsetdimension_items");
+    emptyTable("dataelementgroupsetdimension");
+    emptyTable("categoryoptiongroupsetdimension");
+    emptyTable("categoryoptiongroupsetdimension_items");
+    emptyTable("orgunitgroupsetdimension_items");
+    emptyTable("orgunitgroupsetdimension");
+
+    emptyTable("program_userroles");
+
+    emptyTable("users_catdimensionconstraints");
+    emptyTable("users_cogsdimensionconstraints");
+    emptyTable("userrolemembers");
+    emptyTable("userroleauthorities");
+    emptyTable("userdatavieworgunits");
+    emptyTable("usermembership");
+    emptyTable("userrole");
+
+    emptyTable("orgunitgroupsetmembers");
+    emptyTable("orgunitgroupset");
+
+    emptyTable("orgunitgroupmembers");
+    emptyTable("orgunitgroup");
+
+    emptyTable("validationrulegroupmembers");
+    emptyTable("validationrulegroup");
+
+    emptyTable("validationresult");
+
+    emptyTable("validationrule");
+
+    emptyTable("dataapproval");
+
+    emptyTable("lockexception");
+
+    emptyTable("sectiongreyedfields");
+    emptyTable("sectiondataelements");
+    emptyTable("sectionindicators");
+    emptyTable("section");
+
+    emptyTable("datasetsource");
+    emptyTable("datasetelement");
+    emptyTable("datasetindicators");
+    emptyTable("datasetoperands");
+    emptyTable("dataset");
+
+    emptyTable("dataapprovalaudit");
+    emptyTable("dataapprovalworkflowlevels");
+    emptyTable("dataapprovalworkflow");
+    emptyTable("dataapprovallevel");
+
+    emptyTable("predictorgroupmembers");
+    emptyTable("predictorgroup");
+
+    emptyTable("predictororgunitlevels");
+    emptyTable("predictor");
+
+    emptyTable("datadimensionitem");
+
+    emptyTable("programrulevariable");
+    emptyTable("programruleaction");
+    emptyTable("programrule");
+
+    emptyRelationships();
+
+    emptyTable("programnotificationinstance");
+    emptyTable("trackedentitydatavalueaudit");
+    emptyTable("eventchangelog");
+    emptyTable("trackedentityprogramowner");
+
+    emptyTable("event_notes");
+    emptyTable("enrollment_notes");
+    emptyTable("note");
+    emptyTable("event");
+    emptyTable("enrollment");
+    emptyTable("programnotificationtemplate");
+    emptyTable("programstagedataelement");
+    emptyTable("programstagesection_dataelements");
+    emptyTable("programstagesection");
+    emptyTable("programstage");
+    emptyTable("program_organisationunits");
+    emptyTable("program_attributes");
+    emptyTable("periodboundary");
+    emptyTable("programindicator");
+    emptyTable("programownershiphistory");
+    emptyTable("programtempownershipaudit");
+    emptyTable("programtempowner");
+    emptyTable("program");
+
+    emptyTable("eventfilter");
+
+    emptyTable("trackedentityattributevalue");
+    emptyTable("trackedentityattributevalueaudit");
+    emptyTable("trackedentitychangelog");
+    emptyTable("trackedentitytypeattribute");
+    emptyTable("trackedentityattribute");
+    emptyTable("trackedentity");
+    emptyTable("trackedentitytype");
+
+    emptyTable("minmaxdataelement");
+
+    emptyTable("dataelementgroupsetmembers");
+    emptyTable("dataelementgroupset");
+
+    emptyTable("dataelementgroupmembers");
+    emptyTable("dataelementgroup");
+
+    emptyTable("dataelementaggregationlevels");
+    emptyTable("dataelementoperand");
+    emptyTable("dataelement");
+
+    emptyTable("categoryoptioncombos_categoryoptions");
+    emptyTable("categorycombos_optioncombos");
+    emptyTable("categorycombos_categories");
+    emptyTable("categories_categoryoptions");
+
+    emptyTable("userteisearchorgunits");
+    emptyTable("categoryoption_organisationunits");
+    emptyTable("userdatavieworgunits");
+    emptyTable("organisationunit");
+    emptyTable("orgunitlevel");
+
+    emptyTable("version");
+    emptyTable("deletedobject");
+    emptyTable("period");
+
+    emptyTable("configuration");
+    emptyTable("indicatorgroupsetmembers");
+    emptyTable("indicatorgroupset");
+
+    emptyTable("indicatorgroupmembers");
+    emptyTable("indicatorgroup");
+
+    emptyTable("indicator");
+    emptyTable("indicatortype");
+
+    emptyTable("categoryoptiongroupsetmembers");
+    emptyTable("categoryoptiongroupset");
+
+    emptyTable("categoryoptiongroupmembers");
+    emptyTable("categoryoptiongroup");
+
+    emptyTable("expression");
+    emptyTable("expressiondimensionitem");
+    emptyTable("categoryoptioncombo");
+    emptyTable("categorycombo");
+    emptyTable("category");
+    emptyTable("categoryoption");
+
+    emptyTable("optionvalue");
+    emptyTable("optionset");
+
+    emptyTable("systemsetting");
+
+    emptyTable("attribute");
+
+    emptyTable("messageconversation_usermessages");
+    emptyTable("usermessage");
+    emptyTable("messageconversation_messages");
+    emptyTable("messageconversation");
+    emptyTable("message");
+
+    emptyTable("usergroupmembers");
+    emptyTable("usergroup");
+
+    emptyTable("previouspasswords");
+    emptyTable("usersetting");
+    emptyTable("fileresource");
+    emptyTable("jobconfiguration");
+    emptyTable("route");
+
+    dropTable("analytics_rs_orgunitstructure");
+    dropTable("analytics_rs_datasetorganisationunitcategory");
+    dropTable("analytics_rs_categoryoptioncomboname");
+    dropTable("analytics_rs_dataelementgroupsetstructure");
+    dropTable("analytics_rs_indicatorgroupsetstructure");
+    dropTable("analytics_rs_organisationunitgroupsetstructure");
+    dropTable("analytics_rs_categorystructure");
+    dropTable("analytics_rs_dataelementstructure");
+    dropTable("analytics_rs_dateperiodstructure");
+    dropTable("analytics_rs_periodstructure");
+    dropTable("analytics_rs_dataelementcategoryoptioncombo");
+    dropTable("analytics_rs_dataapprovalremaplevel");
+    dropTable("analytics_rs_dataapprovalminlevel");
+
+    emptyTable("reservedvalue");
+    emptyTable("sequentialnumbercounter");
+
+    emptyTable("audit");
+    emptyTable("eventhook");
+    emptyTable("dataentryform");
+
+    // userinfo should be last, since many tables has a foreign key to it
+    emptyTable("userinfo");
+
+    log.debug("Cleared database contents");
+
+    cacheManager.clearCache();
+
+    log.debug("Cleared Hibernate cache");
+
+    flushSession();
+  }
+
+  @Override
+  public void clearSession() {
+    entityManager.flush();
+    entityManager.clear();
+  }
+
+  @Override
+  public void flushSession() {
+    entityManager.flush();
+  }
+
+  @Override
+  public void emptyTable(String table) {
+    try {
+      jdbcTemplate.update("delete from " + table);
+    } catch (BadSqlGrammarException ex) {
+      log.debug("Table " + table + " does not exist");
     }
+  }
 
-    private SessionFactory sessionFactory;
+  // -------------------------------------------------------------------------
+  // Supportive methods
+  // -------------------------------------------------------------------------
 
-    public void setSessionFactory( SessionFactory sessionFactory )
-    {
-        this.sessionFactory = sessionFactory;
+  private void dropTable(String table) {
+    try {
+      String sql = String.format("drop table if exists %s;", table);
+      jdbcTemplate.execute(sql);
+    } catch (BadSqlGrammarException ex) {
+      log.debug("Table " + table + " does not exist");
     }
+  }
 
-    private HibernateCacheManager cacheManager;
-
-    public void setCacheManager( HibernateCacheManager cacheManager )
-    {
-        this.cacheManager = cacheManager;
+  private void emptyRelationships() {
+    try {
+      String sql =
+          """
+          update relationshipitem set relationshipid = null;
+          delete from relationship;
+          delete from relationshipitem;
+          update relationshiptype set from_relationshipconstraintid = null,to_relationshipconstraintid = null;
+          delete from relationshipconstraint;
+          delete from relationshiptype;
+          """;
+      jdbcTemplate.update(sql);
+    } catch (BadSqlGrammarException ex) {
+      log.debug("Could not empty relationship tables");
     }
-
-    // -------------------------------------------------------------------------
-    // DbmsManager implementation
-    // -------------------------------------------------------------------------
-
-    @Override
-    public void emptyDatabase()
-    {
-        emptyTable( "translation" );
-        emptyTable( "importobject" );
-        emptyTable( "importdatavalue" );
-        emptyTable( "constant" );
-        emptyTable( "sqlview" );
-
-        emptyTable( "smscodes" );
-        emptyTable( "smscommandcodes" );
-        emptyTable( "smscommands" );
-        emptyTable( "incomingsms" );
-
-        emptyTable( "datavalue_audit" );
-        emptyTable( "datavalueaudit" );
-        emptyTable( "datavalue" );
-        emptyTable( "completedatasetregistration" );
-
-        emptyTable( "pushanalysisrecipientusergroups" );
-        emptyTable( "pushanalysis" );
-
-        emptyTable( "dashboarditem_users" );
-        emptyTable( "dashboarditem_resources" );
-        emptyTable( "dashboarditem_reports" );
-        emptyTable( "dashboard_items" );
-        emptyTable( "dashboarditem" );
-        emptyTable( "dashboardusergroupaccesses" );
-        emptyTable( "dashboarduseraccesses" );
-        emptyTable( "dashboard" );
-
-        emptyTable( "interpretation_comments" );
-        emptyTable( "interpretationcommenttranslations" );
-        emptyTable( "interpretationcomment" );
-        emptyTable( "interpretationtranslations" );
-        emptyTable( "interpretationusergroupaccesses" );
-        emptyTable( "interpretation" );
-
-        emptyTable( "reportusergroupaccesses" );
-        emptyTable( "report" );
-
-        emptyTable( "reporttable_categorydimensions" );
-        emptyTable( "reporttable_categoryoptiongroupsetdimensions" );
-        emptyTable( "reporttable_columns" );
-        emptyTable( "reporttable_datadimensionitems" );
-        emptyTable( "reporttable_dataelementgroupsetdimensions" );
-        emptyTable( "reporttable_filters" );
-        emptyTable( "reporttable_itemorgunitgroups" );
-        emptyTable( "reporttable_organisationunits" );
-        emptyTable( "reporttable_orgunitgroupsetdimensions" );
-        emptyTable( "reporttable_orgunitlevels" );
-        emptyTable( "reporttable_periods" );
-        emptyTable( "reporttable_rows" );
-        emptyTable( "reporttableusergroupaccesses" );
-        emptyTable( "reporttabletranslations" );
-        emptyTable( "reporttable" );
-
-        emptyTable( "chart_categorydimensions" );
-        emptyTable( "chart_categoryoptiongroupsetdimensions" );
-        emptyTable( "chart_datadimensionitems" );
-        emptyTable( "chart_dataelementgroupsetdimensions" );
-        emptyTable( "chart_filters" );
-        emptyTable( "chart_itemorgunitgroups" );
-        emptyTable( "chart_organisationunits" );
-        emptyTable( "chart_orgunitgroupsetdimensions" );
-        emptyTable( "chart_orgunitlevels" );
-        emptyTable( "chart_periods" );
-        emptyTable( "chartusergroupaccesses" );
-        emptyTable( "charttranslations" );
-        emptyTable( "chart" );
-
-        emptyTable( "eventreport_attributedimensions" );
-        emptyTable( "eventreport_columns" );
-        emptyTable( "eventreport_dataelementdimensions" );
-        emptyTable( "eventreport_filters" );
-        emptyTable( "eventreport_itemorgunitgroups" );
-        emptyTable( "eventreport_organisationunits" );
-        emptyTable( "eventreport_orgunitgroupsetdimensions" );
-        emptyTable( "eventreport_orgunitlevels" );
-        emptyTable( "eventreport_periods" );
-        emptyTable( "eventreport_programindicatordimensions" );
-        emptyTable( "eventreport_rows" );
-        emptyTable( "eventreportusergroupaccesses" );
-        emptyTable( "eventreporttranslations" );
-        emptyTable( "eventreport" );
-
-        emptyTable( "eventchart_attributedimensions" );
-        emptyTable( "eventchart_columns" );
-        emptyTable( "eventchart_dataelementdimensions" );
-        emptyTable( "eventchart_filters" );
-        emptyTable( "eventchart_itemorgunitgroups" );
-        emptyTable( "eventchart_organisationunits" );
-        emptyTable( "eventchart_orgunitgroupsetdimensions" );
-        emptyTable( "eventchart_orgunitlevels" );
-        emptyTable( "eventchart_periods" );
-        emptyTable( "eventchart_programindicatordimensions" );
-        emptyTable( "eventchart_rows" );
-        emptyTable( "eventchartusergroupaccesses" );
-        emptyTable( "eventcharttranslations" );
-        emptyTable( "eventchart" );
-        
-        emptyTable( "dataelementgroupsetdimension_items" );
-        emptyTable( "dataelementgroupsetdimension" );
-        emptyTable( "categoryoptiongroupsetdimension" );
-        emptyTable( "categoryoptiongroupsetdimension_items" );
-        emptyTable( "orgunitgroupsetdimension_items" );
-        emptyTable( "orgunitgroupsetdimension" );
-
-        emptyTable( "program_userroles" );
-
-        emptyTable( "users_catdimensionconstraints" );
-        emptyTable( "users_cogsdimensionconstraints" );
-        emptyTable( "userrolemembers" );
-        emptyTable( "userroledataset" );
-        emptyTable( "userroleauthorities" );
-        emptyTable( "userdatavieworgunits" );
-        emptyTable( "usermembership" );
-        emptyTable( "userrole" );
-
-        emptyTable( "orgunitgroupsetmembers" );
-        emptyTable( "orgunitgroupset" );
-        emptyTable( "orgunitgroupsetusergroupaccesses" );
-
-        emptyTable( "orgunitgroupmembers" );
-        emptyTable( "orgunitgroup" );
-        emptyTable( "orgunitgroupusergroupaccesses" );
-
-        emptyTable( "validationrulegroupusergroupstoalert" );
-        emptyTable( "validationrulegroupmembers" );
-        emptyTable( "validationrulegroup" );
-        emptyTable( "validationrulegroupusergroupaccesses" );
-
-        emptyTable( "validationresult" );
-
-        emptyTable( "validationrule" );
-        emptyTable( "validationruleusergroupaccesses" );
-
-        emptyTable( "dataapproval" );
-
-        emptyTable( "lockexception" );
-
-        emptyTable( "sectiondataelements" );
-        emptyTable( "section" );
-
-        emptyTable( "datasetsource" );
-        emptyTable( "datasetelement" );
-        emptyTable( "datasetindicators" );
-        emptyTable( "datasetoperands" );
-        emptyTable( "datasetusergroupaccesses" );
-        emptyTable( "dataset" );
-
-        emptyTable( "dataapprovalaudit" );
-        emptyTable( "dataapprovalworkflowlevels" );
-        emptyTable( "dataapprovalworkflow" );
-        emptyTable( "dataapprovallevel" );
-
-        emptyTable( "predictororgunitlevels" );
-        emptyTable( "predictor" );
-
-        emptyTable( "datadimensionitem" );
-
-        emptyTable( "programrulevariable" );
-        emptyTable( "programruleaction" );
-        emptyTable( "programrule" );
-
-        emptyTable( "trackedentitydatavalue" );
-        emptyTable( "trackedentitydatavalueaudit" );
-        emptyTable( "programstageinstance" );
-        emptyTable( "programinstance" );
-        emptyTable( "programnotificationtemplate" );
-        emptyTable( "programstage_dataelements" );
-        emptyTable( "programstagedataelement" );
-        emptyTable( "programstage" );
-        emptyTable( "program_organisationunits" );
-        emptyTable( "programusergroupaccesses" );
-        emptyTable( "program_attributes" );
-        emptyTable( "programindicator" );
-        emptyTable( "program" );
-
-        emptyTable( "trackedentityattributevalue" );
-        emptyTable( "trackedentityattributevalueaudit" );
-        emptyTable( "trackedentityattribute" );
-        emptyTable( "trackedentityinstance" );
-        emptyTable( "trackedentity" );
-
-        emptyTable( "minmaxdataelement" );
-        emptyTable( "expressiondataelement" );
-        emptyTable( "expressionsampleelement" );
-        emptyTable( "expressionoptioncombo" );
-        emptyTable( "calculateddataelement" );
-
-        emptyTable( "dataelementgroupsetmembers" );
-        emptyTable( "dataelementgroupsetusergroupaccesses" );
-        emptyTable( "dataelementgroupset" );
-
-        emptyTable( "dataelementgroupmembers" );
-        emptyTable( "dataelementgroupusergroupaccesses" );
-        emptyTable( "dataelementgroup" );
-
-        emptyTable( "dataelementaggregationlevels" );
-        emptyTable( "dataelementoperand" );
-        emptyTable( "dataelementusergroupaccesses" );
-        emptyTable( "dataelement" );
-
-        emptyTable( "categoryoptioncombos_categoryoptions" );
-        emptyTable( "categorycombos_optioncombos" );
-        emptyTable( "categorycombos_categories" );
-        emptyTable( "categories_categoryoptions" );
-
-        emptyTable( "userteisearchorgunits" );
-        emptyTable( "categoryoption_organisationunits" );
-        emptyTable( "organisationunit" );
-        emptyTable( "orgunitlevel" );
-
-        emptyTable( "version" );
-        emptyTable( "deletedobject" );
-        emptyTable( "mocksource" );
-        emptyTable( "period" );
-
-        emptyTable( "indicatorgroupsetmembers" );
-        emptyTable( "indicatorgroupsetusergroupaccesses" );
-        emptyTable( "indicatorgroupset" );
-
-        emptyTable( "indicatorgroupmembers" );
-        emptyTable( "indicatorgroupusergroupaccesses" );
-        emptyTable( "indicatorgroup" );
-
-        emptyTable( "indicator" );
-        emptyTable( "indicatortype" );
-
-        emptyTable( "categoryoptiongroupsetmembers" );
-        emptyTable( "categoryoptiongroupsetusergroupaccesses" );
-        emptyTable( "categoryoptiongroupset" );
-
-        emptyTable( "categoryoptiongroupmembers" );
-        emptyTable( "categoryoptiongroupusergroupaccesses" );
-        emptyTable( "categoryoptiongroup" );
-
-        emptyTable( "dataelementcategoryoptionusergroupaccesses" );
-
-        emptyTable( "expression" );
-        emptyTable( "categoryoptioncombo" );
-        emptyTable( "categorycombo" );
-        emptyTable( "dataelementcategory" );
-        emptyTable( "dataelementcategoryoption" );
-
-        emptyTable( "optionvalue" );
-        emptyTable( "optionset" );
-
-        emptyTable( "systemsetting" );
-
-        emptyTable( "attribute" );
-
-        emptyTable( "messageconversation_usermessages" );
-        emptyTable( "usermessage" );
-        emptyTable( "messageconversation_messages" );
-        emptyTable( "messageconversation" );
-        emptyTable( "message" );
-
-        emptyTable( "usergroupusergroupaccesses" );
-        emptyTable( "usergroupaccess" );
-        emptyTable( "usergroupmembers" );
-        emptyTable( "usergroup" );
-
-        emptyTable( "previouspasswords" );
-        emptyTable( "users" );
-        emptyTable( "useraccess" );
-        emptyTable( "usersetting" );
-        emptyTable( "userinfo" );
-
-        dropTable( "_orgunitstructure" );
-        dropTable( "_datasetorganisationunitcategory" );
-        dropTable( "_categoryoptioncomboname" );
-        dropTable( "_dataelementgroupsetstructure" );
-        dropTable( "_indicatorgroupsetstructure" );
-        dropTable( "_organisationunitgroupsetstructure" );
-        dropTable( "_categorystructure" );
-        dropTable( "_dataelementstructure" );
-        dropTable( "_dateperiodstructure" );
-        dropTable( "_periodstructure" );
-        dropTable( "_dataelementcategoryoptioncombo" );
-        dropTable( "_dataapprovalminlevel" );
-
-        emptyTable( "reservedvalue" );
-        emptyTable( "sequentialnumbercounter" );
-
-        log.debug( "Cleared database contents" );
-
-        cacheManager.clearCache();
-
-        log.debug( "Cleared Hibernate cache" );
-    }
-
-    @Override
-    public void clearSession()
-    {
-        sessionFactory.getCurrentSession().flush();
-        sessionFactory.getCurrentSession().clear();
-    }
-
-    @Override
-    public void flushSession()
-    {
-        sessionFactory.getCurrentSession().flush();
-    }
-
-    @Override
-    public void emptyTable( String table )
-    {
-        try
-        {
-            jdbcTemplate.update( "delete from " + table );
-        }
-        catch ( BadSqlGrammarException ex )
-        {
-            log.debug( "Table " + table + " does not exist" );
-        }
-    }
-
-    @Override
-    public boolean tableExists( String tableName )
-    {
-        final String sql =
-            "select table_name from information_schema.tables " +
-                "where table_name = '" + tableName + "' " +
-                "and table_type = 'BASE TABLE'";
-
-        List<Object> tables = jdbcTemplate.queryForList( sql, Object.class );
-
-        return tables != null && tables.size() > 0;
-    }
-
-
-    @Override
-    public List<List<Object>> getTableContent( String table )
-    {
-        List<List<Object>> tableContent = new ArrayList<>();
-
-        SqlRowSet sqlRowSet = jdbcTemplate.queryForRowSet( "select * from " + table );
-        int cols = sqlRowSet.getMetaData().getColumnCount() + 1;
-
-        List<Object> headers = new ArrayList<>();
-
-        for ( int i = 1; i < cols; i++ )
-        {
-            headers.add( sqlRowSet.getMetaData().getColumnName( i ) );
-        }
-
-        tableContent.add( headers );
-
-        while ( sqlRowSet.next() )
-        {
-            List<Object> row = new ArrayList<>();
-
-            for ( int i = 1; i < cols; i++ )
-            {
-                row.add( sqlRowSet.getObject( i ) );
-
-            }
-
-            tableContent.add( row );
-        }
-
-        return tableContent;
-    }
-
-    // -------------------------------------------------------------------------
-    // Supportive methods
-    // -------------------------------------------------------------------------
-
-    private void dropTable( String table )
-    {
-        try
-        {
-            jdbcTemplate.execute( "drop table " + table );
-        }
-        catch ( BadSqlGrammarException ex )
-        {
-            log.debug( "Table " + table + " does not exist" );
-        }
-    }
+  }
 }

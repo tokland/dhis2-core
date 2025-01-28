@@ -1,7 +1,5 @@
-package org.hisp.dhis.program.notification;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,10 +25,28 @@ package org.hisp.dhis.program.notification;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program.notification;
 
-import com.google.api.client.util.Lists;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyList;
+import static org.mockito.Mockito.anyLong;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.google.common.collect.Sets;
-import org.hisp.dhis.DhisConvenienceTest;
+import jakarta.persistence.EntityManager;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import org.hisp.dhis.common.CodeGenerator;
 import org.hisp.dhis.common.DeliveryChannel;
 import org.hisp.dhis.common.IdentifiableObjectManager;
 import org.hisp.dhis.common.ValueType;
@@ -38,545 +54,750 @@ import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.message.MessageConversationParams;
 import org.hisp.dhis.message.MessageService;
 import org.hisp.dhis.notification.NotificationMessage;
-import org.hisp.dhis.notification.ProgramNotificationMessageRenderer;
-import org.hisp.dhis.notification.ProgramStageNotificationMessageRenderer;
+import org.hisp.dhis.notification.NotificationMessageRenderer;
+import org.hisp.dhis.notification.NotificationTemplate;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.outboundmessage.BatchResponseStatus;
-import org.hisp.dhis.program.*;
+import org.hisp.dhis.program.Enrollment;
+import org.hisp.dhis.program.Event;
+import org.hisp.dhis.program.Program;
+import org.hisp.dhis.program.ProgramStage;
+import org.hisp.dhis.program.ProgramTrackedEntityAttribute;
 import org.hisp.dhis.program.message.ProgramMessage;
 import org.hisp.dhis.program.message.ProgramMessageService;
+import org.hisp.dhis.program.notification.template.snapshot.NotificationTemplateMapper;
+import org.hisp.dhis.scheduling.JobProgress;
+import org.hisp.dhis.test.TestBase;
+import org.hisp.dhis.trackedentity.TrackedEntity;
 import org.hisp.dhis.trackedentity.TrackedEntityAttribute;
-import org.hisp.dhis.trackedentity.TrackedEntityInstance;
 import org.hisp.dhis.trackedentityattributevalue.TrackedEntityAttributeValue;
-import org.hisp.dhis.trackedentitydatavalue.TrackedEntityDataValue;
 import org.hisp.dhis.user.User;
 import org.hisp.dhis.user.UserGroup;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
-
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
-
-import java.util.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * @Author Zubair Asghar.
+ * @author Zubair Asghar.
  */
-@RunWith( MockitoJUnitRunner.class )
-public class ProgramNotificationServiceTest extends DhisConvenienceTest
-{
-    private static final String SUBJECT = "subject";
-    private static final String MESSAGE = "message";
-    private static final String TEMPLATE_NAME = "message";
-    private static final String OU_PHONE_NUMBER = "471000000";
-    private static final String DE_PHONE_NUMBER = "47200000";
-    private static final String ATT_PHONE_NUMBER = "473000000";
-    private static final String USERA_PHONE_NUMBER = "47400000";
-    private static final String USERB_PHONE_NUMBER = "47500000";
-    private static final String ATT_EMAIL = "attr@test.org";
-    private static final String DE_EMAIL = "de@test.org";
+@SuppressWarnings("unchecked")
+@ExtendWith(MockitoExtension.class)
+class ProgramNotificationServiceTest extends TestBase {
 
-    @Mock
-    private MessageService messageService;
+  private static final String SUBJECT = "subject";
 
-    @Mock
-    private ProgramMessageService programMessageService;
+  private static final String MESSAGE = "message";
 
-    @Mock
-    private ProgramNotificationMessageRenderer programNotificationMessageRenderer;
+  private static final String TEMPLATE_NAME = "message";
 
-    @Mock
-    private ProgramStageNotificationMessageRenderer programStageNotificationMessageRenderer;
+  private static final String OU_PHONE_NUMBER = "471000000";
 
-    @Mock
-    private IdentifiableObjectManager manager;
+  private static final String ATT_PHONE_NUMBER = "473000000";
 
-    @Mock
-    private ProgramInstanceStore programInstanceStore;
+  private static final String USERA_PHONE_NUMBER = "47400000";
 
-    @Mock
-    private ProgramStageInstanceStore programStageInstanceStore;
+  private static final String USERB_PHONE_NUMBER = "47500000";
 
-    @InjectMocks
-    private DefaultProgramNotificationService programNotificationService;
+  private static final String ATT_EMAIL = "attr@test.org";
 
-    private Set<ProgramInstance> programInstances = new HashSet<>();
-    private Set<ProgramStageInstance> programStageInstances = new HashSet<>();
-    private List<ProgramMessage> sentProgramMessages = new ArrayList<>();
-    private List<MockMessage> sentInternalMessages = new ArrayList<>();
-    private User userA;
-    private User userB;
-    private UserGroup userGroup;
+  private final String notificationTemplate = CodeGenerator.generateUid();
 
-    private User userLvlTwoLeftLeft;
-    private User userLvlTwoLeftRight;
-    private User userLvlOneLeft;
-    private User userLvlOneRight;
-    private User userRoot;
-    private UserGroup userGroupBasedOnHierarchy;
-    private UserGroup userGroupBasedOnParent;
+  @Mock private ProgramMessageService programMessageService;
 
-    private OrganisationUnit root;
-    private OrganisationUnit lvlOneLeft;
-    private OrganisationUnit lvlOneRight;
-    private OrganisationUnit lvlTwoLeftLeft;
-    private OrganisationUnit lvlTwoLeftRight;
+  @Mock private MessageService messageService;
 
-    private TrackedEntityInstance tei;
+  @Mock private IdentifiableObjectManager manager;
 
-    private DataElement dataElement;
-    private DataElement dataElementEmail;
-    private TrackedEntityDataValue dataValue;
-    private TrackedEntityDataValue dataValueEmail;
+  @Mock private NotificationMessageRenderer<Enrollment> programNotificationRenderer;
 
-    private TrackedEntityAttribute trackedEntityAttribute;
-    private TrackedEntityAttribute trackedEntityAttributeEmail;
-    private ProgramTrackedEntityAttribute programTrackedEntityAttribute;
-    private ProgramTrackedEntityAttribute programTrackedEntityAttributeEmail;
-    private TrackedEntityAttributeValue attributeValue;
-    private TrackedEntityAttributeValue attributeValueEmail;
+  @Mock private NotificationMessageRenderer<Event> programStageNotificationRenderer;
 
-    private NotificationMessage notificationMessage;
-    private ProgramNotificationTemplate programNotificationTemplate;
+  @Mock private ProgramNotificationTemplateService notificationTemplateService;
 
-    @Before
-    @SuppressWarnings("unchecked")
-    public void initTest()
-    {
-        programNotificationService.setProgramStageNotificationRenderer( programStageNotificationMessageRenderer );
-        programNotificationService.setProgramNotificationRenderer( programNotificationMessageRenderer );
+  @Mock private EntityManager entityManager;
 
-        setUpInstances();
+  @Mock private JdbcTemplate jdbcTemplate;
 
-        BatchResponseStatus status = new BatchResponseStatus(Collections.emptyList());
-        when( programMessageService.sendMessages( anyList() ) )
-            .thenAnswer( invocation -> {
-                sentProgramMessages.addAll( (List<ProgramMessage>) invocation.getArguments()[0] );
-                return status;
+  @Mock private ApplicationEventPublisher applicationEventPublisher;
+
+  private final NotificationTemplateMapper notificationTemplateMapper =
+      new NotificationTemplateMapper();
+
+  private DefaultProgramNotificationService programNotificationService;
+
+  private final Set<Enrollment> enrollments = new HashSet<>();
+
+  private final Set<Event> events = new HashSet<>();
+
+  private final List<ProgramMessage> sentProgramMessages = new ArrayList<>();
+
+  private final List<MockMessage> sentInternalMessages = new ArrayList<>();
+
+  private User userA;
+
+  private User userB;
+
+  private UserGroup userGroup;
+
+  private User userLvlTwoLeftLeft;
+
+  private User userLvlTwoLeftRight;
+
+  private User userLvlOneLeft;
+
+  private User userLvlOneRight;
+
+  private User userRoot;
+
+  private UserGroup userGroupBasedOnHierarchy;
+
+  private UserGroup userGroupBasedOnParent;
+
+  private OrganisationUnit lvlTwoLeftLeft;
+
+  private TrackedEntity te;
+
+  private DataElement dataElement;
+
+  private DataElement dataElementEmail;
+
+  private TrackedEntityAttribute trackedEntityAttribute;
+
+  private ProgramTrackedEntityAttribute programTrackedEntityAttribute;
+
+  private NotificationMessage notificationMessage;
+
+  private ProgramNotificationTemplate programNotificationTemplate;
+
+  private ProgramNotificationInstance programNotificationInstaceForToday;
+
+  @BeforeEach
+  public void initTest() {
+    programNotificationService =
+        new DefaultProgramNotificationService(
+            this.programMessageService,
+            this.messageService,
+            this.manager,
+            this.programNotificationRenderer,
+            this.programStageNotificationRenderer,
+            notificationTemplateService,
+            notificationTemplateMapper,
+            entityManager,
+            jdbcTemplate,
+            applicationEventPublisher);
+
+    setUpInstances();
+  }
+
+  // -------------------------------------------------------------------------
+  // Tests
+  // -------------------------------------------------------------------------
+
+  // -------------------------------------------------------------------------
+
+  @Test
+  void testIfEnrollmentIsNull() {
+    when(manager.get(eq(Enrollment.class), any(Long.class))).thenReturn(null);
+
+    programNotificationService.sendEnrollmentCompletionNotifications(0);
+
+    verify(manager, never()).getAll(any());
+  }
+
+  @Test
+  void testIfEventIsNull() {
+    when(manager.get(eq(Event.class), anyLong())).thenReturn(null);
+
+    programNotificationService.sendEventCompletionNotifications(0);
+
+    verify(manager, never()).getAll(any());
+  }
+
+  @Test
+  void testSendCompletionNotification() {
+    when(manager.get(eq(Enrollment.class), any(Long.class)))
+        .thenReturn(enrollments.iterator().next());
+
+    when(programMessageService.sendMessages(anyList()))
+        .thenAnswer(
+            invocation -> {
+              sentProgramMessages.addAll((List<ProgramMessage>) invocation.getArguments()[0]);
+              return new BatchResponseStatus(Collections.emptyList());
             });
 
-        when( messageService.sendMessage( any() ) )
-            .thenAnswer( invocation -> {
+    when(programNotificationRenderer.render(any(Enrollment.class), any(NotificationTemplate.class)))
+        .thenReturn(notificationMessage);
 
-                sentInternalMessages.add( new MockMessage( invocation.getArguments() ) );
-                return 40;
+    programNotificationTemplate.setNotificationTrigger(NotificationTrigger.COMPLETION);
+    programNotificationService.sendEnrollmentCompletionNotifications(
+        enrollments.iterator().next().getId());
+
+    assertEquals(1, sentProgramMessages.size());
+
+    ProgramMessage programMessage = sentProgramMessages.iterator().next();
+
+    assertEquals(TrackedEntity.class, programMessage.getRecipients().getTrackedEntity().getClass());
+    assertEquals(te, programMessage.getRecipients().getTrackedEntity());
+  }
+
+  @Test
+  void testSendEnrollmentNotification() {
+    when(manager.get(eq(Enrollment.class), any(Long.class)))
+        .thenReturn(enrollments.iterator().next());
+
+    when(programMessageService.sendMessages(anyList()))
+        .thenAnswer(
+            invocation -> {
+              sentProgramMessages.addAll((List<ProgramMessage>) invocation.getArguments()[0]);
+              return new BatchResponseStatus(Collections.emptyList());
             });
 
-        when( programInstanceStore.getWithScheduledNotifications( any(), any()) )
-            .thenReturn( Lists.newArrayList( programInstances ) );
-        when( programStageInstanceStore.getWithScheduledNotifications( any(), any() ) )
-            .thenReturn( Lists.newArrayList( programStageInstances ) );
+    when(programNotificationRenderer.render(any(Enrollment.class), any(NotificationTemplate.class)))
+        .thenReturn(notificationMessage);
 
-        when( manager.getAll( ProgramNotificationTemplate.class ) )
-            .thenReturn( Collections.singletonList( programNotificationTemplate ) );
+    programNotificationTemplate.setNotificationTrigger(NotificationTrigger.ENROLLMENT);
 
-        when( programNotificationMessageRenderer.render( any(), any() ) )
-            .thenReturn( notificationMessage );
+    programNotificationService.sendEnrollmentNotifications(enrollments.iterator().next().getId());
 
-        when( programStageNotificationMessageRenderer.render( any(), any() ) )
-                .thenReturn( notificationMessage );
+    assertEquals(1, sentProgramMessages.size());
+
+    ProgramMessage programMessage = sentProgramMessages.iterator().next();
+
+    assertEquals(TrackedEntity.class, programMessage.getRecipients().getTrackedEntity().getClass());
+    assertEquals(te, programMessage.getRecipients().getTrackedEntity());
+  }
+
+  @Test
+  void testUserGroupRecipient() {
+    when(manager.get(eq(Enrollment.class), any(Long.class)))
+        .thenReturn(enrollments.iterator().next());
+
+    when(messageService.sendMessage(any()))
+        .thenAnswer(
+            invocation -> {
+              sentInternalMessages.add(new MockMessage(invocation.getArguments()));
+              return 40L;
+            });
+
+    when(programNotificationRenderer.render(any(Enrollment.class), any(NotificationTemplate.class)))
+        .thenReturn(notificationMessage);
+
+    programNotificationTemplate.setNotificationRecipient(ProgramNotificationRecipient.USER_GROUP);
+    programNotificationTemplate.setRecipientUserGroup(userGroup);
+
+    programNotificationService.sendEnrollmentNotifications(enrollments.iterator().next().getId());
+
+    assertEquals(1, sentInternalMessages.size());
+
+    MockMessage mockMessage = sentInternalMessages.iterator().next();
+
+    assertTrue(mockMessage.users.contains(userA));
+    assertTrue(mockMessage.users.contains(userB));
+  }
+
+  @Test
+  void testOuContactRecipient() {
+    when(manager.get(eq(Enrollment.class), any(Long.class)))
+        .thenReturn(enrollments.iterator().next());
+
+    when(programMessageService.sendMessages(anyList()))
+        .thenAnswer(
+            invocation -> {
+              sentProgramMessages.addAll((List<ProgramMessage>) invocation.getArguments()[0]);
+              return new BatchResponseStatus(Collections.emptyList());
+            });
+
+    when(programNotificationRenderer.render(any(Enrollment.class), any(NotificationTemplate.class)))
+        .thenReturn(notificationMessage);
+
+    programNotificationTemplate.setNotificationRecipient(
+        ProgramNotificationRecipient.ORGANISATION_UNIT_CONTACT);
+
+    programNotificationService.sendEnrollmentNotifications(enrollments.iterator().next().getId());
+
+    assertEquals(1, sentProgramMessages.size());
+
+    ProgramMessage programMessage = sentProgramMessages.iterator().next();
+
+    assertEquals(
+        OrganisationUnit.class, programMessage.getRecipients().getOrganisationUnit().getClass());
+    assertEquals(lvlTwoLeftLeft, programMessage.getRecipients().getOrganisationUnit());
+    assertEquals(programMessage.getNotificationTemplate(), notificationTemplate);
+  }
+
+  @Test
+  void testProgramAttributeRecipientWithSMS() {
+    when(manager.get(eq(Enrollment.class), any(Long.class)))
+        .thenReturn(enrollments.iterator().next());
+
+    when(programMessageService.sendMessages(anyList()))
+        .thenAnswer(
+            invocation -> {
+              sentProgramMessages.addAll((List<ProgramMessage>) invocation.getArguments()[0]);
+              return new BatchResponseStatus(Collections.emptyList());
+            });
+
+    when(programNotificationRenderer.render(any(Enrollment.class), any(NotificationTemplate.class)))
+        .thenReturn(notificationMessage);
+
+    programNotificationTemplate.setNotificationRecipient(
+        ProgramNotificationRecipient.PROGRAM_ATTRIBUTE);
+    programNotificationTemplate.setRecipientProgramAttribute(trackedEntityAttribute);
+    programNotificationTemplate.setDeliveryChannels(Sets.newHashSet(DeliveryChannel.SMS));
+
+    programNotificationService.sendEnrollmentNotifications(enrollments.iterator().next().getId());
+
+    assertEquals(1, sentProgramMessages.size());
+
+    ProgramMessage programMessage = sentProgramMessages.iterator().next();
+
+    assertTrue(programMessage.getRecipients().getPhoneNumbers().contains(ATT_PHONE_NUMBER));
+    assertTrue(programMessage.getDeliveryChannels().contains(DeliveryChannel.SMS));
+    assertEquals(programMessage.getNotificationTemplate(), notificationTemplate);
+  }
+
+  @Test
+  void testProgramAttributeRecipientWithEMAIL() {
+    when(manager.get(eq(Enrollment.class), any(Long.class)))
+        .thenReturn(enrollments.iterator().next());
+
+    when(programMessageService.sendMessages(anyList()))
+        .thenAnswer(
+            invocation -> {
+              sentProgramMessages.addAll((List<ProgramMessage>) invocation.getArguments()[0]);
+              return new BatchResponseStatus(Collections.emptyList());
+            });
+
+    when(programNotificationRenderer.render(any(Enrollment.class), any(NotificationTemplate.class)))
+        .thenReturn(notificationMessage);
+
+    programNotificationTemplate.setNotificationRecipient(
+        ProgramNotificationRecipient.PROGRAM_ATTRIBUTE);
+    programNotificationTemplate.setRecipientProgramAttribute(trackedEntityAttribute);
+    programNotificationTemplate.setDeliveryChannels(Sets.newHashSet(DeliveryChannel.EMAIL));
+
+    programNotificationService.sendEnrollmentNotifications(enrollments.iterator().next().getId());
+
+    assertEquals(1, sentProgramMessages.size());
+
+    ProgramMessage programMessage = sentProgramMessages.iterator().next();
+
+    assertTrue(programMessage.getRecipients().getEmailAddresses().contains(ATT_EMAIL));
+    assertTrue(programMessage.getDeliveryChannels().contains(DeliveryChannel.EMAIL));
+    assertEquals(programMessage.getNotificationTemplate(), notificationTemplate);
+  }
+
+  @Test
+  void testDataElementRecipientWithSMS() {
+    when(manager.get(eq(Event.class), anyLong())).thenReturn(events.iterator().next());
+
+    when(programMessageService.sendMessages(anyList()))
+        .thenAnswer(
+            invocation -> {
+              sentProgramMessages.addAll((List<ProgramMessage>) invocation.getArguments()[0]);
+              return new BatchResponseStatus(Collections.emptyList());
+            });
+
+    when(programStageNotificationRenderer.render(any(Event.class), any(NotificationTemplate.class)))
+        .thenReturn(notificationMessage);
+
+    programNotificationTemplate.setNotificationRecipient(ProgramNotificationRecipient.DATA_ELEMENT);
+    programNotificationTemplate.setDeliveryChannels(Sets.newHashSet(DeliveryChannel.SMS));
+    programNotificationTemplate.setRecipientDataElement(dataElement);
+    programNotificationTemplate.setNotificationTrigger(NotificationTrigger.COMPLETION);
+
+    Event event = events.iterator().next();
+
+    programNotificationService.sendEventCompletionNotifications(event.getId());
+
+    // no message when no template is attached
+    assertEquals(0, sentProgramMessages.size());
+
+    event.getProgramStage().getNotificationTemplates().add(programNotificationTemplate);
+
+    programNotificationService.sendEventCompletionNotifications(event.getId());
+
+    assertEquals(1, sentProgramMessages.size());
+  }
+
+  @Test
+  void testDataElementRecipientWithEmail() {
+    when(manager.get(eq(Event.class), anyLong())).thenReturn(events.iterator().next());
+
+    when(programMessageService.sendMessages(anyList()))
+        .thenAnswer(
+            invocation -> {
+              sentProgramMessages.addAll((List<ProgramMessage>) invocation.getArguments()[0]);
+              return new BatchResponseStatus(Collections.emptyList());
+            });
+
+    when(programStageNotificationRenderer.render(any(Event.class), any(NotificationTemplate.class)))
+        .thenReturn(notificationMessage);
+
+    programNotificationTemplate.setNotificationRecipient(ProgramNotificationRecipient.DATA_ELEMENT);
+    programNotificationTemplate.setDeliveryChannels(Sets.newHashSet(DeliveryChannel.EMAIL));
+    programNotificationTemplate.setRecipientDataElement(dataElementEmail);
+    programNotificationTemplate.setNotificationTrigger(NotificationTrigger.COMPLETION);
+
+    Event event = events.iterator().next();
+
+    programNotificationService.sendEventCompletionNotifications(event.getId());
+
+    // no message when no template is attached
+    assertEquals(0, sentProgramMessages.size());
+
+    event.getProgramStage().getNotificationTemplates().add(programNotificationTemplate);
+
+    programNotificationService.sendEventCompletionNotifications(event.getId());
+
+    assertEquals(1, sentProgramMessages.size());
+  }
+
+  @Test
+  void testDataElementRecipientWithInternalRecipients() {
+    when(manager.get(eq(Event.class), anyLong())).thenReturn(events.iterator().next());
+
+    when(messageService.sendMessage(any()))
+        .thenAnswer(
+            invocation -> {
+              sentInternalMessages.add(new MockMessage(invocation.getArguments()));
+              return 40L;
+            });
+
+    when(programStageNotificationRenderer.render(any(Event.class), any(NotificationTemplate.class)))
+        .thenReturn(notificationMessage);
+
+    programNotificationTemplate.setNotificationRecipient(ProgramNotificationRecipient.USER_GROUP);
+    programNotificationTemplate.setNotificationTrigger(NotificationTrigger.COMPLETION);
+    programNotificationTemplate.setRecipientUserGroup(userGroup);
+
+    Event event = events.iterator().next();
+
+    programNotificationService.sendEventCompletionNotifications(event.getId());
+
+    // no message when no template is attached
+    assertEquals(0, sentInternalMessages.size());
+
+    event.getProgramStage().getNotificationTemplates().add(programNotificationTemplate);
+
+    programNotificationService.sendEventCompletionNotifications(event.getId());
+
+    assertEquals(1, sentInternalMessages.size());
+
+    assertTrue(sentInternalMessages.iterator().next().users.contains(userA));
+    assertTrue(sentInternalMessages.iterator().next().users.contains(userB));
+  }
+
+  @Test
+  void testSendToParent() {
+    when(manager.get(eq(Event.class), anyLong())).thenReturn(events.iterator().next());
+
+    when(messageService.sendMessage(any()))
+        .thenAnswer(
+            invocation -> {
+              sentInternalMessages.add(new MockMessage(invocation.getArguments()));
+              return 40L;
+            });
+
+    when(programStageNotificationRenderer.render(any(Event.class), any(NotificationTemplate.class)))
+        .thenReturn(notificationMessage);
+
+    programNotificationTemplate.setNotificationRecipient(ProgramNotificationRecipient.USER_GROUP);
+    programNotificationTemplate.setNotificationTrigger(NotificationTrigger.COMPLETION);
+    programNotificationTemplate.setRecipientUserGroup(userGroupBasedOnParent);
+    programNotificationTemplate.setNotifyParentOrganisationUnitOnly(true);
+
+    Event event = events.iterator().next();
+    event.getProgramStage().getNotificationTemplates().add(programNotificationTemplate);
+
+    programNotificationService.sendEventCompletionNotifications(event.getId());
+
+    assertEquals(1, sentInternalMessages.size());
+
+    Set<User> users = sentInternalMessages.iterator().next().users;
+
+    assertEquals(1, users.size());
+    assertTrue(users.contains(userLvlOneLeft));
+  }
+
+  @Test
+  void testSendToHierarchy() {
+    when(manager.get(eq(Event.class), anyLong())).thenReturn(events.iterator().next());
+
+    when(messageService.sendMessage(any()))
+        .thenAnswer(
+            invocation -> {
+              sentInternalMessages.add(new MockMessage(invocation.getArguments()));
+              return 40L;
+            });
+
+    when(programStageNotificationRenderer.render(any(Event.class), any(NotificationTemplate.class)))
+        .thenReturn(notificationMessage);
+
+    programNotificationTemplate.setNotificationRecipient(ProgramNotificationRecipient.USER_GROUP);
+
+    programNotificationTemplate.setRecipientUserGroup(userGroupBasedOnHierarchy);
+    programNotificationTemplate.setNotifyUsersInHierarchyOnly(true);
+    programNotificationTemplate.setNotificationTrigger(NotificationTrigger.COMPLETION);
+
+    Event event = events.iterator().next();
+    event.getProgramStage().getNotificationTemplates().add(programNotificationTemplate);
+
+    programNotificationService.sendEventCompletionNotifications(event.getId());
+
+    assertEquals(1, sentInternalMessages.size());
+
+    Set<User> users = sentInternalMessages.iterator().next().users;
+
+    assertEquals(3, users.size());
+    assertTrue(users.contains(userLvlTwoLeftLeft));
+    assertTrue(users.contains(userLvlOneLeft));
+    assertTrue(users.contains(userRoot));
+
+    assertFalse(users.contains(userLvlTwoLeftRight));
+    assertFalse(users.contains(userLvlOneRight));
+  }
+
+  @Test
+  void testSendToUsersAtOu() {
+    when(manager.get(eq(Event.class), anyLong())).thenReturn(events.iterator().next());
+
+    when(messageService.sendMessage(any()))
+        .thenAnswer(
+            invocation -> {
+              sentInternalMessages.add(new MockMessage(invocation.getArguments()));
+              return 40L;
+            });
+
+    when(programStageNotificationRenderer.render(any(Event.class), any(NotificationTemplate.class)))
+        .thenReturn(notificationMessage);
+
+    programNotificationTemplate.setNotificationRecipient(
+        ProgramNotificationRecipient.USERS_AT_ORGANISATION_UNIT);
+    programNotificationTemplate.setNotificationTrigger(NotificationTrigger.COMPLETION);
+
+    lvlTwoLeftLeft.getUsers().add(userLvlTwoLeftRight);
+
+    Event event = events.iterator().next();
+    event.getProgramStage().getNotificationTemplates().add(programNotificationTemplate);
+
+    programNotificationService.sendEventCompletionNotifications(event.getId());
+
+    assertEquals(1, sentInternalMessages.size());
+
+    Set<User> users = sentInternalMessages.iterator().next().users;
+
+    assertEquals(2, users.size());
+    assertTrue(users.contains(userLvlTwoLeftLeft));
+    assertTrue(users.contains(userLvlTwoLeftRight));
+  }
+
+  @Test
+  void testScheduledNotifications() {
+    sentProgramMessages.clear();
+
+    when(programMessageService.sendMessages(anyList()))
+        .thenAnswer(
+            invocation -> {
+              sentProgramMessages.addAll((List<ProgramMessage>) invocation.getArguments()[0]);
+              return new BatchResponseStatus(Collections.emptyList());
+            });
+
+    when(manager.getAll(ProgramNotificationInstance.class))
+        .thenReturn(Collections.singletonList(programNotificationInstaceForToday));
+
+    when(programNotificationRenderer.render(any(Enrollment.class), any(NotificationTemplate.class)))
+        .thenReturn(notificationMessage);
+
+    programNotificationService.sendScheduledNotifications(JobProgress.noop());
+
+    assertEquals(1, sentProgramMessages.size());
+  }
+
+  @Test
+  void testScheduledNotificationsWithDateInPast() {
+    sentInternalMessages.clear();
+
+    programNotificationService.sendScheduledNotifications(JobProgress.noop());
+
+    assertEquals(0, sentProgramMessages.size());
+  }
+
+  // -------------------------------------------------------------------------
+  // Supportive methods
+  // -------------------------------------------------------------------------
+
+  private void setUpInstances() {
+    programNotificationTemplate =
+        createProgramNotificationTemplate(
+            TEMPLATE_NAME,
+            0,
+            NotificationTrigger.ENROLLMENT,
+            ProgramNotificationRecipient.TRACKED_ENTITY_INSTANCE);
+    programNotificationTemplate.setUid(notificationTemplate);
+
+    java.util.Calendar cal = java.util.Calendar.getInstance();
+
+    Date today = cal.getTime();
+    cal.add(java.util.Calendar.DATE, -1);
+
+    ProgramNotificationTemplate programNotificationTemplateForToday =
+        createProgramNotificationTemplate(
+            TEMPLATE_NAME,
+            0,
+            NotificationTrigger.PROGRAM_RULE,
+            ProgramNotificationRecipient.TRACKED_ENTITY_INSTANCE,
+            today);
+
+    programNotificationInstaceForToday = new ProgramNotificationInstance();
+    programNotificationInstaceForToday.setProgramNotificationTemplateSnapshot(
+        notificationTemplateMapper.toProgramNotificationTemplateSnapshot(
+            programNotificationTemplateForToday));
+    programNotificationInstaceForToday.setName(programNotificationTemplateForToday.getName());
+    programNotificationInstaceForToday.setAutoFields();
+    programNotificationInstaceForToday.setScheduledAt(today);
+
+    OrganisationUnit root = createOrganisationUnit('R');
+    OrganisationUnit lvlOneLeft = createOrganisationUnit('1');
+    OrganisationUnit lvlOneRight = createOrganisationUnit('2');
+    lvlTwoLeftLeft = createOrganisationUnit('3');
+    lvlTwoLeftLeft.setPhoneNumber(OU_PHONE_NUMBER);
+    OrganisationUnit lvlTwoLeftRight = createOrganisationUnit('4');
+
+    configureHierarchy(root, lvlOneLeft, lvlOneRight, lvlTwoLeftLeft, lvlTwoLeftRight);
+
+    // User and UserGroup
+
+    userA = makeUser("U");
+    userA.setPhoneNumber(USERA_PHONE_NUMBER);
+    userA.getOrganisationUnits().add(lvlTwoLeftLeft);
+
+    userB = makeUser("V");
+    userB.setPhoneNumber(USERB_PHONE_NUMBER);
+    userB.getOrganisationUnits().add(lvlTwoLeftLeft);
+
+    userGroup = createUserGroup('G', Sets.newHashSet(userA, userB));
+
+    // User based on hierarchy
+
+    userLvlTwoLeftLeft = makeUser("K");
+    userLvlTwoLeftLeft.getOrganisationUnits().add(lvlTwoLeftLeft);
+    lvlTwoLeftLeft.getUsers().add(userLvlTwoLeftLeft);
+
+    userLvlTwoLeftRight = makeUser("L");
+    userLvlTwoLeftRight.getOrganisationUnits().add(lvlTwoLeftRight);
+    lvlTwoLeftRight.getUsers().add(userLvlTwoLeftRight);
+
+    userLvlOneLeft = makeUser("M");
+    userLvlOneLeft.getOrganisationUnits().add(lvlOneLeft);
+    lvlOneLeft.getUsers().add(userLvlOneLeft);
+
+    userLvlOneRight = makeUser("N");
+    userLvlOneRight.getOrganisationUnits().add(lvlOneRight);
+    lvlOneRight.getUsers().add(userLvlOneLeft);
+
+    userRoot = makeUser("R");
+    userRoot.getOrganisationUnits().add(root);
+    root.getUsers().add(userRoot);
+
+    userGroupBasedOnHierarchy =
+        createUserGroup(
+            'H',
+            Sets.newHashSet(
+                userLvlOneLeft,
+                userLvlOneRight,
+                userLvlTwoLeftLeft,
+                userLvlTwoLeftRight,
+                userRoot));
+    userGroupBasedOnParent =
+        createUserGroup(
+            'H', Sets.newHashSet(userLvlTwoLeftLeft, userLvlTwoLeftRight, userLvlOneLeft));
+
+    // Program
+    Program programA = createProgram('A');
+    programA.setAutoFields();
+    programA.setOrganisationUnits(Sets.newHashSet(lvlTwoLeftLeft, lvlTwoLeftRight));
+    programA.setNotificationTemplates(
+        Sets.newHashSet(programNotificationTemplate, programNotificationTemplateForToday));
+    programA.getProgramAttributes().add(programTrackedEntityAttribute);
+
+    trackedEntityAttribute = createTrackedEntityAttribute('T');
+    TrackedEntityAttribute trackedEntityAttributeEmail = createTrackedEntityAttribute('E');
+    trackedEntityAttribute.setValueType(ValueType.PHONE_NUMBER);
+    trackedEntityAttribute.setValueType(ValueType.EMAIL);
+    programTrackedEntityAttribute =
+        createProgramTrackedEntityAttribute(programA, trackedEntityAttribute);
+    ProgramTrackedEntityAttribute programTrackedEntityAttributeEmail =
+        createProgramTrackedEntityAttribute(programA, trackedEntityAttributeEmail);
+    programTrackedEntityAttribute.setAttribute(trackedEntityAttribute);
+    programTrackedEntityAttributeEmail.setAttribute(trackedEntityAttributeEmail);
+
+    // ProgramStage
+    ProgramStage programStage = createProgramStage('S', programA);
+
+    dataElement = createDataElement('D');
+    dataElementEmail = createDataElement('E');
+    dataElement.setValueType(ValueType.PHONE_NUMBER);
+    dataElementEmail.setValueType(ValueType.EMAIL);
+
+    // Enrollment & TE
+    te = new TrackedEntity();
+    te.setAutoFields();
+    te.setOrganisationUnit(lvlTwoLeftLeft);
+
+    TrackedEntityAttributeValue attributeValue =
+        createTrackedEntityAttributeValue('P', te, trackedEntityAttribute);
+    TrackedEntityAttributeValue attributeValueEmail =
+        createTrackedEntityAttributeValue('E', te, trackedEntityAttribute);
+    attributeValue.setValue(ATT_PHONE_NUMBER);
+    attributeValueEmail.setValue(ATT_EMAIL);
+    te.getTrackedEntityAttributeValues().add(attributeValue);
+    te.getTrackedEntityAttributeValues().add(attributeValueEmail);
+
+    Enrollment enrollment = new Enrollment();
+    enrollment.setAutoFields();
+    enrollment.setProgram(programA);
+    enrollment.setOrganisationUnit(lvlTwoLeftLeft);
+    enrollment.setTrackedEntity(te);
+
+    Event event = new Event();
+    event.setAutoFields();
+    event.setEnrollment(enrollment);
+    event.setOrganisationUnit(lvlTwoLeftLeft);
+    event.setProgramStage(programStage);
+
+    // lists returned by stubs
+    events.add(event);
+    enrollments.add(enrollment);
+
+    programNotificationInstaceForToday.setEnrollment(enrollment);
+
+    notificationMessage = new NotificationMessage(SUBJECT, MESSAGE);
+  }
+
+  static class MockMessage {
+    final String subject, text, metaData;
+
+    final Set<User> users;
+
+    final User sender;
+
+    final boolean includeFeedbackRecipients, forceNotifications;
+
+    /** Danger danger! Will break if MessageService API changes. */
+    MockMessage(Object[] args) {
+      MessageConversationParams params = (MessageConversationParams) args[0];
+      this.subject = params.getSubject();
+      this.text = params.getText();
+      this.metaData = params.getMetadata();
+      this.users = params.getRecipients();
+      this.sender = params.getSender();
+      this.includeFeedbackRecipients = false;
+      this.forceNotifications = params.isForceNotification();
     }
-
-    // -------------------------------------------------------------------------
-    // Tests
-    // -------------------------------------------------------------------------
-
-    @Test
-    public void testIfProgramInstanceIsNull()
-    {
-        ProgramInstance programInstance = null;
-
-        programNotificationService.sendCompletionNotifications( programInstance );
-
-        verify( manager, never() ).getAll( any() );
-    }
-
-    @Test
-    public void testIfProgramStageInstanceIsNull()
-    {
-        ProgramStageInstance programStageInstance = null;
-
-        programNotificationService.sendCompletionNotifications( programStageInstance );
-
-        verify( manager, never() ).getAll( any() );
-    }
-
-    @Test
-    public void testSendCompletionNotification()
-    {
-        programNotificationService.sendCompletionNotifications( programInstances.iterator().next() );
-
-        assertEquals( 1, sentProgramMessages.size() );
-
-        ProgramMessage programMessage = sentProgramMessages.iterator().next();
-
-        assertEquals( TrackedEntityInstance.class, programMessage.getRecipients().getTrackedEntityInstance().getClass() );
-        assertEquals( tei, programMessage.getRecipients().getTrackedEntityInstance() );
-    }
-
-    @Test
-    public void testSendEnrollmentNotification()
-    {
-        programNotificationTemplate.setNotificationTrigger( NotificationTrigger.ENROLLMENT );
-
-        programNotificationService.sendEnrollmentNotifications( programInstances.iterator().next() );
-
-        assertEquals( 1, sentProgramMessages.size() );
-
-        ProgramMessage programMessage = sentProgramMessages.iterator().next();
-
-        assertEquals( TrackedEntityInstance.class, programMessage.getRecipients().getTrackedEntityInstance().getClass() );
-        assertEquals( tei, programMessage.getRecipients().getTrackedEntityInstance() );
-    }
-
-    @Test
-    public void testUserGroupRecipient()
-    {
-        programNotificationTemplate.setNotificationRecipient( ProgramNotificationRecipient.USER_GROUP );
-        programNotificationTemplate.setRecipientUserGroup( userGroup );
-
-        programNotificationService.sendCompletionNotifications( programInstances.iterator().next() );
-
-        assertEquals( 1, sentInternalMessages.size() );
-
-        MockMessage mockMessage = sentInternalMessages.iterator().next();
-
-        assertTrue( mockMessage.users.contains( userA ) );
-        assertTrue( mockMessage.users.contains( userB ) );
-    }
-
-    @Test
-    public void testOuContactRecipient()
-    {
-        programNotificationTemplate.setNotificationRecipient( ProgramNotificationRecipient.ORGANISATION_UNIT_CONTACT );
-
-        programNotificationService.sendCompletionNotifications( programInstances.iterator().next() );
-
-        assertEquals( 1, sentProgramMessages.size() );
-
-        ProgramMessage programMessage = sentProgramMessages.iterator().next();
-
-        assertEquals( OrganisationUnit.class, programMessage.getRecipients().getOrganisationUnit().getClass() );
-        assertEquals( lvlTwoLeftLeft, programMessage.getRecipients().getOrganisationUnit() );
-    }
-
-    @Test
-    public void testProgramAttributeRecipientWithSMS()
-    {
-        programNotificationTemplate.setNotificationRecipient( ProgramNotificationRecipient.PROGRAM_ATTRIBUTE );
-        programNotificationTemplate.setRecipientProgramAttribute( trackedEntityAttribute );
-        programNotificationTemplate.setDeliveryChannels( Sets.newHashSet( DeliveryChannel.SMS ) );
-
-        programNotificationService.sendCompletionNotifications( programInstances.iterator().next() );
-
-        assertEquals( 1, sentProgramMessages.size() );
-
-        ProgramMessage programMessage = sentProgramMessages.iterator().next();
-
-        assertTrue( programMessage.getRecipients().getPhoneNumbers().contains( ATT_PHONE_NUMBER ) );
-        assertTrue( programMessage.getDeliveryChannels().contains( DeliveryChannel.SMS ) );
-    }
-
-    @Test
-    public void testProgramAttributeRecipientWithEMAIL()
-    {
-        programNotificationTemplate.setNotificationRecipient( ProgramNotificationRecipient.PROGRAM_ATTRIBUTE );
-        programNotificationTemplate.setRecipientProgramAttribute( trackedEntityAttribute );
-        programNotificationTemplate.setDeliveryChannels( Sets.newHashSet( DeliveryChannel.EMAIL ) );
-
-        programNotificationService.sendCompletionNotifications( programInstances.iterator().next() );
-
-        assertEquals( 1, sentProgramMessages.size() );
-
-        ProgramMessage programMessage = sentProgramMessages.iterator().next();
-
-        assertTrue( programMessage.getRecipients().getEmailAddresses().contains( ATT_EMAIL ) );
-        assertTrue( programMessage.getDeliveryChannels().contains( DeliveryChannel.EMAIL ) );
-    }
-
-    @Test
-    public void testDataElementRecipientWithSMS()
-    {
-        programNotificationTemplate.setNotificationRecipient( ProgramNotificationRecipient.DATA_ELEMENT );
-        programNotificationTemplate.setDeliveryChannels( Sets.newHashSet( DeliveryChannel.SMS ) );
-        programNotificationTemplate.setRecipientDataElement( dataElement );
-
-        ProgramStageInstance programStageInstance = programStageInstances.iterator().next();
-
-        programNotificationService.sendCompletionNotifications( programStageInstance );
-
-        // no message when no template is attached
-        assertEquals( 0, sentProgramMessages.size() );
-
-        programStageInstance.getProgramStage().getNotificationTemplates().add( programNotificationTemplate );
-
-        programNotificationService.sendCompletionNotifications( programStageInstance );
-
-        assertEquals( 1, sentProgramMessages.size() );
-
-    }
-
-    @Test
-    public void testDataElementRecipientWithEmail()
-    {
-        programNotificationTemplate.setNotificationRecipient( ProgramNotificationRecipient.DATA_ELEMENT );
-        programNotificationTemplate.setDeliveryChannels( Sets.newHashSet( DeliveryChannel.EMAIL ) );
-        programNotificationTemplate.setRecipientDataElement( dataElementEmail );
-
-        ProgramStageInstance programStageInstance = programStageInstances.iterator().next();
-
-        programNotificationService.sendCompletionNotifications( programStageInstance );
-
-        // no message when no template is attached
-        assertEquals( 0, sentProgramMessages.size() );
-
-        programStageInstance.getProgramStage().getNotificationTemplates().add( programNotificationTemplate );
-
-        programNotificationService.sendCompletionNotifications( programStageInstance );
-
-        assertEquals( 1, sentProgramMessages.size() );
-    }
-
-    @Test
-    public void testDataElementRecipientWithInternalRecipients()
-    {
-        programNotificationTemplate.setNotificationRecipient( ProgramNotificationRecipient.USER_GROUP );
-
-        programNotificationTemplate.setRecipientUserGroup( userGroup );
-
-        ProgramStageInstance programStageInstance = programStageInstances.iterator().next();
-
-        programNotificationService.sendCompletionNotifications( programStageInstance );
-
-        // no message when no template is attached
-        assertEquals( 0, sentInternalMessages.size() );
-
-        programStageInstance.getProgramStage().getNotificationTemplates().add( programNotificationTemplate );
-
-        programNotificationService.sendCompletionNotifications( programStageInstance );
-
-        assertEquals( 1, sentInternalMessages.size() );
-
-        assertTrue( sentInternalMessages.iterator().next().users.contains( userA ) );
-        assertTrue( sentInternalMessages.iterator().next().users.contains( userB ) );
-    }
-
-    @Test
-    public void testSendToParent()
-    {
-        programNotificationTemplate.setNotificationRecipient( ProgramNotificationRecipient.USER_GROUP );
-
-        programNotificationTemplate.setRecipientUserGroup( userGroupBasedOnParent );
-        programNotificationTemplate.setNotifyParentOrganisationUnitOnly( true );
-
-        ProgramStageInstance programStageInstance = programStageInstances.iterator().next();
-        programStageInstance.getProgramStage().getNotificationTemplates().add( programNotificationTemplate );
-
-        programNotificationService.sendCompletionNotifications( programStageInstance );
-
-        assertEquals( 1, sentInternalMessages.size() );
-
-        Set<User> users = sentInternalMessages.iterator().next().users;
-
-        assertEquals( 1, users.size() );
-        assertTrue( users.contains( userLvlOneLeft ) );
-    }
-
-    @Test
-    public void testSendToHierarchy()
-    {
-        programNotificationTemplate.setNotificationRecipient( ProgramNotificationRecipient.USER_GROUP );
-
-        programNotificationTemplate.setRecipientUserGroup( userGroupBasedOnHierarchy );
-        programNotificationTemplate.setNotifyUsersInHierarchyOnly( true );
-
-        ProgramStageInstance programStageInstance = programStageInstances.iterator().next();
-        programStageInstance.getProgramStage().getNotificationTemplates().add( programNotificationTemplate );
-
-        programNotificationService.sendCompletionNotifications( programStageInstance );
-
-        assertEquals( 1, sentInternalMessages.size() );
-
-        Set<User> users = sentInternalMessages.iterator().next().users;
-
-        assertEquals( 3, users.size() );
-        assertTrue( users.contains( userLvlTwoLeftLeft ) );
-        assertTrue( users.contains( userLvlOneLeft ) );
-        assertTrue( users.contains( userRoot ) );
-
-        assertFalse( users.contains( userLvlTwoLeftRight ) );
-        assertFalse( users.contains( userLvlOneRight ) );
-    }
-
-    @Test
-    public void testSendToUsersAtOu()
-    {
-        programNotificationTemplate.setNotificationRecipient( ProgramNotificationRecipient.USERS_AT_ORGANISATION_UNIT );
-
-        lvlTwoLeftLeft.getUsers().add( userLvlTwoLeftRight );
-
-        ProgramStageInstance programStageInstance = programStageInstances.iterator().next();
-        programStageInstance.getProgramStage().getNotificationTemplates().add( programNotificationTemplate );
-
-        programNotificationService.sendCompletionNotifications( programStageInstance );
-
-        assertEquals( 1, sentInternalMessages.size() );
-
-        Set<User> users = sentInternalMessages.iterator().next().users;
-
-        assertEquals( 2, users.size() );
-        assertTrue( users.contains( userLvlTwoLeftLeft ) );
-        assertTrue( users.contains( userLvlTwoLeftRight ) );
-    }
-    
-    // -------------------------------------------------------------------------
-    // Supportive methods
-    // -------------------------------------------------------------------------
-
-    private void setUpInstances()
-    {
-        programNotificationTemplate = createProgramNotificationTemplate( TEMPLATE_NAME, 0, NotificationTrigger.COMPLETION, ProgramNotificationRecipient.TRACKED_ENTITY_INSTANCE );
-
-        root = createOrganisationUnit( 'R' );
-        lvlOneLeft = createOrganisationUnit( '1' );
-        lvlOneRight = createOrganisationUnit( '2' );
-        lvlTwoLeftLeft = createOrganisationUnit( '3' );
-        lvlTwoLeftLeft.setPhoneNumber( OU_PHONE_NUMBER );
-        lvlTwoLeftRight = createOrganisationUnit( '4' );
-
-        configureHierarchy( root, lvlOneLeft, lvlOneRight, lvlTwoLeftLeft, lvlTwoLeftRight );
-
-        // User and UserGroup
-
-        userA = createUser( 'U' );
-        userA.setPhoneNumber( USERA_PHONE_NUMBER );
-        userA.getOrganisationUnits().add( lvlTwoLeftLeft );
-
-        userB = createUser( 'V' );
-        userB.setPhoneNumber( USERB_PHONE_NUMBER );
-        userB.getOrganisationUnits().add( lvlTwoLeftLeft );
-
-        userGroup = createUserGroup( 'G', Sets.newHashSet( userA, userB ) );
-
-        // User based on hierarchy
-
-        userLvlTwoLeftLeft = createUser( 'K' );
-        userLvlTwoLeftLeft.getOrganisationUnits().add( lvlTwoLeftLeft );
-        lvlTwoLeftLeft.getUsers().add( userLvlTwoLeftLeft );
-
-        userLvlTwoLeftRight = createUser( 'L' );
-        userLvlTwoLeftRight.getOrganisationUnits().add( lvlTwoLeftRight );
-        lvlTwoLeftRight.getUsers().add( userLvlTwoLeftRight );
-
-        userLvlOneLeft = createUser( 'M' );
-        userLvlOneLeft.getOrganisationUnits().add( lvlOneLeft );
-        lvlOneLeft.getUsers().add( userLvlOneLeft );
-
-        userLvlOneRight = createUser( 'N' );
-        userLvlOneRight.getOrganisationUnits().add( lvlOneRight );
-        lvlOneRight.getUsers().add( userLvlOneLeft );
-
-        userRoot = createUser( 'R' );
-        userRoot.getOrganisationUnits().add( root );
-        root.getUsers().add( userRoot );
-
-        userGroupBasedOnHierarchy = createUserGroup( 'H', Sets.newHashSet( userLvlOneLeft, userLvlOneRight, userLvlTwoLeftLeft, userLvlTwoLeftRight, userRoot ) );
-        userGroupBasedOnParent = createUserGroup( 'H', Sets.newHashSet( userLvlTwoLeftLeft, userLvlTwoLeftRight ) );
-
-        // Program
-        Program programA = createProgram( 'A' );
-        programA.setAutoFields();
-        programA.setOrganisationUnits( Sets.newHashSet( lvlTwoLeftLeft,lvlTwoLeftRight ) );
-        programA.setNotificationTemplates( Sets.newHashSet( programNotificationTemplate ) );
-        programA.getProgramAttributes().add( programTrackedEntityAttribute );
-
-        trackedEntityAttribute = createTrackedEntityAttribute( 'T' );
-        trackedEntityAttributeEmail = createTrackedEntityAttribute( 'E' );
-        trackedEntityAttribute.setValueType( ValueType.PHONE_NUMBER );
-        trackedEntityAttribute.setValueType( ValueType.EMAIL );
-        programTrackedEntityAttribute = createProgramTrackedEntityAttribute( 'O' );
-        programTrackedEntityAttributeEmail = createProgramTrackedEntityAttribute( 'L' );
-        programTrackedEntityAttribute.setAttribute( trackedEntityAttribute );
-        programTrackedEntityAttributeEmail.setAttribute( trackedEntityAttributeEmail );
-
-        // ProgramStage
-        ProgramStage programStage = createProgramStage( 'S', programA );
-
-        dataElement = createDataElement( 'D' );
-        dataElementEmail = createDataElement( 'E' );
-        dataElement.setValueType( ValueType.PHONE_NUMBER );
-        dataElementEmail.setValueType( ValueType.EMAIL );
-
-        // ProgramInstance & TEI
-        tei = new TrackedEntityInstance();
-        tei.setAutoFields();
-        tei.setOrganisationUnit( lvlTwoLeftLeft );
-
-        attributeValue = createTrackedEntityAttributeValue( 'P', tei, trackedEntityAttribute );
-        attributeValueEmail = createTrackedEntityAttributeValue( 'E', tei, trackedEntityAttribute );
-        attributeValue.setValue( ATT_PHONE_NUMBER );
-        attributeValueEmail.setValue( ATT_EMAIL );
-        tei.getTrackedEntityAttributeValues().add( attributeValue );
-        tei.getTrackedEntityAttributeValues().add( attributeValueEmail );
-
-        ProgramInstance programInstance = new ProgramInstance();
-        programInstance.setAutoFields();
-        programInstance.setProgram( programA );
-        programInstance.setOrganisationUnit( lvlTwoLeftLeft );
-        programInstance.setEntityInstance( tei );
-
-        // ProgramStageInstance
-        ProgramStageInstance programStageInstance = createProgramStageInstance();
-        programStageInstance.setAutoFields();
-        programStageInstance.setProgramInstance( programInstance );
-        programStageInstance.setOrganisationUnit( lvlTwoLeftLeft );
-        programStageInstance.setProgramStage( programStage );
-        dataValue = new TrackedEntityDataValue();
-        dataValue.setAutoFields();
-        dataValue.setDataElement( dataElement );
-        dataValue.setValue( DE_PHONE_NUMBER );
-
-        dataValueEmail = new TrackedEntityDataValue();
-        dataValueEmail.setAutoFields();
-        dataValueEmail.setDataElement( dataElementEmail );
-        dataValueEmail.setValue( DE_EMAIL );
-
-        programStageInstance.getDataValues().add( dataValue );
-
-        // lists returned by stubs
-        programStageInstances.add( programStageInstance );
-        programInstances.add( programInstance );
-
-        notificationMessage = new NotificationMessage( SUBJECT, MESSAGE );
-    }
-
-    static class MockMessage
-    {
-        final String subject, text, metaData;
-
-        final Set<User> users;
-
-        final User sender;
-
-        final boolean includeFeedbackRecipients, forceNotifications;
-
-        /**
-         * Danger danger! Will break if MessageService API changes.
-         */
-        MockMessage( Object[] args )
-        {
-            MessageConversationParams params = (MessageConversationParams) args[0];
-            this.subject = params.getSubject();
-            this.text = params.getText();
-            this.metaData = params.getMetadata();
-            this.users = params.getRecipients();
-            this.sender = params.getSender();
-            this.includeFeedbackRecipients = false;
-            this.forceNotifications = params.isForceNotification();
-        }
-    }
+  }
 }

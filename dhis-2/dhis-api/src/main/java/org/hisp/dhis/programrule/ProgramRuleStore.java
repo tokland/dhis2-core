@@ -1,7 +1,5 @@
-package org.hisp.dhis.programrule;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,43 +25,33 @@ package org.hisp.dhis.programrule;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.programrule;
 
 import java.util.List;
-
+import java.util.Set;
 import org.hisp.dhis.common.IdentifiableObjectStore;
 import org.hisp.dhis.program.Program;
 
 /**
  * @author markusbekken
  */
-public interface ProgramRuleStore
-    extends IdentifiableObjectStore<ProgramRule>
-{
-    String ID = ProgramRuleStore.class.getName();
+public interface ProgramRuleStore extends IdentifiableObjectStore<ProgramRule> {
+  /**
+   * Get programRule by program
+   *
+   * @param program {@link Program}
+   * @return ProgramRuleVariable list
+   */
+  List<ProgramRule> get(Program program);
 
-    /**
-     * Get programRule by program
-     *
-     * @param program {@link Program}
-     * @return ProgramRuleVariable list
-     */
-    List<ProgramRule> get( Program program );
-    
-    /**
-     * Returns a {@link ProgramRule}.
-     *
-     * @param name the name of the ProgramRule to return.
-     * @param program {@link Program}.
-     * @return the ProgramRule with the given name
-     */
-    ProgramRule getByName( String name, Program program );
+  List<ProgramRule> getProgramRulesByActionTypes(
+      Program program, Set<ProgramRuleActionType> actionTypes);
 
-    /**
-     * Get validation by {@link Program}
-     *
-     * @param program Program
-     * @param key Search Program Rule by key
-     * @return ProgramRule list
-     */
-    List<ProgramRule> get( Program program, String key );
+  List<ProgramRule> getProgramRulesByActionTypes(
+      Program program, Set<ProgramRuleActionType> actionTypes, String programStageUid);
+
+  List<String> getDataElementsPresentInProgramRules(Set<ProgramRuleActionType> actionTypes);
+
+  List<String> getTrackedEntityAttributesPresentInProgramRules(
+      Set<ProgramRuleActionType> actionTypes);
 }

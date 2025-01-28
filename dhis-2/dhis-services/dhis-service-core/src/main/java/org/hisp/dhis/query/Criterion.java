@@ -1,7 +1,5 @@
-package org.hisp.dhis.query;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,10 +25,18 @@ package org.hisp.dhis.query;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.query;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public interface Criterion
-{
+public interface Criterion {
+
+  /**
+   * @return true, when the condition cannot match any rows, e.g. an in-operator with an empty
+   *     collection to test against
+   */
+  default boolean isAlwaysFalse() {
+    return false;
+  }
 }

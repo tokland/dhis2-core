@@ -1,7 +1,5 @@
-package org.hisp.dhis.program;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,67 +25,47 @@ package org.hisp.dhis.program;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.dataelement.DataElement;
-import org.hisp.dhis.dataelement.DataElementDomain;
-import org.hisp.dhis.system.deletion.DeletionHandler;
-import org.springframework.beans.factory.annotation.Autowired;
+package org.hisp.dhis.program;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.dataelement.DataElement;
+import org.hisp.dhis.dataelement.DataElementDomain;
+import org.hisp.dhis.system.deletion.IdObjectDeletionHandler;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Chau Thu Tran
  */
+@Component
+@RequiredArgsConstructor
 public class ProgramStageDataElementDeletionHandler
-    extends DeletionHandler
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+    extends IdObjectDeletionHandler<ProgramStageDataElement> {
+  private final ProgramStageDataElementService programStageDataElementService;
 
-    @Autowired
-    private ProgramStageDataElementService programStageDataElementService;
+  @Override
+  protected void registerHandler() {
+    whenDeleting(ProgramStage.class, this::deleteProgramStage);
+    whenDeleting(DataElement.class, this::deleteDataElement);
+  }
 
-    // -------------------------------------------------------------------------
-    // Implementation methods
-    // -------------------------------------------------------------------------
+  private void deleteProgramStage(ProgramStage programStage) {
+    List<ProgramStageDataElement> programStageDataElements =
+        new ArrayList<>(programStage.getProgramStageDataElements());
 
-    @Override
-    public String getClassName()
-    {
-        return ProgramStageDataElement.class.getSimpleName();
+    for (ProgramStageDataElement programStageDataElement : programStageDataElements) {
+      programStage.getProgramStageDataElements().remove(programStageDataElement);
+      programStageDataElementService.deleteProgramStageDataElement(programStageDataElement);
     }
+  }
 
-    @Override
-    public void deleteProgramStage( ProgramStage programStage )
-    {
-        List<ProgramStageDataElement> programStageDataElements = new ArrayList<>( programStage.getProgramStageDataElements() );
-
-        for ( ProgramStageDataElement programStageDataElement : programStageDataElements )
-        {
-            programStage.getProgramStageDataElements().remove( programStageDataElement );
-            programStageDataElementService.deleteProgramStageDataElement( programStageDataElement );
-        }
+  private void deleteDataElement(DataElement dataElement) {
+    if (DataElementDomain.TRACKER == dataElement.getDomainType()) {
+      for (ProgramStageDataElement element :
+          programStageDataElementService.getProgramStageDataElements(dataElement)) {
+        programStageDataElementService.deleteProgramStageDataElement(element);
+      }
     }
-
-    @Override
-    public void deleteDataElement( DataElement dataElement )
-    {
-        if ( DataElementDomain.TRACKER == dataElement.getDomainType() )
-        {
-            Iterator<ProgramStageDataElement> iterator = programStageDataElementService.getAllProgramStageDataElements().iterator();
-
-            while ( iterator.hasNext() )
-            {
-                ProgramStageDataElement element = iterator.next();
-
-                if ( element.getDataElement() != null && element.getDataElement().equals( dataElement ) )
-                {
-                    programStageDataElementService.deleteProgramStageDataElement( element );
-                }
-            }
-        }
-    }
+  }
 }

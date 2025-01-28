@@ -1,7 +1,5 @@
-package org.hisp.dhis.organisationunit;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,210 +25,184 @@ package org.hisp.dhis.organisationunit;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.organisationunit;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import java.util.HashSet;
+import java.util.Set;
 import org.hisp.dhis.common.BaseDimensionalItemObject;
 import org.hisp.dhis.common.BaseIdentifiableObject;
-import org.hisp.dhis.common.Coordinate.CoordinateObject;
-import org.hisp.dhis.common.Coordinate.CoordinateUtils;
 import org.hisp.dhis.common.DimensionItemType;
 import org.hisp.dhis.common.DxfNamespaces;
 import org.hisp.dhis.common.MetadataObject;
-import org.hisp.dhis.schema.PropertyType;
-import org.hisp.dhis.schema.annotation.Property;
-
-import java.util.HashSet;
-import java.util.Set;
+import org.hisp.dhis.common.coordinate.CoordinateObject;
+import org.hisp.dhis.common.coordinate.CoordinateUtils;
+import org.locationtech.jts.geom.Geometry;
 
 /**
  * @author Kristian Nordal
  */
-@JacksonXmlRootElement( localName = "organisationUnitGroup", namespace = DxfNamespaces.DXF_2_0 )
-public class OrganisationUnitGroup
-    extends BaseDimensionalItemObject
-    implements MetadataObject, CoordinateObject
-{
-    private String symbol;
-    
-    private String color;
+@JacksonXmlRootElement(localName = "organisationUnitGroup", namespace = DxfNamespaces.DXF_2_0)
+public class OrganisationUnitGroup extends BaseDimensionalItemObject
+    implements MetadataObject, CoordinateObject {
+  private String symbol;
 
-    private Set<OrganisationUnit> members = new HashSet<>();
+  private String color;
 
-    private Set<OrganisationUnitGroupSet> groupSets = new HashSet<>();
+  private Set<OrganisationUnit> members = new HashSet<>();
 
-    private FeatureType featureType = FeatureType.NONE;
+  private Set<OrganisationUnitGroupSet> groupSets = new HashSet<>();
 
-    private String coordinates;
+  private Geometry geometry;
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Constructors
+  // -------------------------------------------------------------------------
 
-    public OrganisationUnitGroup()
-    {
+  public OrganisationUnitGroup() {}
+
+  public OrganisationUnitGroup(String name) {
+    this.name = name;
+    this.shortName = name;
+  }
+
+  // -------------------------------------------------------------------------
+  // Logic
+  // -------------------------------------------------------------------------
+
+  public boolean addOrganisationUnit(OrganisationUnit organisationUnit) {
+    members.add(organisationUnit);
+    return organisationUnit.getGroups().add(this);
+  }
+
+  public void addOrganisationUnits(Set<OrganisationUnit> organisationUnits) {
+    organisationUnits.forEach(this::addOrganisationUnit);
+  }
+
+  public boolean removeOrganisationUnit(OrganisationUnit organisationUnit) {
+    members.remove(organisationUnit);
+    return organisationUnit.getGroups().remove(this);
+  }
+
+  public void removeOrganisationUnits(Set<OrganisationUnit> organisationUnits) {
+    organisationUnits.forEach(this::removeOrganisationUnit);
+  }
+
+  public void removeAllOrganisationUnits() {
+    for (OrganisationUnit organisationUnit : members) {
+      organisationUnit.getGroups().remove(this);
     }
 
-    public OrganisationUnitGroup( String name )
-    {
-        this.name = name;
+    members.clear();
+  }
+
+  public void updateOrganisationUnits(Set<OrganisationUnit> updates) {
+    for (OrganisationUnit unit : new HashSet<>(members)) {
+      if (!updates.contains(unit)) {
+        removeOrganisationUnit(unit);
+      }
     }
 
-    // -------------------------------------------------------------------------
-    // Logic
-    // -------------------------------------------------------------------------
-
-    public boolean addOrganisationUnit( OrganisationUnit organisationUnit )
-    {
-        members.add( organisationUnit );
-        return organisationUnit.getGroups().add( this );
+    for (OrganisationUnit unit : updates) {
+      addOrganisationUnit(unit);
     }
+  }
 
-    public boolean removeOrganisationUnit( OrganisationUnit organisationUnit )
-    {
-        members.remove( organisationUnit );
-        return organisationUnit.getGroups().remove( this );
-    }
+  public boolean hasSymbol() {
+    return symbol != null && !symbol.trim().isEmpty();
+  }
 
-    public void removeAllOrganisationUnits()
-    {
-        for ( OrganisationUnit organisationUnit : members )
-        {
-            organisationUnit.getGroups().remove( this );
-        }
+  // -------------------------------------------------------------------------
+  // DimensionalItemObject
+  // -------------------------------------------------------------------------
 
-        members.clear();
-    }
+  @Override
+  public DimensionItemType getDimensionItemType() {
+    return DimensionItemType.ORGANISATION_UNIT_GROUP;
+  }
 
-    public void updateOrganisationUnits( Set<OrganisationUnit> updates )
-    {
-        for ( OrganisationUnit unit : new HashSet<>( members ) )
-        {
-            if ( !updates.contains( unit ) )
-            {
-                removeOrganisationUnit( unit );
-            }
-        }
+  // -------------------------------------------------------------------------
+  // Getters and setters
+  // -------------------------------------------------------------------------
 
-        for ( OrganisationUnit unit : updates )
-        {
-            addOrganisationUnit( unit );
-        }
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public String getSymbol() {
+    return symbol;
+  }
 
-    public boolean hasSymbol()
-    {
-        return symbol != null && !symbol.trim().isEmpty();
-    }
+  public void setSymbol(String symbol) {
+    this.symbol = symbol;
+  }
 
-    // -------------------------------------------------------------------------
-    // DimensionalItemObject
-    // -------------------------------------------------------------------------
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public String getColor() {
+    return color;
+  }
 
-    @Override
-    public DimensionItemType getDimensionItemType()
-    {
-        return DimensionItemType.ORGANISATION_UNIT_GROUP;
-    }
+  public void setColor(String color) {
+    this.color = color;
+  }
 
-    // -------------------------------------------------------------------------
-    // Getters and setters
-    // -------------------------------------------------------------------------
+  @JsonProperty("organisationUnits")
+  @JsonSerialize(contentAs = BaseIdentifiableObject.class)
+  @JacksonXmlElementWrapper(localName = "organisationUnits", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "organisationUnit", namespace = DxfNamespaces.DXF_2_0)
+  public Set<OrganisationUnit> getMembers() {
+    return members;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public String getSymbol()
-    {
-        return symbol;
-    }
+  public void setMembers(Set<OrganisationUnit> members) {
+    this.members = members;
+  }
 
-    public void setSymbol( String symbol )
-    {
-        this.symbol = symbol;
-    }
+  @JsonProperty
+  @JsonSerialize(contentAs = BaseIdentifiableObject.class)
+  @JacksonXmlElementWrapper(localName = "groupSets", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "groupSet", namespace = DxfNamespaces.DXF_2_0)
+  public Set<OrganisationUnitGroupSet> getGroupSets() {
+    return groupSets;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public String getColor()
-    {
-        return color;
-    }
+  public void setGroupSets(Set<OrganisationUnitGroupSet> groupSets) {
+    this.groupSets = groupSets;
+  }
 
-    public void setColor( String color )
-    {
-        this.color = color;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public Geometry getGeometry() {
+    return geometry;
+  }
 
-    @JsonProperty( "organisationUnits" )
-    @JsonSerialize( contentAs = BaseIdentifiableObject.class )
-    @JacksonXmlElementWrapper( localName = "organisationUnits", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "organisationUnit", namespace = DxfNamespaces.DXF_2_0 )
-    public Set<OrganisationUnit> getMembers()
-    {
-        return members;
-    }
+  public void setGeometry(Geometry geometry) {
+    this.geometry = geometry;
+  }
 
-    public void setMembers( Set<OrganisationUnit> members )
-    {
-        this.members = members;
-    }
+  @Override
+  public boolean hasDescendantsWithCoordinates() {
+    return CoordinateUtils.hasDescendantsWithCoordinates(members);
+  }
 
-    @JsonProperty
-    @JsonSerialize( contentAs = BaseIdentifiableObject.class )
-    @JacksonXmlElementWrapper( localName = "groupSets", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "groupSet", namespace = DxfNamespaces.DXF_2_0 )
-    public Set<OrganisationUnitGroupSet> getGroupSets()
-    {
-        return groupSets;
-    }
+  @Override
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public FeatureType getFeatureType() {
 
-    public void setGroupSets( Set<OrganisationUnitGroupSet> groupSets )
-    {
-        this.groupSets = groupSets;
-    }
+    return geometry != null ? FeatureType.getTypeFromName(this.geometry.getGeometryType()) : null;
+  }
 
-    public boolean hasDescendantsWithCoordinates()
-    {
-        return CoordinateUtils.hasDescendantsWithCoordinates( members );
-    }
+  @Override
+  public String getCoordinates() {
+    return extractCoordinates(this.geometry);
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public FeatureType getFeatureType()
-    {
-        return featureType;
-    }
-
-    public void setFeatureType( FeatureType featureType )
-    {
-        this.featureType = featureType;
-    }
-
-    @Override
-    public boolean hasFeatureType()
-    {
-        return getFeatureType() != null;
-    }
-
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    @Property( PropertyType.GEOLOCATION )
-    public String getCoordinates()
-    {
-        return coordinates;
-    }
-
-    public void setCoordinates( String coordinates )
-    {
-        this.coordinates = coordinates;
-    }
-
-    @Override
-    public boolean hasCoordinates()
-    {
-        return getCoordinates() != null;
-    }
+  @Override
+  public boolean hasCoordinates() {
+    return this.geometry != null;
+  }
 }

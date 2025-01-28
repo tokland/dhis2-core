@@ -1,7 +1,5 @@
-package org.hisp.dhis.setting;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,14 +25,35 @@ package org.hisp.dhis.setting;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.setting;
 
-import org.hisp.dhis.common.GenericStore;
+import java.util.Map;
+import java.util.Set;
+import javax.annotation.Nonnull;
 
 /**
  * @author Lars Helge Overland
  */
-public interface SystemSettingStore
-    extends GenericStore<SystemSetting>
-{
-    SystemSetting getByName( String name );
+public interface SystemSettingStore {
+
+  /**
+   * @return a map of all settings keys and values, all values are as stored in database, that means
+   *     encoded values are still encoded
+   */
+  @Nonnull
+  Map<String, String> getAll();
+
+  /**
+   * Update or insert a key-value pair.
+   *
+   * @param key name of the setting
+   * @param value value of the setting
+   */
+  void put(@Nonnull String key, @Nonnull String value);
+
+  /**
+   * @param keys the setting to delete
+   * @return number of settings that were deleted
+   */
+  int delete(@Nonnull Set<String> keys);
 }

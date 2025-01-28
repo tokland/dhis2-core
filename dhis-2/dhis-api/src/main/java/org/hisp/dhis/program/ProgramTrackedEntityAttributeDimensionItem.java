@@ -1,7 +1,5 @@
-package org.hisp.dhis.program;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +25,17 @@ package org.hisp.dhis.program;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program;
 
+import static org.hisp.dhis.common.DimensionalObjectUtils.COMPOSITE_DIM_OBJECT_PLAIN_SEP;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import com.google.common.base.MoreObjects;
+import com.google.common.base.Objects;
+import java.util.List;
 import org.hisp.dhis.analytics.AggregationType;
 import org.hisp.dhis.common.BaseDimensionalItemObject;
 import org.hisp.dhis.common.BaseIdentifiableObject;
@@ -36,153 +44,126 @@ import org.hisp.dhis.common.DxfNamespaces;
 import org.hisp.dhis.common.EmbeddedObject;
 import org.hisp.dhis.common.IdScheme;
 import org.hisp.dhis.legend.LegendSet;
+import org.hisp.dhis.schema.PropertyType;
+import org.hisp.dhis.schema.annotation.Property;
 import org.hisp.dhis.trackedentity.TrackedEntityAttribute;
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
-import com.google.common.base.MoreObjects;
-import com.google.common.base.Objects;
-
-import static org.hisp.dhis.common.DimensionalObjectUtils.COMPOSITE_DIM_OBJECT_PLAIN_SEP;
-
-import java.util.List;
 
 /**
  * @author Lars Helge Overland
  */
-@JacksonXmlRootElement( localName = "programAttributeDimension", namespace = DxfNamespaces.DXF_2_0 )
-public class ProgramTrackedEntityAttributeDimensionItem
-    extends BaseDimensionalItemObject implements EmbeddedObject
-{
-    private Program program;
+@JacksonXmlRootElement(localName = "programAttributeDimension", namespace = DxfNamespaces.DXF_2_0)
+public class ProgramTrackedEntityAttributeDimensionItem extends BaseDimensionalItemObject
+    implements EmbeddedObject {
+  private Program program;
 
-    private TrackedEntityAttribute attribute;
-    
-    public ProgramTrackedEntityAttributeDimensionItem()
-    {
-    }
-    
-    public ProgramTrackedEntityAttributeDimensionItem( Program program, TrackedEntityAttribute attribute )
-    {
-        this.program = program;
-        this.attribute = attribute;
-    }
+  private TrackedEntityAttribute attribute;
 
-    // -------------------------------------------------------------------------
-    // DimensionalItemObject
-    // -------------------------------------------------------------------------
+  public ProgramTrackedEntityAttributeDimensionItem() {}
 
-    @Override
-    public String getDimensionItem()
-    {
-        return program.getUid() + COMPOSITE_DIM_OBJECT_PLAIN_SEP + attribute.getUid();
-    }
+  public ProgramTrackedEntityAttributeDimensionItem(
+      Program program, TrackedEntityAttribute attribute) {
+    this.program = program;
+    this.attribute = attribute;
+  }
 
-    @Override
-    public String getDimensionItem( IdScheme idScheme )
-    {
-        return program.getPropertyValue( idScheme ) + COMPOSITE_DIM_OBJECT_PLAIN_SEP + attribute.getPropertyValue( idScheme );
-    }
+  // -------------------------------------------------------------------------
+  // DimensionalItemObject
+  // -------------------------------------------------------------------------
 
-    @Override
-    public DimensionItemType getDimensionItemType()
-    {
-        return DimensionItemType.PROGRAM_ATTRIBUTE;
-    }
+  @Override
+  public String getDimensionItem() {
+    return program.getUid() + COMPOSITE_DIM_OBJECT_PLAIN_SEP + attribute.getUid();
+  }
 
-    @Override
-    public List<LegendSet> getLegendSets()
-    {
-        return attribute.getLegendSets();
-    }
+  @Override
+  public String getDimensionItem(IdScheme idScheme) {
+    return program.getPropertyValue(idScheme)
+        + COMPOSITE_DIM_OBJECT_PLAIN_SEP
+        + attribute.getPropertyValue(idScheme);
+  }
 
-    @Override
-    public AggregationType getAggregationType()
-    {
-        return attribute.getAggregationType();
-    }
+  @Override
+  public DimensionItemType getDimensionItemType() {
+    return DimensionItemType.PROGRAM_ATTRIBUTE;
+  }
 
-    // -------------------------------------------------------------------------
-    // hashCode and equals
-    // -------------------------------------------------------------------------
+  @Override
+  public List<LegendSet> getLegendSets() {
+    return attribute.getLegendSets();
+  }
 
-    public String toString()
-    {
-        return MoreObjects.toStringHelper( this )
-            .add( "program", program )
-            .add( "attribute", attribute ).toString();
-    }
-    
-    @Override
-    public int hashCode()
-    {
-        return Objects.hashCode( program, attribute );
-    }
+  @Override
+  public AggregationType getAggregationType() {
+    return attribute.getAggregationType();
+  }
 
-    @Override
-    public boolean equals( Object object )
-    {
-        if ( this == object )
-        {
-            return true;
-        }
+  // -------------------------------------------------------------------------
+  // hashCode and equals
+  // -------------------------------------------------------------------------
 
-        if ( object == null )
-        {
-            return false;
-        }
+  public String toString() {
+    return MoreObjects.toStringHelper(this)
+        .add("program", program)
+        .add("attribute", attribute)
+        .toString();
+  }
 
-        if ( !getClass().isAssignableFrom( object.getClass() ) )
-        {
-            return false;
-        }
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(program, attribute);
+  }
 
-        ProgramTrackedEntityAttributeDimensionItem other = (ProgramTrackedEntityAttributeDimensionItem) object;
-        
-        return Objects.equal( attribute, other.attribute ) && Objects.equal( program, other.program );
-    }
+  @Override
+  public boolean equals(Object obj) {
+    return this == obj
+        || obj instanceof ProgramTrackedEntityAttributeDimensionItem
+            && objectEquals((ProgramTrackedEntityAttributeDimensionItem) obj);
+  }
 
-    // -------------------------------------------------------------------------
-    // Get and set methods
-    // -------------------------------------------------------------------------
+  private boolean objectEquals(ProgramTrackedEntityAttributeDimensionItem other) {
+    return Objects.equal(attribute, other.attribute) && Objects.equal(program, other.program);
+  }
 
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public Program getProgram()
-    {
-        return program;
-    }
+  // -------------------------------------------------------------------------
+  // Get and set methods
+  // -------------------------------------------------------------------------
 
-    public void setProgram( Program program )
-    {
-        this.program = program;
-    }
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  @Property(value = PropertyType.REFERENCE, required = Property.Value.TRUE)
+  public Program getProgram() {
+    return program;
+  }
 
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public TrackedEntityAttribute getAttribute()
-    {
-        return attribute;
-    }
+  public void setProgram(Program program) {
+    this.program = program;
+  }
 
-    public void setAttribute( TrackedEntityAttribute attribute )
-    {
-        this.attribute = attribute;
-    }
-    
-    @Override
-    public String getName()
-    {
-        return program.getName() + " " + attribute.getName();
-    }
-    
-    @Override
-    public String getDisplayName()
-    {
-        return program.getDisplayName() + " " + attribute.getDisplayName();
-    }
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  @Property(value = PropertyType.REFERENCE, required = Property.Value.TRUE)
+  public TrackedEntityAttribute getAttribute() {
+    return attribute;
+  }
+
+  public void setAttribute(TrackedEntityAttribute attribute) {
+    this.attribute = attribute;
+  }
+
+  @Override
+  public String getName() {
+    return program.getName() + " " + attribute.getName();
+  }
+
+  @Override
+  public String getDisplayName() {
+    return program.getDisplayName() + " " + attribute.getDisplayName();
+  }
+
+  @Override
+  public String getDisplayShortName() {
+    return program.getDisplayShortName() + " " + attribute.getDisplayShortName();
+  }
 }

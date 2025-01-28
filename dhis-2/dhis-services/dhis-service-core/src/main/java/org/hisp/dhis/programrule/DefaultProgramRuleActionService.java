@@ -1,7 +1,5 @@
-package org.hisp.dhis.programrule;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,68 +25,73 @@ package org.hisp.dhis.programrule;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.springframework.transaction.annotation.Transactional;
+package org.hisp.dhis.programrule;
 
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author markusbekken
  */
-@Transactional
-public class DefaultProgramRuleActionService
-    implements ProgramRuleActionService
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.programrule.ProgramRuleActionService")
+public class DefaultProgramRuleActionService implements ProgramRuleActionService {
+  private final ProgramRuleActionStore programRuleActionStore;
 
-    private ProgramRuleActionStore programRuleActionStore;
+  // -------------------------------------------------------------------------
+  // ProgramRuleAction implementation
+  // -------------------------------------------------------------------------
 
-    public void setProgramRuleActionStore( ProgramRuleActionStore programRuleActionStore )
-    {
-        this.programRuleActionStore = programRuleActionStore;
-    }
+  @Override
+  @Transactional
+  public long addProgramRuleAction(ProgramRuleAction programRuleAction) {
+    programRuleActionStore.save(programRuleAction);
 
-    // -------------------------------------------------------------------------
-    // ProgramRuleAction implementation
-    // -------------------------------------------------------------------------
+    return programRuleAction.getId();
+  }
 
-    @Override
-    public int addProgramRuleAction( ProgramRuleAction programRuleAction )
-    {
-        programRuleActionStore.save( programRuleAction );
+  @Override
+  @Transactional
+  public void deleteProgramRuleAction(ProgramRuleAction programRuleAction) {
+    programRuleActionStore.delete(programRuleAction);
+  }
 
-        return programRuleAction.getId();
-    }
+  @Override
+  @Transactional
+  public void updateProgramRuleAction(ProgramRuleAction programRuleAction) {
+    programRuleActionStore.update(programRuleAction);
+  }
 
-    @Override
-    public void deleteProgramRuleAction( ProgramRuleAction programRuleAction )
-    {
-        programRuleActionStore.delete( programRuleAction );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public ProgramRuleAction getProgramRuleAction(long id) {
+    return programRuleActionStore.get(id);
+  }
 
-    @Override
-    public void updateProgramRuleAction( ProgramRuleAction programRuleAction )
-    {
-        programRuleActionStore.update( programRuleAction );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<ProgramRuleAction> getProgramActionsWithNoLinkToDataObject() {
+    return programRuleActionStore.getProgramActionsWithNoDataObject();
+  }
 
-    @Override
-    public ProgramRuleAction getProgramRuleAction( int id )
-    {
-        return programRuleActionStore.get( id );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<ProgramRuleAction> getProgramActionsWithNoLinkToNotification() {
+    return programRuleActionStore.getProgramActionsWithNoNotification();
+  }
 
-    @Override
-    public List<ProgramRuleAction> getAllProgramRuleAction()
-    {
-        return programRuleActionStore.getAll();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<ProgramRuleAction> getProgramRuleActionsWithNoSectionId() {
+    return programRuleActionStore.getMalFormedRuleActionsByType(ProgramRuleActionType.HIDESECTION);
+  }
 
-    @Override
-    public List<ProgramRuleAction> getProgramRuleAction( ProgramRule programRule )
-    {
-        return programRuleActionStore.get( programRule );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<ProgramRuleAction> getProgramRuleActionsWithNoStageId() {
+    return programRuleActionStore.getMalFormedRuleActionsByType(
+        ProgramRuleActionType.HIDEPROGRAMSTAGE);
+  }
 }

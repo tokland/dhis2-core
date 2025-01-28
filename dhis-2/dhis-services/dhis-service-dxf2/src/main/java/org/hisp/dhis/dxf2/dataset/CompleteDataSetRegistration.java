@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.dataset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.dxf2.dataset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.dataset;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
@@ -38,191 +37,209 @@ import org.hisp.dhis.common.DxfNamespaces;
 /**
  * @author Halvdan Hoem Grelland
  */
-@JacksonXmlRootElement( localName = "completeDataSetRegistration", namespace = DxfNamespaces.DXF_2_0 )
-public class CompleteDataSetRegistration
-{
-    //--------------------------------------------------------------------------
-    // Field names
-    //--------------------------------------------------------------------------
+@JacksonXmlRootElement(localName = ":", namespace = DxfNamespaces.DXF_2_0)
+public class CompleteDataSetRegistration {
+  // --------------------------------------------------------------------------
+  // Field names
+  // --------------------------------------------------------------------------
 
-    protected static final String FIELD_COMPLETE_DATA_SET_REGISTRATION = "completeDataSetRegistration";
+  protected static final String FIELD_COMPLETE_DATA_SET_REGISTRATION =
+      "completeDataSetRegistration";
 
-    protected static final String FIELD_DATASET = "dataSet";
+  protected static final String FIELD_DATASET = "dataSet";
 
-    protected static final String FIELD_PERIOD = "period";
+  protected static final String FIELD_PERIOD = "period";
 
-    protected static final String FIELD_ORGUNIT = "organisationUnit";
+  protected static final String FIELD_ORGUNIT = "organisationUnit";
 
-    protected static final String FIELD_ATTR_OPTION_COMBO = "attributeOptionCombo";
+  protected static final String FIELD_ATTR_OPTION_COMBO = "attributeOptionCombo";
 
-    protected static final String FIELD_DATE = "date";
+  protected static final String FIELD_DATE = "date";
 
-    protected static final String FIELD_STORED_BY = "storedBy";
+  protected static final String FIELD_STORED_BY = "storedBy";
 
-    //--------------------------------------------------------------------------
-    // Properties
-    //--------------------------------------------------------------------------
+  protected static final String FIELD_LAST_UPDATED_BY = "lastUpdatedBy";
 
-    protected String dataSet;
+  protected static final String FIELD_LAST_UPDATED = "lastUpdated";
 
-    protected String period;
+  protected static final String FIELD_IS_COMPLETED = "completed";
 
-    protected String organisationUnit; // 'source'
+  // --------------------------------------------------------------------------
+  // Properties
+  // --------------------------------------------------------------------------
 
-    protected String attributeOptionCombo;
+  protected String dataSet;
 
-    protected String date;
+  protected String period;
 
-    protected String storedBy;
-    
-    protected String cc;
-    
-    protected String cp;
+  protected String organisationUnit; // 'source'
 
-    //--------------------------------------------------------------------------
-    // Constructors
-    //--------------------------------------------------------------------------
+  protected String attributeOptionCombo;
 
-    public CompleteDataSetRegistration()
-    {
-    }
+  protected String date;
 
-    //--------------------------------------------------------------------------
-    // Logic
-    //--------------------------------------------------------------------------
+  protected String storedBy;
 
-    public boolean hasDate()
-    {
-        return StringUtils.isNotBlank( getDate() );
-    }
+  protected String lastUpdatedBy;
 
-    @Override
-    public String toString()
-    {
-        return MoreObjects.toStringHelper( this )
-            .add( FIELD_DATASET, dataSet )
-            .add( FIELD_PERIOD, period )
-            .add( FIELD_ORGUNIT, organisationUnit )
-            .add( FIELD_ATTR_OPTION_COMBO, attributeOptionCombo )
-            .add( FIELD_DATE, date )
-            .add( FIELD_STORED_BY, storedBy )
-            .toString();
-    }
+  protected String cc;
 
-    //--------------------------------------------------------------------------
-    // Streaming logic stubs
-    //--------------------------------------------------------------------------
+  protected String cp;
 
-    protected void open()
-    {
-    }
+  protected String lastUpdated;
 
-    protected void close()
-    {
-    }
+  protected Boolean completed;
 
-    protected void writeField( String fieldName, String value )
-    {
-    }
+  // --------------------------------------------------------------------------
+  // Constructors
+  // --------------------------------------------------------------------------
 
-    //--------------------------------------------------------------------------
-    // Getters and setters
-    //--------------------------------------------------------------------------
+  public CompleteDataSetRegistration() {}
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getDataSet()
-    {
-        return dataSet;
-    }
+  // --------------------------------------------------------------------------
+  // Logic
+  // --------------------------------------------------------------------------
 
-    public void setDataSet( String dataSet )
-    {
-        this.dataSet = dataSet;
-    }
+  public boolean hasDate() {
+    return StringUtils.isNotBlank(getDate());
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getPeriod()
-    {
-        return period;
-    }
+  @Override
+  public String toString() {
+    return MoreObjects.toStringHelper(this)
+        .add(FIELD_DATASET, dataSet)
+        .add(FIELD_PERIOD, period)
+        .add(FIELD_ORGUNIT, organisationUnit)
+        .add(FIELD_ATTR_OPTION_COMBO, attributeOptionCombo)
+        .add(FIELD_DATE, date)
+        .add(FIELD_STORED_BY, storedBy)
+        .add(FIELD_LAST_UPDATED_BY, lastUpdatedBy)
+        .add(FIELD_LAST_UPDATED, lastUpdated)
+        .add(FIELD_IS_COMPLETED, completed)
+        .toString();
+  }
 
-    public void setPeriod( String period )
-    {
-        this.period = period;
-    }
+  // --------------------------------------------------------------------------
+  // Streaming logic stubs
+  // --------------------------------------------------------------------------
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getOrganisationUnit()
-    {
-        return organisationUnit;
-    }
+  protected void open() {}
 
-    public void setOrganisationUnit( String organisationUnit )
-    {
-        this.organisationUnit = organisationUnit;
-    }
+  protected void close() {}
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getAttributeOptionCombo()
-    {
-        return attributeOptionCombo;
-    }
+  protected void writeField(String fieldName, String value) {}
 
-    public void setAttributeOptionCombo( String attributeOptionCombo )
-    {
-        this.attributeOptionCombo = attributeOptionCombo;
-    }
+  // --------------------------------------------------------------------------
+  // Getters and setters
+  // --------------------------------------------------------------------------
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getDate()
-    {
-        return date;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getDataSet() {
+    return dataSet;
+  }
 
-    public void setDate( String date )
-    {
-        this.date = date;
-    }
+  public void setDataSet(String dataSet) {
+    this.dataSet = dataSet;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getStoredBy()
-    {
-        return storedBy;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getPeriod() {
+    return period;
+  }
 
-    public void setStoredBy( String storedBy )
-    {
-        this.storedBy = storedBy;
-    }
+  public void setPeriod(String period) {
+    this.period = period;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getCc()
-    {
-        return cc;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getOrganisationUnit() {
+    return organisationUnit;
+  }
 
-    public void setCc( String cc )
-    {
-        this.cc = cc;
-    }
+  public void setOrganisationUnit(String organisationUnit) {
+    this.organisationUnit = organisationUnit;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getCp()
-    {
-        return cp;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getAttributeOptionCombo() {
+    return attributeOptionCombo;
+  }
 
-    public void setCp( String cp )
-    {
-        this.cp = cp;
-    }    
-    
+  public void setAttributeOptionCombo(String attributeOptionCombo) {
+    this.attributeOptionCombo = attributeOptionCombo;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getDate() {
+    return date;
+  }
+
+  public void setDate(String date) {
+    this.date = date;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getStoredBy() {
+    return storedBy;
+  }
+
+  public void setStoredBy(String storedBy) {
+    this.storedBy = storedBy;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getLastUpdated() {
+    return lastUpdated;
+  }
+
+  public void setLastUpdated(String lastUpdated) {
+    this.lastUpdated = lastUpdated;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getCc() {
+    return cc;
+  }
+
+  public void setCc(String cc) {
+    this.cc = cc;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getCp() {
+    return cp;
+  }
+
+  public void setCp(String cp) {
+    this.cp = cp;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public String getLastUpdatedBy() {
+    return lastUpdatedBy;
+  }
+
+  public void setLastUpdatedBy(String lastUpdatedBy) {
+    this.lastUpdatedBy = lastUpdatedBy;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public Boolean getCompleted() {
+    return completed;
+  }
+
+  public void setCompleted(Boolean completed) {
+    this.completed = completed;
+  }
 }

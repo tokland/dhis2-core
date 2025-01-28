@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.webmessage;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,30 +25,40 @@ package org.hisp.dhis.dxf2.webmessage;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.webmessage;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
+import org.hisp.dhis.feedback.Status;
+import org.springframework.http.HttpStatus;
 
 /**
  * @author Lars Helge Overland
  */
-public class DescriptiveWebMessage
-    extends WebMessage
-{    
-    private String description;
+public class DescriptiveWebMessage extends WebMessage {
+  private String description;
 
-    public DescriptiveWebMessage()
-    {
-        super();
-    }
-    
-    @JsonProperty
-    public String getDescription()
-    {
-        return description;
-    }
+  /** Only for deserialisation */
+  public DescriptiveWebMessage() {
+    super();
+  }
 
-    public void setDescription( String description )
-    {
-        this.description = description;
-    }
+  public DescriptiveWebMessage(Status status, HttpStatus httpStatus) {
+    super(status, httpStatus);
+  }
+
+  @JsonProperty
+  public String getDescription() {
+    return description;
+  }
+
+  public DescriptiveWebMessage setDescription(String description) {
+    this.description = description;
+    return this;
+  }
+
+  public DescriptiveWebMessage setDescription(BooleanSupplier when, Supplier<String> thenValue) {
+    return when.getAsBoolean() ? setDescription(thenValue.get()) : this;
+  }
 }

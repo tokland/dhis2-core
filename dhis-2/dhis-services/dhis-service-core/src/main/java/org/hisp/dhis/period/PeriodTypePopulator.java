@@ -1,7 +1,5 @@
-package org.hisp.dhis.period;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,55 +25,60 @@ package org.hisp.dhis.period;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.period;
 
+import jakarta.persistence.EntityManagerFactory;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.hibernate.SessionFactory;
+import org.hibernate.StatelessSession;
+import org.hisp.dhis.dbms.DbmsUtils;
 import org.hisp.dhis.system.startup.TransactionContextStartupRoutine;
 
 /**
  * @author Torgeir Lorange Ostby
  */
-public class PeriodTypePopulator
-    extends TransactionContextStartupRoutine
-{
-    private static final Log LOG = LogFactory.getLog( PeriodTypePopulator.class );
+@Slf4j
+@RequiredArgsConstructor
+public class PeriodTypePopulator extends TransactionContextStartupRoutine {
+  private final PeriodStore periodStore;
 
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+  private final EntityManagerFactory entityManagerFactory;
 
-    private PeriodStore periodStore;
+  // -------------------------------------------------------------------------
+  // Execute
+  // -------------------------------------------------------------------------
 
-    public void setPeriodStore( PeriodStore periodStore )
-    {
-        this.periodStore = periodStore;
+  @Override
+  public void executeInTransaction() {
+    List<PeriodType> types = new ArrayList<>(PeriodType.getAvailablePeriodTypes());
+
+    Collection<PeriodType> storedTypes = periodStore.getAllPeriodTypes();
+
+    types.removeAll(storedTypes);
+
+    // ---------------------------------------------------------------------
+    // Populate missing
+    // ---------------------------------------------------------------------
+
+    StatelessSession session =
+        entityManagerFactory.unwrap(SessionFactory.class).openStatelessSession();
+    session.beginTransaction();
+    try {
+      types.forEach(
+          type -> {
+            session.insert(type);
+            log.debug("Added PeriodType: " + type.getName());
+          });
+    } catch (Exception exception) {
+      exception.printStackTrace();
+    } finally {
+      DbmsUtils.closeStatelessSession(session);
     }
 
-    // -------------------------------------------------------------------------
-    // Execute
-    // -------------------------------------------------------------------------
-
-    @Override
-    public void executeInTransaction()
-    {
-        List<PeriodType> types = PeriodType.getAvailablePeriodTypes();
-
-        Collection<PeriodType> storedTypes = periodStore.getAllPeriodTypes();
-
-        types.removeAll( storedTypes );
-
-        // ---------------------------------------------------------------------
-        // Populate missing
-        // ---------------------------------------------------------------------
-
-        for ( PeriodType type : types )
-        {
-            periodStore.addPeriodType( type );
-
-            LOG.debug( "Added PeriodType: " + type.getName() );
-        }
-    }
+    types.forEach(type -> periodStore.reloadPeriodType(type));
+  }
 }

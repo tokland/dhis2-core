@@ -1,7 +1,5 @@
-package org.hisp.dhis.document.impl;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,31 +25,44 @@ package org.hisp.dhis.document.impl;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.document.impl;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
+import org.hisp.dhis.common.adapter.BaseIdentifiableObject_;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.document.Document;
 import org.hisp.dhis.document.DocumentStore;
+import org.hisp.dhis.security.acl.AclService;
 import org.hisp.dhis.user.User;
-
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Viet Nguyen <viet@dhis2.org>
  */
-public class HibernateDocumentStore
-    extends HibernateIdentifiableObjectStore<Document> implements DocumentStore
-{
-    @Override
-    public long getCountByUser( User user )
-    {
-        CriteriaBuilder builder = getSession().getCriteriaBuilder();
-        CriteriaQuery<Long> query = builder.createQuery( Long.class );
-        Root<Document> root = query.from( Document.class );
-        query.select( builder.count( root ) );
-        query.where( builder.equal( root.get( "user" ), user ) );
+@Repository("org.hisp.dhis.document.DocumentStore")
+public class HibernateDocumentStore extends HibernateIdentifiableObjectStore<Document>
+    implements DocumentStore {
+  public HibernateDocumentStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, Document.class, aclService, true);
+  }
 
-        return getSession().createQuery( query ).getSingleResult();
-    }
+  @Override
+  public long getCountByUser(User user) {
+    CriteriaBuilder builder = getSession().getCriteriaBuilder();
+    CriteriaQuery<Long> query = builder.createQuery(Long.class);
+    Root<Document> root = query.from(Document.class);
+    query.select(builder.count(root));
+    query.where(builder.equal(root.get(BaseIdentifiableObject_.CREATED_BY), user));
+
+    return entityManager.createQuery(query).getSingleResult();
+  }
 }

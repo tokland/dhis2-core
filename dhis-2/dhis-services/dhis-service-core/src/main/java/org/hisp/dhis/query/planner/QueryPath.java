@@ -1,7 +1,5 @@
-package org.hisp.dhis.query.planner;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,76 +25,73 @@ package org.hisp.dhis.query.planner;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.query.planner;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.MoreObjects;
-import org.hisp.dhis.schema.Property;
-
 import java.util.Arrays;
+import java.util.Locale;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.schema.Property;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class QueryPath
-{
-    private final Property property;
+@Getter
+@RequiredArgsConstructor
+public class QueryPath {
+  private final Property property;
 
-    private final boolean persisted;
+  private final boolean persisted;
 
-    private String[] alias = new String[]{};
+  private final String[] alias;
 
-    private static final Joiner PATH_JOINER = Joiner.on( "." );
+  private static final Joiner PATH_JOINER = Joiner.on(".");
 
-    public QueryPath( Property property, boolean persisted )
-    {
-        this.property = property;
-        this.persisted = persisted;
+  /**
+   * If this locale is not null then the query must use the translations jsonb column instead of
+   * default properties.
+   */
+  private Locale locale;
+
+  public QueryPath(Property property, boolean persisted) {
+    this(property, persisted, new String[0]);
+  }
+
+  public String getPath() {
+    String fieldName = property.getFieldName();
+
+    if (fieldName == null) {
+      fieldName = property.getName();
     }
 
-    public QueryPath( Property property, boolean persisted, String[] alias )
-    {
-        this( property, persisted );
-        this.alias = alias;
-    }
+    return haveAlias() ? PATH_JOINER.join(alias) + "." + fieldName : fieldName;
+  }
 
-    public Property getProperty()
-    {
-        return property;
-    }
+  public boolean haveAlias() {
+    return haveAlias(0);
+  }
 
-    public String getPath()
-    {
-        return haveAlias() ? PATH_JOINER.join( alias ) + "." + property.getFieldName() : property.getFieldName();
-    }
+  public boolean haveAlias(int n) {
+    return alias != null && alias.length > n;
+  }
 
-    public boolean isPersisted()
-    {
-        return persisted;
-    }
+  public void setLocale(Locale locale) {
+    this.locale = locale;
+  }
 
-    public String[] getAlias()
-    {
-        return alias;
-    }
+  public Locale getLocale() {
+    return locale;
+  }
 
-    public boolean haveAlias()
-    {
-        return alias != null && alias.length > 0;
-    }
-
-    public boolean haveAlias( int n )
-    {
-        return alias != null && alias.length > n;
-    }
-
-    @Override
-    public String toString()
-    {
-        return MoreObjects.toStringHelper( this )
-            .add( "name", property.getName() )
-            .add( "path", getPath() )
-            .add( "persisted", persisted )
-            .add( "alias", Arrays.toString( alias ) )
-            .toString();
-    }
+  @Override
+  public String toString() {
+    return MoreObjects.toStringHelper(this)
+        .add("name", property.getName())
+        .add("path", getPath())
+        .add("persisted", persisted)
+        .add("alias", Arrays.toString(alias))
+        .toString();
+  }
 }

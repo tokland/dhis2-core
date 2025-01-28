@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.jobs;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,102 +25,94 @@ package org.hisp.dhis.dxf2.metadata.jobs;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.jobs;
 
-import org.hisp.dhis.DhisSpringTest;
-import org.hisp.dhis.feedback.Status;
-import org.hisp.dhis.dxf2.metadata.sync.MetadataSyncSummary;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import org.hisp.dhis.dxf2.metadata.feedback.ImportReport;
+import org.hisp.dhis.dxf2.metadata.sync.MetadataSyncSummary;
+import org.hisp.dhis.feedback.Status;
 import org.hisp.dhis.metadata.version.MetadataVersion;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.retry.RetryContext;
-
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.*;
 
 /**
  * @author aamerm
  */
-public class MetadataRetryContextTest
-    extends DhisSpringTest
-{
-    @Mock
-    RetryContext retryContext;
+@ExtendWith(MockitoExtension.class)
+class MetadataRetryContextTest {
+  @Mock RetryContext retryContext;
 
-    @InjectMocks
-    MetadataRetryContext metadataRetryContext;
+  @InjectMocks MetadataRetryContext metadataRetryContext;
 
-    private MetadataVersion mockVersion;
-    private String testKey = "testKey";
-    private String testMessage = "testMessage";
+  private MetadataVersion mockVersion;
 
-    @Before
-    public void setUp() throws Exception
-    {
-        MockitoAnnotations.initMocks( this );
+  private String testKey = "testKey";
 
-        mockVersion = mock( MetadataVersion.class );
-    }
+  private String testMessage = "testMessage";
 
-    @Test
-    public void testShouldGetRetryContextCorrectly() throws Exception
-    {
-        assertEquals( retryContext, metadataRetryContext.getRetryContext() );
-    }
+  @BeforeEach
+  public void setUp() {
+    mockVersion = mock(MetadataVersion.class);
+  }
 
-    @Test
-    public void testShouldSetRetryContextCorrectly() throws Exception
-    {
-        RetryContext newMock = mock( RetryContext.class );
+  @Test
+  void testShouldGetRetryContextCorrectly() {
+    assertEquals(retryContext, metadataRetryContext.getRetryContext());
+  }
 
-        metadataRetryContext.setRetryContext( newMock );
+  @Test
+  void testShouldSetRetryContextCorrectly() {
+    RetryContext newMock = mock(RetryContext.class);
 
-        assertEquals( newMock, metadataRetryContext.getRetryContext() );
-    }
+    metadataRetryContext.setRetryContext(newMock);
 
-    @Test
-    public void testIfVersionIsNull() throws Exception
-    {
-        metadataRetryContext.updateRetryContext( testKey, testMessage, null );
+    assertEquals(newMock, metadataRetryContext.getRetryContext());
+  }
 
-        verify( retryContext ).setAttribute( testKey, testMessage );
-        verify( retryContext, never() ).setAttribute( MetadataSyncJob.VERSION_KEY, null );
-    }
+  @Test
+  void testIfVersionIsNull() {
+    metadataRetryContext.updateRetryContext(testKey, testMessage, null);
 
-    @Test
-    public void testIfVersionIsNotNull() throws Exception
-    {
-        metadataRetryContext.updateRetryContext( testKey, testMessage, mockVersion );
+    verify(retryContext).setAttribute(testKey, testMessage);
+    verify(retryContext, never()).setAttribute(MetadataSyncJob.VERSION_KEY, null);
+  }
 
-        verify( retryContext ).setAttribute( testKey, testMessage );
-        verify( retryContext ).setAttribute( MetadataSyncJob.VERSION_KEY, mockVersion );
-    }
+  @Test
+  void testIfVersionIsNotNull() {
+    metadataRetryContext.updateRetryContext(testKey, testMessage, mockVersion);
 
-    @Test
-    public void testIfSummaryIsNull() throws Exception
-    {
-        MetadataSyncSummary metadataSyncSummary = mock( MetadataSyncSummary.class );
+    verify(retryContext).setAttribute(testKey, testMessage);
+    verify(retryContext).setAttribute(MetadataSyncJob.VERSION_KEY, mockVersion);
+  }
 
-        metadataRetryContext.updateRetryContext( testKey, testMessage, mockVersion, null );
+  @Test
+  void testIfSummaryIsNull() {
+    MetadataSyncSummary metadataSyncSummary = mock(MetadataSyncSummary.class);
 
-        verify( retryContext ).setAttribute( testKey, testMessage );
-        verify( metadataSyncSummary, never() ).getImportReport();
+    metadataRetryContext.updateRetryContext(testKey, testMessage, mockVersion, null);
 
-    }
+    verify(retryContext).setAttribute(testKey, testMessage);
+    verify(metadataSyncSummary, never()).getImportReport();
+  }
 
-    @Test
-    public void testIfSummaryIsNotNull() throws Exception
-    {
-        MetadataSyncSummary testSummary = new MetadataSyncSummary();
-        ImportReport importReport = new ImportReport();
-        importReport.setStatus( Status.ERROR );
-        testSummary.setImportReport( importReport );
+  @Test
+  void testIfSummaryIsNotNull() {
+    MetadataSyncSummary testSummary = new MetadataSyncSummary();
+    ImportReport importReport = new ImportReport();
+    importReport.setStatus(Status.ERROR);
+    testSummary.setImportReport(importReport);
 
-        metadataRetryContext.updateRetryContext( testKey, testMessage, mockVersion, testSummary );
+    metadataRetryContext.updateRetryContext(testKey, testMessage, mockVersion, testSummary);
 
-        verify( retryContext ).setAttribute( testKey, testMessage );
-    }
+    verify(retryContext).setAttribute(testKey, testMessage);
+  }
 }

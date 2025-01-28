@@ -1,7 +1,5 @@
-package org.hisp.dhis.node.transformers;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +25,11 @@ package org.hisp.dhis.node.transformers;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.node.transformers;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import java.util.List;
 import org.hisp.dhis.node.Node;
 import org.hisp.dhis.node.NodeTransformer;
 import org.hisp.dhis.node.types.SimpleNode;
@@ -35,43 +37,36 @@ import org.hisp.dhis.schema.Property;
 import org.hisp.dhis.schema.PropertyType;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-
-import static com.google.common.base.Preconditions.checkNotNull;
-
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
 @Component
-public class SizeNodeTransformer implements NodeTransformer
-{
-    @Override
-    public String name()
-    {
-        return "size";
+public class SizeNodeTransformer implements NodeTransformer {
+  @Override
+  public String name() {
+    return "size";
+  }
+
+  @Override
+  public Node transform(Node node, List<String> args) {
+    checkNotNull(node);
+    checkNotNull(node.getProperty());
+
+    Property property = node.getProperty();
+
+    if (property.isCollection()) {
+      return new SimpleNode(
+          property.getCollectionName(), node.getChildren().size(), property.isAttribute());
+    } else if (property.is(PropertyType.TEXT)) {
+      return new SimpleNode(
+          property.getName(),
+          ((String) ((SimpleNode) node).getValue()).length(),
+          property.isAttribute());
+    } else if (property.is(PropertyType.INTEGER, PropertyType.NUMBER)) {
+      return new SimpleNode(
+          property.getName(), ((SimpleNode) node).getValue(), property.isAttribute());
     }
 
-    @Override
-    public Node transform( Node node, List<String> args )
-    {
-        checkNotNull( node );
-        checkNotNull( node.getProperty() );
-
-        Property property = node.getProperty();
-
-        if ( property.isCollection() )
-        {
-            return new SimpleNode( property.getCollectionName(), node.getChildren().size(), property.isAttribute() );
-        }
-        else if ( property.is( PropertyType.TEXT ) )
-        {
-            return new SimpleNode( property.getName(), ((String) ((SimpleNode) node).getValue()).length(), property.isAttribute() );
-        }
-        else if ( property.is( PropertyType.INTEGER ) || property.is( PropertyType.NUMBER ) )
-        {
-            return new SimpleNode( property.getName(), ((SimpleNode) node).getValue(), property.isAttribute() );
-        }
-
-        return node;
-    }
+    return node;
+  }
 }

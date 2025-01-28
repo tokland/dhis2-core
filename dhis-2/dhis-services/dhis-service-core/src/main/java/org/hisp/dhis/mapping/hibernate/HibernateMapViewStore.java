@@ -1,7 +1,5 @@
-package org.hisp.dhis.mapping.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,25 +25,51 @@ package org.hisp.dhis.mapping.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.mapping.hibernate;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import java.util.List;
-
-import org.hibernate.criterion.Restrictions;
-
 import org.hisp.dhis.common.hibernate.HibernateAnalyticalObjectStore;
 import org.hisp.dhis.mapping.MapView;
 import org.hisp.dhis.mapping.MapViewStore;
 import org.hisp.dhis.organisationunit.OrganisationUnitGroupSet;
+import org.hisp.dhis.program.Program;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class HibernateMapViewStore
-    extends HibernateAnalyticalObjectStore<MapView> implements MapViewStore
-{
-    @SuppressWarnings("unchecked")
-    public List<MapView> getByOrganisationUnitGroupSet( OrganisationUnitGroupSet groupSet )
-    {
-        return getCriteria( Restrictions.eq( "organisationUnitGroupSet", groupSet ) ).list();
-    }
+@Repository("org.hisp.dhis.mapping.MapViewStore")
+public class HibernateMapViewStore extends HibernateAnalyticalObjectStore<MapView>
+    implements MapViewStore {
+
+  public HibernateMapViewStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, MapView.class, aclService, true);
+  }
+
+  @Override
+  public List<MapView> getByOrganisationUnitGroupSet(OrganisationUnitGroupSet groupSet) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("organisationUnitGroupSet"), groupSet)));
+  }
+
+  @Override
+  public List<MapView> findByProgram(Program program) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+    return getList(
+        builder,
+        newJpaParameters().addPredicate(root -> builder.equal(root.get("program"), program)));
+  }
 }

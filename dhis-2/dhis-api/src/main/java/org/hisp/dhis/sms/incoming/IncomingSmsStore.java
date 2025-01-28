@@ -1,7 +1,5 @@
-package org.hisp.dhis.sms.incoming;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,33 +25,23 @@ package org.hisp.dhis.sms.incoming;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.sms.incoming;
 
 import java.util.List;
+import org.hisp.dhis.common.IdentifiableObjectStore;
 
-/**
- * Store for incoming SMS messages.
- */
-public interface IncomingSmsStore
-{
-    String ID = IncomingSmsStore.class.getName();
+/** Store for incoming SMS messages. */
+public interface IncomingSmsStore extends IdentifiableObjectStore<IncomingSms> {
+  String ID = IncomingSmsStore.class.getName();
 
-    int save( IncomingSms incomingSms );
+  List<IncomingSms> getSmsByStatus(SmsMessageStatus status, String originator);
 
-    void update( IncomingSms incomingSms );
+  List<IncomingSms> getAll(Integer min, Integer max, boolean hasPagination);
 
-    IncomingSms get( int id );
+  List<IncomingSms> getSmsByStatus(
+      SmsMessageStatus status, String keyword, Integer min, Integer max, boolean hasPagination);
 
-    List<IncomingSms> getSmsByStatus( SmsMessageStatus status, String keyword );
+  List<IncomingSms> getSmsByOriginator(String originator);
 
-    List<IncomingSms> getSmsByStatus( SmsMessageStatus status, String keyword, Integer min, Integer max );
-
-    List<IncomingSms> getSmsByOriginator( String originator );
-
-    long getSmsCount();
-
-    List<IncomingSms> getAllSmses();
-
-    void delete( IncomingSms incomingSms );
-
-    List<IncomingSms> getAllUnparsedSmses();
+  List<IncomingSms> getAllUnparsedMessages();
 }

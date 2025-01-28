@@ -1,7 +1,5 @@
-package org.hisp.dhis.i18n.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,22 +25,37 @@ package org.hisp.dhis.i18n.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.i18n.hibernate;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import java.util.Locale;
-
-import org.hibernate.criterion.Restrictions;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.i18n.I18nLocaleStore;
 import org.hisp.dhis.i18n.locale.I18nLocale;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
-public class HibernateI18nLocaleStore
-    extends HibernateIdentifiableObjectStore<I18nLocale>
-    implements I18nLocaleStore
-{
-    @Override
-    public I18nLocale getI18nLocaleByLocale( Locale locale )
-    {
-        return (I18nLocale) getCriteria( Restrictions.eq( "locale", locale.toString() ) ).uniqueResult();
-    }
+@Repository("org.hisp.dhis.i18n.I18nLocaleStore")
+public class HibernateI18nLocaleStore extends HibernateIdentifiableObjectStore<I18nLocale>
+    implements I18nLocaleStore {
+  public HibernateI18nLocaleStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, I18nLocale.class, aclService, false);
+  }
 
+  @Override
+  public I18nLocale getI18nLocaleByLocale(Locale locale) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getSingleResult(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("locale"), locale.toString())));
+  }
 }

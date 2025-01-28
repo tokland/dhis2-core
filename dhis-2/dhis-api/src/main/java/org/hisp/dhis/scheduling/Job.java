@@ -1,7 +1,5 @@
-package org.hisp.dhis.scheduling;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,24 +25,20 @@ package org.hisp.dhis.scheduling;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.feedback.ErrorReport;
+package org.hisp.dhis.scheduling;
 
 /**
- * This interface is used for jobs in the system which are scheduled or executed by spring scheduler.
- * The actual job will contain an execute method which performs the appropriate actions.
- * <p>
- * {@link JobInstance} is another interface connected to jobs. This interface is used for the actual execution of the job.
- * See {@link SchedulingManager} for more information about the scheduling.
+ * This interface is used for jobs in the system which are scheduled or executed by the Spring
+ * scheduler. The actual job will contain an execute method which performs the appropriate actions.
  *
+ * <p>See {@link JobSchedulerService} for more information about the scheduling.
+ *
+ * @see <a href= "https://github.com/dhis2/wow-backend/blob/master/docs/job_scheduling.md">Docs</a>
  * @author Henning Håkonsen
  */
-public interface Job
-{
-    JobType getJobType();
+public interface Job {
 
-    void execute( JobConfiguration jobConfiguration )
-        throws Exception;
+  JobType getJobType();
 
-    ErrorReport validate( );
+  void execute(JobConfiguration config, JobProgress progress);
 }

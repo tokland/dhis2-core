@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,62 +25,56 @@ package org.hisp.dhis.dataset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataset;
 
 import java.util.Iterator;
-
+import java.util.List;
+import java.util.Set;
+import lombok.RequiredArgsConstructor;
 import org.hisp.dhis.dataelement.DataElement;
-import org.hisp.dhis.system.deletion.DeletionHandler;
+import org.hisp.dhis.indicator.Indicator;
+import org.hisp.dhis.system.deletion.IdObjectDeletionHandler;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
- * @version $Id$
  */
-public class SectionDeletionHandler
-    extends DeletionHandler
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Component
+@RequiredArgsConstructor
+public class SectionDeletionHandler extends IdObjectDeletionHandler<Section> {
+  private final SectionService sectionService;
 
-    private SectionService sectionService;
+  @Override
+  protected void registerHandler() {
+    whenDeleting(DataElement.class, this::deleteDataElement);
+    whenDeleting(Indicator.class, this::deleteIndicator);
+    whenDeleting(DataSet.class, this::deleteDataSet);
+  }
 
-    public void setSectionService( SectionService sectionService )
-    {
-        this.sectionService = sectionService;
+  private void deleteDataElement(DataElement dataElement) {
+    List<Section> sections = sectionService.getSectionsByDataElement(dataElement.getUid());
+    for (Section section : sections) {
+      section.getGreyedFields().removeIf(operand -> operand.getDataElement().equals(dataElement));
+      section.getDataElements().removeIf(de -> de.equals(dataElement));
+      sectionService.updateSection(section);
     }
-    
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
+  }
 
-    @Override
-    public String getClassName()
-    {
-        return Section.class.getSimpleName();
+  private void deleteIndicator(Indicator indicator) {
+    List<Section> sections = sectionService.getSectionsByIndicators(Set.of(indicator));
+    for (Section section : sections) {
+      section.getIndicators().removeIf(in -> indicator.equals(in));
+      sectionService.updateSection(section);
     }
-    
-    @Override
-    public void deleteDataElement( DataElement dataElement )
-    {
-        for ( Section section : sectionService.getAllSections() )
-        {
-            if ( section.getDataElements().remove( dataElement ) )
-            {
-                sectionService.updateSection( section );
-            }
-        }
+  }
+
+  private void deleteDataSet(DataSet dataSet) {
+    Iterator<Section> iterator = dataSet.getSections().iterator();
+
+    while (iterator.hasNext()) {
+      Section section = iterator.next();
+      iterator.remove();
+      sectionService.deleteSection(section);
     }
-    
-    @Override
-    public void deleteDataSet( DataSet dataSet )
-    {
-        Iterator<Section> iterator = dataSet.getSections().iterator();
-        
-        while ( iterator.hasNext() )
-        {
-            Section section = iterator.next();
-            iterator.remove();
-            sectionService.deleteSection( section );
-        }
-    }
+  }
 }

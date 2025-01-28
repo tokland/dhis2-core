@@ -1,7 +1,5 @@
-package org.hisp.dhis.node.transformers;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,36 +25,34 @@ package org.hisp.dhis.node.transformers;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.node.transformers;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import java.util.List;
 import org.hisp.dhis.node.AbstractNode;
 import org.hisp.dhis.node.Node;
 import org.hisp.dhis.node.NodeTransformer;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
 @Component
-public class RenameNodeTransformer implements NodeTransformer
-{
-    @Override
-    public String name()
-    {
-        return "rename";
-    }
+public class RenameNodeTransformer implements NodeTransformer {
+  @Override
+  public String name() {
+    return "rename";
+  }
 
-    @Override
-    public Node transform( Node node, List<String> args )
-    {
-        checkNotNull( node );
-        checkArgument( args.size() > 0, "rename requires a name parameter, .e.g: property~rename(newName)" );
-        ((AbstractNode) node).setName( args.get( 0 ) );
+  @Override
+  public Node transform(Node node, List<String> args) {
+    checkNotNull(node);
+    checkArgument(
+        args.size() > 0, "rename requires a name parameter, .e.g: property~rename(newName)");
+    ((AbstractNode) node).setName(args.get(0));
 
-        return node;
-    }
+    return node;
+  }
 }

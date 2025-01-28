@@ -1,7 +1,5 @@
-package org.hisp.dhis.user;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,36 +25,33 @@ package org.hisp.dhis.user;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.user;
 
 /**
  * @author Lars Helge Overland
  */
-public enum UserInvitationStatus
-{
-    NONE( "none" ), ALL( "all" ), EXPIRED( "expired" );
+public enum UserInvitationStatus {
+  NONE("none"),
+  ALL("all"),
+  EXPIRED("expired");
 
-    private final String value;
+  private final String value;
 
-    UserInvitationStatus( String value )
-    {
-        this.value = value;
+  UserInvitationStatus(String value) {
+    this.value = value;
+  }
+
+  public static UserInvitationStatus fromValue(String value) {
+    for (UserInvitationStatus status : UserInvitationStatus.values()) {
+      if (status.value.equalsIgnoreCase(value)) {
+        return status;
+      }
     }
 
-    public static UserInvitationStatus fromValue( String value )
-    {
-        for ( UserInvitationStatus status : UserInvitationStatus.values() )
-        {
-            if ( status.value.equalsIgnoreCase( value ) )
-            {
-                return status;
-            }
-        }
+    return null;
+  }
 
-        return null;
-    }
-
-    public String getValue()
-    {
-        return value;
-    }
+  public String getValue() {
+    return value;
+  }
 }

@@ -1,6 +1,5 @@
-package org.hisp.dhis.fileresource.hibernate;
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,22 +25,36 @@ package org.hisp.dhis.fileresource.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.fileresource.hibernate;
 
+import jakarta.persistence.EntityManager;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.fileresource.ExternalFileResource;
 import org.hisp.dhis.fileresource.ExternalFileResourceStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Stian Sandvold
  */
+@Repository("org.hisp.dhis.fileresource.ExternalFileResourceStore")
 public class HibernateExternalFileResourceStore
     extends HibernateIdentifiableObjectStore<ExternalFileResource>
-    implements ExternalFileResourceStore
-{
-    @Override
-    public ExternalFileResource getExternalFileResourceByAccessToken( String accessToken )
-    {
-        return (ExternalFileResource) getQuery( "from ExternalFileResource where accessToken = :accessToken" )
-            .setString( "accessToken", accessToken ).uniqueResult();
-    }
+    implements ExternalFileResourceStore {
+  public HibernateExternalFileResourceStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, ExternalFileResource.class, aclService, false);
+  }
+
+  @Override
+  public ExternalFileResource getExternalFileResourceByAccessToken(String accessToken) {
+    return getQuery("from ExternalFileResource where accessToken = :accessToken")
+        .setParameter("accessToken", accessToken)
+        .uniqueResult();
+  }
 }

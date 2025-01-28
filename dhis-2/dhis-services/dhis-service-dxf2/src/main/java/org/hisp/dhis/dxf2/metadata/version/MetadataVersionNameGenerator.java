@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.version;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,9 +25,9 @@ package org.hisp.dhis.dxf2.metadata.version;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.version;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.hisp.dhis.dxf2.metadata.version.exception.MetadataVersionServiceException;
 import org.hisp.dhis.metadata.version.MetadataVersion;
 import org.hisp.dhis.metadata.version.MetadataVersionService;
@@ -39,34 +37,25 @@ import org.hisp.dhis.metadata.version.MetadataVersionService;
  *
  * @author aamerm
  */
-public class MetadataVersionNameGenerator
-{
-    private static final Log log = LogFactory.getLog( MetadataVersionNameGenerator.class );
+@Slf4j
+public class MetadataVersionNameGenerator {
+  public static String getNextVersionName(MetadataVersion version) {
+    if (version == null) {
+      return MetadataVersionService.METADATAVERSION_NAME_PREFIX + 1;
+    } else {
+      String[] versionNameSplit = version.getName().split("_");
+      String versionNameSuffix = versionNameSplit[1];
+      int n;
+      try {
+        n = Integer.parseInt(versionNameSuffix);
+      } catch (NumberFormatException nfe) {
+        String message = "Invalid version name found: " + versionNameSuffix;
+        log.error(message, nfe);
 
-    public static String getNextVersionName( MetadataVersion version )
-    {
-        if ( version == null )
-        {
-            return MetadataVersionService.METADATAVERSION_NAME_PREFIX + 1;
-        }
-        else
-        {
-            String[] versionNameSplit = version.getName().split( "_" );
-            String versionNameSuffix = versionNameSplit[1];
-            int n;
-            try
-            {
-                n = Integer.parseInt( versionNameSuffix );
-            }
-            catch ( NumberFormatException nfe )
-            {
-                String message = "Invalid version name found: " + versionNameSuffix;
-                log.error( message, nfe );
+        throw new MetadataVersionServiceException(message, nfe);
+      }
 
-                throw new MetadataVersionServiceException( message, nfe );
-            }
-
-            return MetadataVersionService.METADATAVERSION_NAME_PREFIX + (n + 1);
-        }
+      return MetadataVersionService.METADATAVERSION_NAME_PREFIX + (n + 1);
     }
+  }
 }

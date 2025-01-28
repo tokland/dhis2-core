@@ -1,7 +1,5 @@
-package org.hisp.dhis.configuration;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,64 +25,75 @@ package org.hisp.dhis.configuration;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.common.GenericStore;
-import org.hisp.dhis.user.User;
-import org.hisp.dhis.user.UserGroup;
-import org.springframework.transaction.annotation.Transactional;
+package org.hisp.dhis.configuration;
 
 import java.util.Iterator;
+import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.common.GenericStore;
+import org.hisp.dhis.commons.util.TextUtils;
+import org.hisp.dhis.user.UserDetails;
+import org.hisp.dhis.user.UserGroup;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Lars Helge Overland
  */
-@Transactional
-public class DefaultConfigurationService
-    implements ConfigurationService
-{
-    private GenericStore<Configuration> configurationStore;
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.configuration.ConfigurationService")
+public class DefaultConfigurationService implements ConfigurationService {
+  @Qualifier("org.hisp.dhis.configuration.ConfigurationStore")
+  private final GenericStore<Configuration> configurationStore;
 
-    public void setConfigurationStore( GenericStore<Configuration> configurationStore )
-    {
-        this.configurationStore = configurationStore;
+  // -------------------------------------------------------------------------
+  // ConfigurationService implementation
+  // -------------------------------------------------------------------------
+
+  @Override
+  @Transactional
+  public void setConfiguration(Configuration configuration) {
+    if (configuration == null) {
+      return;
+    }
+    if (configuration.getId() > 0) {
+      configurationStore.update(configuration);
+    } else {
+      configurationStore.save(configuration);
+    }
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Configuration getConfiguration() {
+    Iterator<Configuration> iterator = configurationStore.getAll().iterator();
+
+    return iterator.hasNext() ? iterator.next() : new Configuration();
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public boolean isCorsWhitelisted(String origin) {
+    Set<String> corsWhitelist = getConfiguration().getCorsWhitelist();
+
+    for (String cors : corsWhitelist) {
+      String regex = TextUtils.createRegexFromGlob(cors);
+
+      if (origin.matches(regex)) {
+        return true;
+      }
     }
 
-    // -------------------------------------------------------------------------
-    // ConfigurationService implementation
-    // -------------------------------------------------------------------------
-    
-    @Override
-    public void setConfiguration( Configuration configuration )
-    {
-        if ( configuration != null && configuration.getId() > 0 )
-        {
-            configurationStore.update( configuration );
-        }
-        else
-        {
-            configurationStore.save( configuration );
-        }
-    }
-    
-    @Override
-    public Configuration getConfiguration()
-    {
-        Iterator<Configuration> iterator = configurationStore.getAll().iterator();
-        
-        return iterator.hasNext() ? iterator.next() : new Configuration();
-    }
+    return false;
+  }
 
-    @Override
-    public boolean isCorsWhitelisted( String origin )
-    {
-        return getConfiguration().getCorsWhitelist().contains( origin );
-    }
-
-    @Override
-    public boolean isUserInFeedbackRecipientUserGroup( User user )
-    {
-        UserGroup feedbackRecipients = getConfiguration().getFeedbackRecipients();
-
-        return feedbackRecipients != null && feedbackRecipients.getMembers().contains( user );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public boolean isUserInFeedbackRecipientUserGroup(UserDetails user) {
+    UserGroup feedbackRecipients = getConfiguration().getFeedbackRecipients();
+    if (feedbackRecipients == null) return false;
+    return feedbackRecipients.getMembers().stream()
+        .anyMatch(member -> member.getUid().equals(user.getUid()));
+  }
 }

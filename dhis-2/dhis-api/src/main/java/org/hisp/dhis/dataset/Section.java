@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,215 +25,229 @@ package org.hisp.dhis.dataset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataset;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
-import org.hisp.dhis.common.BaseIdentifiableObject;
-import org.hisp.dhis.common.DxfNamespaces;
-import org.hisp.dhis.common.MetadataObject;
-import org.hisp.dhis.dataelement.DataElement;
-import org.hisp.dhis.category.CategoryCombo;
-import org.hisp.dhis.dataelement.DataElementOperand;
-import org.hisp.dhis.indicator.Indicator;
-import org.hisp.dhis.schema.annotation.PropertyRange;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.hisp.dhis.category.CategoryCombo;
+import org.hisp.dhis.common.BaseIdentifiableObject;
+import org.hisp.dhis.common.DxfNamespaces;
+import org.hisp.dhis.common.MetadataObject;
+import org.hisp.dhis.common.OpenApi;
+import org.hisp.dhis.dataelement.DataElement;
+import org.hisp.dhis.dataelement.DataElementOperand;
+import org.hisp.dhis.indicator.Indicator;
+import org.hisp.dhis.schema.annotation.PropertyRange;
 
-@JacksonXmlRootElement( localName = "section", namespace = DxfNamespaces.DXF_2_0 )
-public class Section
-    extends BaseIdentifiableObject implements MetadataObject
-{
-    private String description;
+@JacksonXmlRootElement(localName = "section", namespace = DxfNamespaces.DXF_2_0)
+public class Section extends BaseIdentifiableObject implements MetadataObject {
+  private String description;
 
-    private DataSet dataSet;
+  private DataSet dataSet;
 
-    private List<DataElement> dataElements = new ArrayList<>();
+  private List<DataElement> dataElements = new ArrayList<>();
 
-    private List<Indicator> indicators = new ArrayList<>();
+  private List<Indicator> indicators = new ArrayList<>();
 
-    private Set<DataElementOperand> greyedFields = new HashSet<>();
+  private Set<DataElementOperand> greyedFields = new HashSet<>();
 
-    private int sortOrder;
+  private int sortOrder;
 
-    private boolean showRowTotals;
+  private boolean showRowTotals;
 
-    private boolean showColumnTotals;
+  private boolean showColumnTotals;
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------
+  private boolean disableDataElementAutoGroup;
 
-    public Section()
-    {
+  private String displayOptions;
+
+  // -------------------------------------------------------------------------
+  // Constructors
+  // -------------------------------------------------------------------------
+
+  public Section() {}
+
+  public Section(
+      String name,
+      DataSet dataSet,
+      List<DataElement> dataElements,
+      Set<DataElementOperand> greyedFields) {
+    this.name = name;
+    this.dataSet = dataSet;
+    this.dataElements = dataElements;
+    this.greyedFields = greyedFields;
+  }
+
+  // -------------------------------------------------------------------------
+  // Logic
+  // -------------------------------------------------------------------------
+
+  public boolean hasCategoryCombo() {
+    return !getCategoryCombos().isEmpty();
+  }
+
+  @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+  @JsonSerialize(contentAs = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public Set<CategoryCombo> getCategoryCombos() {
+    Set<CategoryCombo> categoryCombos = new HashSet<>();
+
+    for (DataElement dataElement : dataElements) {
+      CategoryCombo categoryCombo = dataElement.getDataElementCategoryCombo(dataSet);
+
+      if (categoryCombo != null) {
+        categoryCombos.add(categoryCombo);
+      }
     }
 
-    public Section( String name, DataSet dataSet, List<DataElement> dataElements, Set<DataElementOperand> greyedFields )
-    {
-        this.name = name;
-        this.dataSet = dataSet;
-        this.dataElements = dataElements;
-        this.greyedFields = greyedFields;
+    return categoryCombos;
+  }
+
+  public boolean hasDataElements() {
+    return dataElements != null && !dataElements.isEmpty();
+  }
+
+  public List<DataElement> getDataElementsByCategoryCombo(CategoryCombo categoryCombo) {
+    List<DataElement> dataElements = new ArrayList<>();
+
+    for (DataElement dataElement : this.dataElements) {
+      if (dataElement.getDataElementCategoryCombo(this.dataSet).equals(categoryCombo)) {
+        dataElements.add(dataElement);
+      }
     }
 
-    // -------------------------------------------------------------------------
-    // Logic
-    // -------------------------------------------------------------------------
+    return dataElements;
+  }
 
-    public boolean hasCategoryCombo()
-    {
-        return !getCategoryCombos().isEmpty();
-    }
+  // -------------------------------------------------------------------------
+  // Getters and setters
+  // -------------------------------------------------------------------------
 
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public Set<CategoryCombo> getCategoryCombos()
-    {
-        Set<CategoryCombo> categoryCombos = new HashSet<>();
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  @PropertyRange(min = 2)
+  public String getDescription() {
+    return description;
+  }
 
-        for ( DataElement dataElement : dataElements )
-        {
-            CategoryCombo categoryCombo = dataElement.getDataElementCategoryCombo( dataSet );
+  public void setDescription(String description) {
+    this.description = description;
+  }
 
-            if ( categoryCombo != null )
-            {
-                categoryCombos.add( categoryCombo );
-            }
-        }
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public DataSet getDataSet() {
+    return dataSet;
+  }
 
-        return categoryCombos;
-    }
+  public void setDataSet(DataSet dataSet) {
+    this.dataSet = dataSet;
+  }
 
-    public boolean hasDataElements()
-    {
-        return dataElements != null && !dataElements.isEmpty();
-    }
+  @JsonProperty
+  @JsonSerialize(contentAs = BaseIdentifiableObject.class)
+  @JacksonXmlElementWrapper(localName = "dataElements", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "dataElement", namespace = DxfNamespaces.DXF_2_0)
+  public List<DataElement> getDataElements() {
+    return dataElements;
+  }
 
-    public List<DataElement> getDataElementsByCategoryCombo( CategoryCombo categoryCombo )
-    {
-        List<DataElement> dataElements = new ArrayList<>();
+  public void setDataElements(List<DataElement> dataElements) {
+    this.dataElements = dataElements;
+  }
 
-        for ( DataElement dataElement : this.dataElements )
-        {
-            if ( dataElement.getDataElementCategoryCombo( this.dataSet ).equals( categoryCombo ) )
-            {
-                dataElements.add( dataElement );
-            }
-        }
+  @JsonProperty
+  @JsonSerialize(contentAs = BaseIdentifiableObject.class)
+  @JacksonXmlElementWrapper(localName = "indicators", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "indicator", namespace = DxfNamespaces.DXF_2_0)
+  public List<Indicator> getIndicators() {
+    return indicators;
+  }
 
-        return dataElements;
-    }
+  public void setIndicators(List<Indicator> indicators) {
+    this.indicators = indicators;
+  }
 
-    // -------------------------------------------------------------------------
-    // Getters and setters
-    // -------------------------------------------------------------------------
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public int getSortOrder() {
+    return sortOrder;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    @PropertyRange( min = 2 )
-    public String getDescription()
-    {
-        return description;
-    }
+  public void setSortOrder(int sortOrder) {
+    this.sortOrder = sortOrder;
+  }
 
-    public void setDescription( String description )
-    {
-        this.description = description;
-    }
+  @JsonProperty
+  @JacksonXmlElementWrapper(localName = "greyedFields", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "greyedField", namespace = DxfNamespaces.DXF_2_0)
+  public Set<DataElementOperand> getGreyedFields() {
+    return greyedFields;
+  }
 
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public DataSet getDataSet()
-    {
-        return dataSet;
-    }
+  public void setGreyedFields(Set<DataElementOperand> greyedFields) {
+    this.greyedFields = greyedFields;
+  }
 
-    public void setDataSet( DataSet dataSet )
-    {
-        this.dataSet = dataSet;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public boolean isShowRowTotals() {
+    return showRowTotals;
+  }
 
-    @JsonProperty
-    @JsonSerialize( contentAs = BaseIdentifiableObject.class )
-    @JacksonXmlElementWrapper( localName = "dataElements", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "dataElement", namespace = DxfNamespaces.DXF_2_0 )
-    public List<DataElement> getDataElements()
-    {
-        return dataElements;
-    }
+  public void setShowRowTotals(boolean showRowTotals) {
+    this.showRowTotals = showRowTotals;
+  }
 
-    public void setDataElements( List<DataElement> dataElements )
-    {
-        this.dataElements = dataElements;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public boolean isShowColumnTotals() {
+    return showColumnTotals;
+  }
 
-    @JsonProperty
-    @JsonSerialize( contentAs = BaseIdentifiableObject.class )
-    @JacksonXmlElementWrapper( localName = "indicators", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "indicator", namespace = DxfNamespaces.DXF_2_0 )
-    public List<Indicator> getIndicators()
-    {
-        return indicators;
-    }
+  public void setShowColumnTotals(boolean showColumnTotals) {
+    this.showColumnTotals = showColumnTotals;
+  }
 
-    public void setIndicators( List<Indicator> indicators )
-    {
-        this.indicators = indicators;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  @OpenApi.Property(ObjectNode.class)
+  public String getDisplayOptions() {
+    return displayOptions;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public int getSortOrder()
-    {
-        return sortOrder;
-    }
+  public void setDisplayOptions(String displayOptions) {
+    this.displayOptions = displayOptions;
+  }
 
-    public void setSortOrder( int sortOrder )
-    {
-        this.sortOrder = sortOrder;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public boolean isDisableDataElementAutoGroup() {
+    return disableDataElementAutoGroup;
+  }
 
-    @JsonProperty
-    @JacksonXmlElementWrapper( localName = "greyedFields", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "greyedField", namespace = DxfNamespaces.DXF_2_0 )
-    public Set<DataElementOperand> getGreyedFields()
-    {
-        return greyedFields;
-    }
+  public void setDisableDataElementAutoGroup(boolean disableDataElementAutoGroup) {
+    this.disableDataElementAutoGroup = disableDataElementAutoGroup;
+  }
 
-    public void setGreyedFields( Set<DataElementOperand> greyedFields )
-    {
-        this.greyedFields = greyedFields;
-    }
+  public void removeIndicator(Indicator i) {
+    this.indicators.remove(i);
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public boolean isShowRowTotals()
-    {
-        return showRowTotals;
-    }
+  public boolean addIndicator(Indicator i) {
+    return this.indicators.add(i);
+  }
 
-    public void setShowRowTotals( boolean showRowTotals )
-    {
-        this.showRowTotals = showRowTotals;
-    }
-
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public boolean isShowColumnTotals()
-    {
-        return showColumnTotals;
-    }
-
-    public void setShowColumnTotals( boolean showColumnTotals )
-    {
-        this.showColumnTotals = showColumnTotals;
-    }
+  public void removeIndicators(List<Indicator> sources) {
+    for (Indicator i : sources) removeIndicator(i);
+  }
 }

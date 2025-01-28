@@ -1,7 +1,5 @@
-package org.hisp.dhis.schema.descriptors;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.schema.descriptors;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.schema.descriptors;
 
 import com.google.common.collect.Lists;
 import org.hisp.dhis.scheduling.JobConfiguration;
@@ -38,25 +37,23 @@ import org.hisp.dhis.security.AuthorityType;
 /**
  * @author Henning Håkonsen
  */
-public class JobConfigurationSchemaDescriptor implements SchemaDescriptor
-{
-    public static final String SINGULAR = "jobConfiguration";
+public class JobConfigurationSchemaDescriptor implements SchemaDescriptor {
+  public static final String SINGULAR = "jobConfiguration";
 
-    public static final String PLURAL = "jobConfigurations";
+  public static final String PLURAL = "jobConfigurations";
 
-    public static final String API_ENDPOINT = "/" + PLURAL;
+  public static final String API_ENDPOINT = "/" + PLURAL;
 
-    @Override
-    public Schema getSchema()
-    {
-        Schema schema = new Schema( JobConfiguration.class, SINGULAR, PLURAL );
-        schema.setRelativeApiEndpoint( API_ENDPOINT );
+  @Override
+  public Schema getSchema() {
+    Schema schema = new Schema(JobConfiguration.class, SINGULAR, PLURAL);
+    schema.setRelativeApiEndpoint(API_ENDPOINT);
 
-        schema.setOrder( 1040 );
+    schema.setOrder(1040);
 
-        schema.getAuthorities().add( new Authority( AuthorityType.CREATE, Lists.newArrayList( "F_SCHEDULING_ADMIN" ) ) );
-        schema.getAuthorities().add( new Authority( AuthorityType.DELETE, Lists.newArrayList( "F_SCHEDULING_ADMIN" ) ) );
+    schema.add(new Authority(AuthorityType.CREATE, Lists.newArrayList("F_SCHEDULING_ADMIN")));
+    schema.add(new Authority(AuthorityType.DELETE, Lists.newArrayList("F_SCHEDULING_ADMIN")));
 
-        return schema;
-    }
+    return schema;
+  }
 }

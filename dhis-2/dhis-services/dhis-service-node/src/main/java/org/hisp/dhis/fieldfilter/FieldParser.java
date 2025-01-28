@@ -1,7 +1,5 @@
-package org.hisp.dhis.fieldfilter;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,18 +25,30 @@ package org.hisp.dhis.fieldfilter;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.fieldfilter;
+
+import java.util.Collection;
+import java.util.List;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public interface FieldParser
-{
-    /**
-     * Parses and writes out fieldMap with included/excluded properties.
-     *
-     * @param filter String to parse, can be used for both inclusion/exclusion
-     * @return FieldMap with property name as key, and another FieldMap as value (recursive)
-     * @see org.hisp.dhis.fieldfilter.FieldMap
-     */
-    FieldMap parse( String filter );
+public interface FieldParser {
+  /**
+   * Parses and writes out fieldMap with included/excluded properties.
+   *
+   * @param filter String to parse, can be used for both inclusion/exclusion
+   * @return FieldMap with property name as key, and another FieldMap as value (recursive)
+   * @see org.hisp.dhis.fieldfilter.FieldMap
+   */
+  FieldMap parse(String filter);
+
+  /**
+   * Recursively add some field filtering to a field filter
+   *
+   * @param fieldFilter Field filter to modify
+   * @param excludeFields Fields to add to the field filter
+   * @return Modified field filter
+   */
+  List<String> modifyFilter(Collection<String> fieldFilter, Collection<String> excludeFields);
 }

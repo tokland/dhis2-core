@@ -1,7 +1,5 @@
-package org.hisp.dhis.common.comparator;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.common.comparator;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.common.comparator;
 
 import java.util.Comparator;
 import java.util.Locale;
@@ -34,14 +33,11 @@ import java.util.Locale;
 /**
  * @author Lars Helge Overland
  */
-public class LocaleNameComparator
-    implements Comparator<Locale>
-{
-    public static final LocaleNameComparator INSTANCE = new LocaleNameComparator();
-    
-    @Override
-    public int compare( Locale o1, Locale o2 )
-    {
-        return o1.getDisplayName().compareTo( o2.getDisplayName() );
-    }
+public class LocaleNameComparator implements Comparator<Locale> {
+  public static final LocaleNameComparator INSTANCE = new LocaleNameComparator();
+
+  @Override
+  public int compare(Locale o1, Locale o2) {
+    return o1.getDisplayName().compareTo(o2.getDisplayName());
+  }
 }

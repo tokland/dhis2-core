@@ -1,7 +1,5 @@
-package org.hisp.dhis.interpretation;
-
 /*
- * Copyright (c) 2004-2017, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,47 +25,41 @@ package org.hisp.dhis.interpretation;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.interpretation;
 
-import java.io.Serializable;
-
-import java.util.Date;
-
-import org.hisp.dhis.common.DxfNamespaces;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import java.io.Serializable;
+import java.util.Date;
+import org.hisp.dhis.common.DxfNamespaces;
 
 /**
  * @author Adrian Quintana
  */
-@JacksonXmlRootElement( localName = "mentions", namespace = DxfNamespaces.DXF_2_0 )
-public class Mention implements Serializable
-{
-    private String username;
-    
-    private Date created;
-    
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public String getUsername()
-    {
-        return username;
-    }
+@JacksonXmlRootElement(localName = "mentions", namespace = DxfNamespaces.DXF_2_0)
+public class Mention implements Serializable {
+  private String username;
 
-    public void setUsername( String username )
-    {
-        this.username = username;
-    }
+  private Date created;
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public Date getCreated()
-    {
-        return created;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public String getUsername() {
+    return username;
+  }
 
-    public void setCreated( Date created )
-    {
-        this.created = created;
-    }
+  public void setUsername(String username) {
+    this.username = username;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public Date getCreated() {
+    return created;
+  }
+
+  public void setCreated(Date created) {
+    this.created = created;
+  }
 }

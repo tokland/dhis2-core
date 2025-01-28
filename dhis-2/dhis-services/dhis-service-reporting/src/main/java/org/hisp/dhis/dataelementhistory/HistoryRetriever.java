@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataelementhistory;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,21 +25,24 @@ package org.hisp.dhis.dataelementhistory;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataelementhistory;
 
-import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.category.CategoryOptionCombo;
+import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.period.Period;
 
 /**
  * @author Torgeir Lorange Ostby
- * @version $Id: HistoryRetriever.java 4438 2008-01-26 16:35:24Z abyot $
  */
-public interface HistoryRetriever
-{
-    String ID = HistoryRetriever.class.getName();
+public interface HistoryRetriever {
+  String ID = HistoryRetriever.class.getName();
 
-    DataElementHistory getHistory( DataElement dataElement, CategoryOptionCombo optionCombo, 
-    		CategoryOptionCombo attributeOptionCombo, OrganisationUnit organisationUnit, Period lastPeriod, int historyLength );
-    
+  DataElementHistory getHistory(
+      DataElement dataElement,
+      CategoryOptionCombo optionCombo,
+      CategoryOptionCombo attributeOptionCombo,
+      OrganisationUnit organisationUnit,
+      Period lastPeriod,
+      int historyLength);
 }

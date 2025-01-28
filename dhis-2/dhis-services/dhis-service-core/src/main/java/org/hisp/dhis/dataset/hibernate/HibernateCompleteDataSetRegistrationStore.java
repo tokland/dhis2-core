@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,157 +25,170 @@ package org.hisp.dhis.dataset.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataset.hibernate;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
-
-import org.hibernate.Criteria;
-import org.hibernate.SessionFactory;
-import org.hibernate.criterion.Restrictions;
+import javax.annotation.Nonnull;
 import org.hisp.dhis.category.CategoryOptionCombo;
+import org.hisp.dhis.common.UID;
 import org.hisp.dhis.dataset.CompleteDataSetRegistration;
 import org.hisp.dhis.dataset.CompleteDataSetRegistrationStore;
 import org.hisp.dhis.dataset.DataSet;
+import org.hisp.dhis.hibernate.HibernateGenericStore;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.period.Period;
 import org.hisp.dhis.period.PeriodStore;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Lars Helge Overland
- * @version $Id$
  */
+@Repository("CompleteDataSetRegistrationStore")
 public class HibernateCompleteDataSetRegistrationStore
-    implements CompleteDataSetRegistrationStore
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+    extends HibernateGenericStore<CompleteDataSetRegistration>
+    implements CompleteDataSetRegistrationStore {
+  private final PeriodStore periodStore;
 
-    private SessionFactory sessionFactory;
-    
-    public void setSessionFactory( SessionFactory sessionFactory )
-    {
-        this.sessionFactory = sessionFactory;
+  public HibernateCompleteDataSetRegistrationStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      PeriodStore periodStore) {
+    super(entityManager, jdbcTemplate, publisher, CompleteDataSetRegistration.class, false);
+
+    checkNotNull(periodStore);
+
+    this.periodStore = periodStore;
+  }
+
+  // -------------------------------------------------------------------------
+  // DataSetCompleteRegistrationStore implementation
+  // -------------------------------------------------------------------------
+
+  @Override
+  public void saveCompleteDataSetRegistration(CompleteDataSetRegistration registration) {
+    registration.setPeriod(periodStore.reloadForceAddPeriod(registration.getPeriod()));
+    registration.setLastUpdated(new Date());
+
+    getSession().save(registration);
+  }
+
+  @Override
+  public void saveWithoutUpdatingLastUpdated(@Nonnull CompleteDataSetRegistration registration) {
+    registration.setPeriod(periodStore.reloadForceAddPeriod(registration.getPeriod()));
+    getSession().save(registration);
+  }
+
+  @Override
+  public void updateCompleteDataSetRegistration(CompleteDataSetRegistration registration) {
+    registration.setPeriod(periodStore.reloadForceAddPeriod(registration.getPeriod()));
+    registration.setLastUpdated(new Date());
+
+    getSession().update(registration);
+  }
+
+  @Override
+  public CompleteDataSetRegistration getCompleteDataSetRegistration(
+      DataSet dataSet,
+      Period period,
+      OrganisationUnit source,
+      CategoryOptionCombo attributeOptionCombo) {
+    Period storedPeriod = periodStore.reloadPeriod(period);
+
+    if (storedPeriod == null) {
+      return null;
     }
 
-    private PeriodStore periodStore;
+    CriteriaBuilder builder = getCriteriaBuilder();
 
-    public void setPeriodStore( PeriodStore periodStore )
-    {
-        this.periodStore = periodStore;
+    return getSingleResult(
+        builder,
+        newJpaParameters()
+            .addPredicate(
+                root ->
+                    builder.equal(
+                        root,
+                        new CompleteDataSetRegistration(
+                            dataSet, storedPeriod, source, attributeOptionCombo, null))));
+  }
+
+  @Override
+  public void deleteCompleteDataSetRegistration(CompleteDataSetRegistration registration) {
+    getSession().delete(registration);
+  }
+
+  @Override
+  public List<CompleteDataSetRegistration> getAllCompleteDataSetRegistrations() {
+    return getList(getCriteriaBuilder(), newJpaParameters());
+  }
+
+  @Override
+  public void deleteCompleteDataSetRegistrations(DataSet dataSet) {
+    String hql = "delete from CompleteDataSetRegistration c where c.dataSet = :dataSet";
+
+    entityManager.createQuery(hql).setParameter("dataSet", dataSet).executeUpdate();
+  }
+
+  @Override
+  public void deleteCompleteDataSetRegistrations(OrganisationUnit unit) {
+    String hql = "delete from CompleteDataSetRegistration c where c.source = :source";
+
+    entityManager.createQuery(hql).setParameter("source", unit).executeUpdate();
+  }
+
+  @Override
+  public int getCompleteDataSetCountLastUpdatedAfter(Date lastUpdated) {
+    if (lastUpdated == null) {
+      throw new IllegalArgumentException("lastUpdated parameter must be specified");
     }
 
-    // -------------------------------------------------------------------------
-    // DataSetCompleteRegistrationStore implementation
-    // -------------------------------------------------------------------------
+    CriteriaBuilder builder = getCriteriaBuilder();
 
-    @Override
-    public void saveCompleteDataSetRegistration( CompleteDataSetRegistration registration )
-    {
-        registration.setPeriod( periodStore.reloadForceAddPeriod( registration.getPeriod() ) );
-        
-        sessionFactory.getCurrentSession().save( registration );
-    }
+    CriteriaQuery<Long> query = builder.createQuery(Long.class);
 
-    @Override
-    public void updateCompleteDataSetRegistration( CompleteDataSetRegistration registration )
-    {
-        registration.setPeriod( periodStore.reloadForceAddPeriod( registration.getPeriod() ) );
-        
-        sessionFactory.getCurrentSession().update( registration );
-    }
+    Root<CompleteDataSetRegistration> root = query.from(CompleteDataSetRegistration.class);
 
-    @Override
-    public CompleteDataSetRegistration getCompleteDataSetRegistration( DataSet dataSet, Period period,
-        OrganisationUnit source, CategoryOptionCombo attributeOptionCombo )
-    {
-        Period storedPeriod = periodStore.reloadPeriod( period );
+    query.select(builder.countDistinct(root));
+    query.where(builder.greaterThanOrEqualTo(root.get("lastUpdated"), lastUpdated));
 
-        if ( storedPeriod == null )
-        {
-            return null;
-        }
+    return Math.toIntExact(entityManager.createQuery(query).getSingleResult());
+  }
 
-        Criteria criteria = sessionFactory.getCurrentSession().createCriteria( CompleteDataSetRegistration.class );
-        
-        criteria.add( Restrictions.eq( "dataSet", dataSet ) );
-        criteria.add( Restrictions.eq( "period", storedPeriod ) );
-        criteria.add( Restrictions.eq( "source", source ) );
-        criteria.add( Restrictions.eq( "attributeOptionCombo", attributeOptionCombo ) );
-        
-        return (CompleteDataSetRegistration) criteria.uniqueResult();
-    }
+  @Override
+  public List<CompleteDataSetRegistration> getAllByCategoryOptionCombo(
+      @Nonnull Collection<UID> uids) {
+    if (uids.isEmpty()) return List.of();
+    return getQuery(
+            """
+            select cdsr from CompleteDataSetRegistration cdsr
+            join cdsr.attributeOptionCombo aoc
+            where aoc.uid in :uids
+            """)
+        .setParameter("uids", UID.toValueList(uids))
+        .getResultList();
+  }
 
-    @Override
-    public void deleteCompleteDataSetRegistration( CompleteDataSetRegistration registration )
-    {
-        sessionFactory.getCurrentSession().delete( registration );
-    }
+  @Override
+  public void deleteByCategoryOptionCombo(@Nonnull Collection<CategoryOptionCombo> cocs) {
+    if (cocs.isEmpty()) return;
+    String hql =
+        """
+        delete from CompleteDataSetRegistration cdsr
+        where cdsr.attributeOptionCombo in
+          (select coc from CategoryOptionCombo coc
+          where coc in :cocs)
+        """;
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<CompleteDataSetRegistration> getAllCompleteDataSetRegistrations()
-    {
-        return sessionFactory.getCurrentSession().createCriteria( CompleteDataSetRegistration.class ).list();
-    }
-
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<CompleteDataSetRegistration> getCompleteDataSetRegistrations( 
-        Collection<DataSet> dataSets, Collection<OrganisationUnit> sources, Collection<Period> periods )
-    {
-        for ( Period period : periods )
-        {
-            period = periodStore.reloadPeriod( period );
-        }        
-        
-        Criteria criteria = sessionFactory.getCurrentSession().createCriteria( CompleteDataSetRegistration.class );
-        
-        criteria.add( Restrictions.in( "dataSet", dataSets ) );
-        criteria.add( Restrictions.in( "source", sources ) );
-        criteria.add( Restrictions.in( "period", periods ) );
-        
-        return criteria.list();
-    }
-
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<CompleteDataSetRegistration> getCompleteDataSetRegistrations( 
-        DataSet dataSet, Collection<OrganisationUnit> sources, Period period, Date deadline )
-    {
-        Period storedPeriod = periodStore.reloadPeriod( period );
-
-        if ( storedPeriod == null )
-        {
-            return null;
-        }
-
-        Criteria criteria = sessionFactory.getCurrentSession().createCriteria( CompleteDataSetRegistration.class );
-        
-        criteria.add( Restrictions.eq( "dataSet", dataSet ) );
-        criteria.add( Restrictions.in( "source", sources ) );
-        criteria.add( Restrictions.eq( "period", period ) );
-        criteria.add( Restrictions.le( "date", deadline ) );
-        
-        return criteria.list();
-    }
-
-    @Override
-    public void deleteCompleteDataSetRegistrations( DataSet dataSet )
-    {
-        String hql = "delete from CompleteDataSetRegistration c where c.dataSet = :dataSet";
-        
-        sessionFactory.getCurrentSession().createQuery( hql ).
-            setEntity( "dataSet", dataSet ).executeUpdate();
-    }
-    
-    @Override
-    public void deleteCompleteDataSetRegistrations( OrganisationUnit unit )
-    {
-        String hql = "delete from CompleteDataSetRegistration c where c.source = :source";
-
-        sessionFactory.getCurrentSession().createQuery( hql ).
-            setEntity( "source", unit ).executeUpdate();
-    }
+    entityManager.createQuery(hql).setParameter("cocs", cocs).executeUpdate();
+  }
 }

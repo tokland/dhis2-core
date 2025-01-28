@@ -1,7 +1,5 @@
-package org.hisp.dhis.datastatistics;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.datastatistics;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.datastatistics;
 
 import java.util.Date;
 
@@ -36,80 +35,70 @@ import java.util.Date;
  * @author Yrjan A. F. Fraschetti
  * @author Julie Hill Roa
  */
-public class DataStatisticsEvent
-{
-    private int id;
-    private DataStatisticsEventType eventType;
-    private Date timestamp;
-    private String username;
-    private String favoriteUid;
+public class DataStatisticsEvent {
+  private int id;
 
-    public DataStatisticsEvent()
-    {
-    }
+  private DataStatisticsEventType eventType;
 
-    public DataStatisticsEvent( DataStatisticsEventType eventType, Date timestamp, String username )
-    {
-        this.eventType = eventType;
-        this.timestamp = timestamp;
-        this.username = username;
-    }
+  private Date timestamp;
 
-    public DataStatisticsEvent( DataStatisticsEventType eventType, Date timestamp, String username, String favoriteUid )
-    {
-        this.eventType = eventType;
-        this.timestamp = timestamp;
-        this.username = username;
-        this.favoriteUid = favoriteUid;
-    }
+  private String username;
 
-    public int getId()
-    {
-        return id;
-    }
+  private String favoriteUid;
 
-    public void setId( int id )
-    {
-        this.id = id;
-    }
+  public DataStatisticsEvent() {}
 
-    public DataStatisticsEventType getEventType()
-    {
-        return eventType;
-    }
+  public DataStatisticsEvent(DataStatisticsEventType eventType, Date timestamp, String username) {
+    this.eventType = eventType;
+    this.timestamp = timestamp;
+    this.username = username;
+  }
 
-    public void setEventType( DataStatisticsEventType eventType )
-    {
-        this.eventType = eventType;
-    }
+  public DataStatisticsEvent(
+      DataStatisticsEventType eventType, Date timestamp, String username, String favoriteUid) {
+    this.eventType = eventType;
+    this.timestamp = timestamp;
+    this.username = username;
+    this.favoriteUid = favoriteUid;
+  }
 
-    public Date getTimestamp()
-    {
-        return timestamp;
-    }
+  public int getId() {
+    return id;
+  }
 
-    public void setTimestamp( Date timestamp )
-    {
-        this.timestamp = timestamp;
-    }
+  public void setId(int id) {
+    this.id = id;
+  }
 
-    public String getUsername()
-    {
-        return username;
-    }
+  public DataStatisticsEventType getEventType() {
+    return eventType;
+  }
 
-    public void setUsername( String username )
-    {
-        this.username = username;
-    }
+  public void setEventType(DataStatisticsEventType eventType) {
+    this.eventType = eventType;
+  }
 
-    public String getFavoriteUid()
-    {
-        return favoriteUid;
-    }
+  public Date getTimestamp() {
+    return timestamp;
+  }
 
-    public void setFavoriteUid( String favoriteUid )
-    {
-        this.favoriteUid = favoriteUid;
-    }
+  public void setTimestamp(Date timestamp) {
+    this.timestamp = timestamp;
+  }
+
+  public String getUsername() {
+    return username;
+  }
+
+  public void setUsername(String username) {
+    this.username = username;
+  }
+
+  public String getFavoriteUid() {
+    return favoriteUid;
+  }
+
+  public void setFavoriteUid(String favoriteUid) {
+    this.favoriteUid = favoriteUid;
+  }
 }

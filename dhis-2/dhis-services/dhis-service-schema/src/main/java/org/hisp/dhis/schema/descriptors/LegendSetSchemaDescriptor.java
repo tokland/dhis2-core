@@ -1,7 +1,5 @@
-package org.hisp.dhis.schema.descriptors;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,8 +25,13 @@ package org.hisp.dhis.schema.descriptors;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.schema.descriptors;
 
-import com.google.common.collect.Lists;
+import static org.hisp.dhis.security.Authorities.F_LEGEND_SET_DELETE;
+import static org.hisp.dhis.security.Authorities.F_LEGEND_SET_PRIVATE_ADD;
+import static org.hisp.dhis.security.Authorities.F_LEGEND_SET_PUBLIC_ADD;
+
+import java.util.List;
 import org.hisp.dhis.legend.LegendSet;
 import org.hisp.dhis.schema.Schema;
 import org.hisp.dhis.schema.SchemaDescriptor;
@@ -38,25 +41,25 @@ import org.hisp.dhis.security.AuthorityType;
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class LegendSetSchemaDescriptor implements SchemaDescriptor
-{
-    public static final String SINGULAR = "legendSet";
+public class LegendSetSchemaDescriptor implements SchemaDescriptor {
+  public static final String SINGULAR = "legendSet";
 
-    public static final String PLURAL = "legendSets";
+  public static final String PLURAL = "legendSets";
 
-    public static final String API_ENDPOINT = "/" + PLURAL;
+  public static final String API_ENDPOINT = "/" + PLURAL;
 
-    @Override
-    public Schema getSchema()
-    {
-        Schema schema = new Schema( LegendSet.class, SINGULAR, PLURAL );
-        schema.setRelativeApiEndpoint( API_ENDPOINT );
-        schema.setOrder( 1080 );
+  @Override
+  public Schema getSchema() {
+    Schema schema = new Schema(LegendSet.class, SINGULAR, PLURAL);
+    schema.setRelativeApiEndpoint(API_ENDPOINT);
+    schema.setOrder(1080);
 
-        schema.getAuthorities().add( new Authority( AuthorityType.CREATE_PUBLIC, Lists.newArrayList( "F_LEGEND_SET_PUBLIC_ADD" ) ) );
-        schema.getAuthorities().add( new Authority( AuthorityType.CREATE_PRIVATE, Lists.newArrayList( "F_LEGEND_SET_PRIVATE_ADD" ) ) );
-        schema.getAuthorities().add( new Authority( AuthorityType.DELETE, Lists.newArrayList( "F_LEGEND_SET_DELETE" ) ) );
+    schema.add(
+        new Authority(AuthorityType.CREATE_PUBLIC, List.of(F_LEGEND_SET_PUBLIC_ADD.toString())));
+    schema.add(
+        new Authority(AuthorityType.CREATE_PRIVATE, List.of(F_LEGEND_SET_PRIVATE_ADD.toString())));
+    schema.add(new Authority(AuthorityType.DELETE, List.of(F_LEGEND_SET_DELETE.toString())));
 
-        return schema;
-    }
+    return schema;
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.notification;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,11 +25,11 @@ package org.hisp.dhis.notification;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.notification;
 
 /**
  * @author Halvdan Hoem Grelland
  */
-public interface NotificationMessageRenderer<T>
-{
-    NotificationMessage render( T entity, NotificationTemplate template );
+public interface NotificationMessageRenderer<T> {
+  NotificationMessage render(T entity, NotificationTemplate template);
 }

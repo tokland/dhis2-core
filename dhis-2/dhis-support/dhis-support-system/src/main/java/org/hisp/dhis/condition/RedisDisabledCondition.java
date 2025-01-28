@@ -1,7 +1,5 @@
-package org.hisp.dhis.condition;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,33 +25,30 @@ package org.hisp.dhis.condition;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.condition;
 
 import org.hisp.dhis.external.conf.ConfigurationKey;
-import org.hisp.dhis.external.conf.DhisConfigurationProvider;
 import org.springframework.context.annotation.ConditionContext;
-import org.springframework.context.annotation.ConfigurationCondition;
 import org.springframework.core.type.AnnotatedTypeMetadata;
 
 /**
- * Condition that matches to true if redis.enabled property is absent in
- * dhis.conf or if it is explicitly set to anything other than true
- * 
- * @author Ameen Mohamed
+ * Condition that matches to true if redis.enabled property is absent in dhis.conf or if it is
+ * explicitly set to anything other than true
  *
+ * @author Ameen Mohamed
  */
-public class RedisDisabledCondition implements ConfigurationCondition
-{
-    @Override
-    public boolean matches( ConditionContext context, AnnotatedTypeMetadata metadata )
-    {
-        DhisConfigurationProvider dhisConfigurationProvider = (DhisConfigurationProvider) context.getBeanFactory()
-            .getBean( "dhisConfigurationProvider" );
-        return !dhisConfigurationProvider.getProperty( ConfigurationKey.REDIS_ENABLED ).equalsIgnoreCase( "true" );
+public class RedisDisabledCondition extends PropertiesAwareConfigurationCondition {
+  @Override
+  public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+    if (!isTestRun(context)) {
+      return !getConfiguration().isEnabled(ConfigurationKey.REDIS_ENABLED);
     }
 
-    @Override
-    public ConfigurationPhase getConfigurationPhase()
-    {
-        return ConfigurationPhase.REGISTER_BEAN;
-    }
+    return true;
+  }
+
+  @Override
+  public ConfigurationPhase getConfigurationPhase() {
+    return ConfigurationPhase.REGISTER_BEAN;
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.trackedentity;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.trackedentity;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.trackedentity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -36,161 +35,145 @@ import org.hisp.dhis.common.BaseIdentifiableObject;
 import org.hisp.dhis.common.DxfNamespaces;
 import org.hisp.dhis.common.EmbeddedObject;
 import org.hisp.dhis.common.ValueType;
-import org.hisp.dhis.trackedentity.TrackedEntityAttribute;
 
 /**
  * @author Abyot Asalefew Gizaw <abyota@gmail.com>
- *
  */
-@JacksonXmlRootElement( localName = "trackedEntityTypeAttribute", namespace = DxfNamespaces.DXF_2_0 )
-public class TrackedEntityTypeAttribute
-    extends BaseIdentifiableObject implements EmbeddedObject
-{
-    private TrackedEntityType trackedEntityType;
+@JacksonXmlRootElement(localName = "trackedEntityTypeAttribute", namespace = DxfNamespaces.DXF_2_0)
+public class TrackedEntityTypeAttribute extends BaseIdentifiableObject implements EmbeddedObject {
+  private TrackedEntityType trackedEntityType;
 
-    private TrackedEntityAttribute trackedEntityAttribute;
+  private TrackedEntityAttribute trackedEntityAttribute;
 
-    private boolean displayInList;    
+  private boolean displayInList;
 
-    private Boolean mandatory;
-    
-    private Boolean searchable = false;
+  private Boolean mandatory;
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------
+  private Boolean searchable = false;
 
-    public TrackedEntityTypeAttribute()
-    {
-        setAutoFields();
-    }
+  // -------------------------------------------------------------------------
+  // Constructors
+  // -------------------------------------------------------------------------
 
-    public TrackedEntityTypeAttribute( TrackedEntityType trackedEntityType, TrackedEntityAttribute trackedEntityAttribute )
-    {
-        this();
-        this.trackedEntityType = trackedEntityType;
-        this.trackedEntityAttribute = trackedEntityAttribute;
-    }
+  public TrackedEntityTypeAttribute() {
+    setAutoFields();
+  }
 
-    public TrackedEntityTypeAttribute( TrackedEntityType trackedEntityType, TrackedEntityAttribute attribute, boolean displayInList,
-        Boolean mandatory )
-    {
-        this( trackedEntityType, attribute );
-        this.displayInList = displayInList;
-        this.mandatory = mandatory;
-    }
+  public TrackedEntityTypeAttribute(
+      TrackedEntityType trackedEntityType, TrackedEntityAttribute trackedEntityAttribute) {
+    this();
+    this.trackedEntityType = trackedEntityType;
+    this.trackedEntityAttribute = trackedEntityAttribute;
+  }
 
-    public TrackedEntityTypeAttribute( TrackedEntityType trackedEntityType, TrackedEntityAttribute attribute, boolean displayInList,
-        Boolean mandatory, Integer sortOrder )
-    {
-        this( trackedEntityType, attribute );
-        this.displayInList = displayInList;
-        this.mandatory = mandatory;
-    }
+  public TrackedEntityTypeAttribute(
+      TrackedEntityType trackedEntityType,
+      TrackedEntityAttribute attribute,
+      boolean displayInList,
+      Boolean mandatory) {
+    this(trackedEntityType, attribute);
+    this.displayInList = displayInList;
+    this.mandatory = mandatory;
+  }
 
-    public TrackedEntityTypeAttribute( TrackedEntityType trackedEntityType, TrackedEntityAttribute attribute, boolean displayInList,
-        Boolean mandatory, Boolean allowFutureDate )
-    {
-        this( trackedEntityType, attribute, displayInList, mandatory );
-    }
-    
+  @Override
+  public String getName() {
+    return (trackedEntityType != null ? trackedEntityType.getDisplayName() + " " : "")
+        + (trackedEntityAttribute != null ? trackedEntityAttribute.getDisplayName() : "");
+  }
 
-    @Override
-    public String getName()
-    {
-        return (trackedEntityType != null ? trackedEntityType.getDisplayName() + " " : "") + (trackedEntityAttribute != null ? trackedEntityAttribute.getDisplayName() : "");
-    }
+  @JsonProperty
+  public String getDisplayShortName() {
+    return (trackedEntityType != null ? trackedEntityType.getDisplayShortName() + " " : "")
+        + (trackedEntityAttribute != null ? trackedEntityAttribute.getDisplayShortName() : "");
+  }
 
-    @JsonProperty
-    public String getDisplayShortName()
-    {
-        return (trackedEntityType != null ? trackedEntityType.getDisplayShortName() + " " : "") + (trackedEntityAttribute != null ? trackedEntityAttribute.getDisplayShortName() : "");
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public ValueType getValueType() {
+    return trackedEntityAttribute != null ? trackedEntityAttribute.getValueType() : null;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public ValueType getValueType()
-    {
-        return trackedEntityAttribute != null ? trackedEntityAttribute.getValueType() : null;
-    }
+  @Override
+  public String toString() {
+    return "{"
+        + "\"class\":\""
+        + getClass()
+        + "\", "
+        + "\"id\":\""
+        + id
+        + "\", "
+        + "\"uid\":\""
+        + uid
+        + "\", "
+        + "\"trackedEntityType\":"
+        + trackedEntityType
+        + ", "
+        + "\"trackedEntityAttribute\":"
+        + trackedEntityAttribute
+        + ", "
+        + "\"created\":\""
+        + created
+        + "\", "
+        + "\"lastUpdated\":\""
+        + lastUpdated
+        + "\" "
+        + "}";
+  }
 
-    @Override
-    public String toString()
-    {
-        return "{" +
-            "\"class\":\"" + getClass() + "\", " +
-            "\"id\":\"" + id + "\", " +
-            "\"uid\":\"" + uid + "\", " +
-            "\"trackedEntityType\":" + trackedEntityType + ", " +
-            "\"trackedEntityAttribute\":" + trackedEntityAttribute + ", " +
-            "\"created\":\"" + created + "\", " +
-            "\"lastUpdated\":\"" + lastUpdated + "\" " +
-            "}";
-    }
+  // -------------------------------------------------------------------------
+  // Getters && Setters
+  // -------------------------------------------------------------------------
 
-    // -------------------------------------------------------------------------
-    // Getters && Setters
-    // -------------------------------------------------------------------------
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public TrackedEntityType getTrackedEntityType() {
+    return trackedEntityType;
+  }
 
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public TrackedEntityType getTrackedEntityType()
-    {
-        return trackedEntityType;
-    }
+  public void setTrackedEntityType(TrackedEntityType trackedEntityType) {
+    this.trackedEntityType = trackedEntityType;
+  }
 
-    public void setTrackedEntityType( TrackedEntityType trackedEntityType )
-    {
-        this.trackedEntityType = trackedEntityType;
-    }
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public TrackedEntityAttribute getTrackedEntityAttribute() {
+    return trackedEntityAttribute;
+  }
 
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public TrackedEntityAttribute getTrackedEntityAttribute()
-    {
-        return trackedEntityAttribute;
-    }
+  public void setTrackedEntityAttribute(TrackedEntityAttribute trackedEntityAttribute) {
+    this.trackedEntityAttribute = trackedEntityAttribute;
+  }
 
-    public void setTrackedEntityAttribute( TrackedEntityAttribute trackedEntityAttribute )
-    {
-        this.trackedEntityAttribute = trackedEntityAttribute;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public Boolean isMandatory() {
+    return mandatory;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public Boolean isMandatory()
-    {
-        return mandatory;
-    }
+  public void setMandatory(Boolean mandatory) {
+    this.mandatory = mandatory;
+  }
 
-    public void setMandatory( Boolean mandatory )
-    {
-        this.mandatory = mandatory;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(localName = "displayInList", namespace = DxfNamespaces.DXF_2_0)
+  public boolean isDisplayInList() {
+    return displayInList;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( localName = "displayInList", namespace = DxfNamespaces.DXF_2_0 )
-    public boolean isDisplayInList()
-    {
-        return displayInList;
-    }
+  public void setDisplayInList(boolean displayInList) {
+    this.displayInList = displayInList;
+  }
 
-    public void setDisplayInList( boolean displayInList )
-    {
-        this.displayInList = displayInList;
-    }
-    
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public Boolean isSearchable()
-    {
-        return searchable;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public Boolean isSearchable() {
+    return searchable;
+  }
 
-    public void setSearchable( Boolean searchable )
-    {
-        this.searchable = searchable;
-    }    
+  public void setSearchable(Boolean searchable) {
+    this.searchable = searchable;
+  }
 }

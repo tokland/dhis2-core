@@ -1,7 +1,5 @@
-package org.hisp.dhis.render.type;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,35 +25,35 @@ package org.hisp.dhis.render.type;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.render.type;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import org.hisp.dhis.common.DxfNamespaces;
 
-/**
- * This class represents the renderingType of a ProgramStageSection
- */
-public class SectionRenderingObject
-{
-    /**
-     * The renderingType of the ProgramStageSection
-     */
-    private SectionRenderingType type;
+/** This class represents the renderingType of a ProgramStageSection */
+@JacksonXmlRootElement(namespace = DxfNamespaces.DXF_2_0)
+public class SectionRenderingObject implements RenderingObject<SectionRenderingType> {
+  /** The renderingType of the ProgramStageSection */
+  private SectionRenderingType type;
 
-    public SectionRenderingObject()
-    {
-        this.type = SectionRenderingType.LISTING;
-    }
+  @Override
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public SectionRenderingType getType() {
+    return type;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public SectionRenderingType getType()
-    {
-        return type;
-    }
+  @Override
+  public void setType(SectionRenderingType type) {
+    this.type = type;
+  }
 
-    public void setType( SectionRenderingType type )
-    {
-        this.type = type;
-    }
+  @Override
+  @JsonIgnore
+  public Class<SectionRenderingType> getRenderTypeClass() {
+    return SectionRenderingType.class;
+  }
 }

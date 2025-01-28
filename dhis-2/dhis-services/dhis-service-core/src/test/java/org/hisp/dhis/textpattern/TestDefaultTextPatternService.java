@@ -1,7 +1,5 @@
-package org.hisp.dhis.textpattern;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,81 +25,68 @@ package org.hisp.dhis.textpattern;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.textpattern;
 
-import com.google.common.collect.ImmutableMap;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.runners.MockitoJUnitRunner;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+@ExtendWith(MockitoExtension.class)
+class TestDefaultTextPatternService {
+  @InjectMocks private DefaultTextPatternService textPatternService;
 
-@RunWith( MockitoJUnitRunner.class )
-public class TestDefaultTextPatternService
-{
-    @InjectMocks
-    private DefaultTextPatternService textPatternService;
+  private TextPattern pattern;
 
-    private TextPattern pattern;
+  private Map<String, String> values;
 
-    private ImmutableMap<String, String> values;
+  @BeforeEach
+  void init() {
+    List<TextPatternSegment> segments = new ArrayList<>();
+    segments.add(new TextPatternSegment(TextPatternMethod.TEXT, "\"TEXT\""));
+    segments.add(new TextPatternSegment(TextPatternMethod.ORG_UNIT_CODE, "ORG_UNIT_CODE(...)"));
+    segments.add(new TextPatternSegment(TextPatternMethod.SEQUENTIAL, "SEQUENTIAL(#)"));
+    segments.add(new TextPatternSegment(TextPatternMethod.CURRENT_DATE, "CURRENT_DATE(YYYY)"));
+    pattern = new TextPattern(segments);
+    values =
+        Map.of(
+            "ORG_UNIT_CODE", "OSLO",
+            "SEQUENTIAL", "1");
+  }
 
-    @Before
-    public void init()
-    {
-        List<TextPatternSegment> segments = new ArrayList<>();
+  @Test
+  void testGetRequiredValues() {
+    List<String> required = textPatternService.getRequiredValues(pattern).get("REQUIRED");
+    assertFalse(required.contains("TEXT"));
+    assertFalse(required.contains("CURRENT_DATE"));
+    assertTrue(required.contains("ORG_UNIT_CODE"));
+    assertFalse(required.contains("SEQUENTIAL"));
+    assertEquals(1, required.size());
+  }
 
-        segments.add( new TextPatternSegment( TextPatternMethod.TEXT, "\"TEXT\"" ) );
-        segments.add( new TextPatternSegment( TextPatternMethod.ORG_UNIT_CODE, "ORG_UNIT_CODE(...)" ) );
-        segments.add( new TextPatternSegment( TextPatternMethod.SEQUENTIAL, "SEQUENTIAL(#)" ) );
-        segments.add( new TextPatternSegment( TextPatternMethod.CURRENT_DATE, "CURRENT_DATE(YYYY)" ) );
+  @Test
+  void testGetOptionalValues() {
+    List<String> optional = textPatternService.getRequiredValues(pattern).get("OPTIONAL");
+    assertFalse(optional.contains("TEXT"));
+    assertFalse(optional.contains("CURRENT_DATE"));
+    assertFalse(optional.contains("ORG_UNIT_CODE"));
+    assertTrue(optional.contains("SEQUENTIAL"));
+    assertEquals(1, optional.size());
+  }
 
-        pattern = new TextPattern( segments );
-
-        values = ImmutableMap.<String, String>builder()
-            .put( "ORG_UNIT_CODE", "OSLO" )
-            .put( "SEQUENTIAL", "1" )
-            .build();
-    }
-
-    @Test
-    public void testGetRequiredValues()
-    {
-        List<String> required = textPatternService.getRequiredValues( pattern ).get( "REQUIRED" );
-
-        assertFalse( required.contains( "TEXT" ) );
-        assertFalse( required.contains( "CURRENT_DATE" ) );
-        assertTrue( required.contains( "ORG_UNIT_CODE" ) );
-        assertFalse( required.contains( "SEQUENTIAL" ) );
-        assertEquals( 1, required.size() );
-    }
-
-    @Test
-    public void testGetOptionalValues()
-    {
-        List<String> optional = textPatternService.getRequiredValues( pattern ).get( "OPTIONAL" );
-
-        assertFalse( optional.contains( "TEXT" ) );
-        assertFalse( optional.contains( "CURRENT_DATE" ) );
-        assertFalse( optional.contains( "ORG_UNIT_CODE" ) );
-        assertTrue( optional.contains( "SEQUENTIAL" ) );
-        assertEquals( 1, optional.size() );
-    }
-
-    @Test
-    public void testResolvePattern()
-        throws Exception
-    {
-        String result = textPatternService.resolvePattern( pattern, values );
-
-        assertEquals( "TEXTOSL1" + (new SimpleDateFormat( "YYYY" ).format( new Date() )), result );
-    }
+  @Test
+  void testResolvePattern() throws Exception {
+    String result = textPatternService.resolvePattern(pattern, values);
+    assertEquals("TEXTOSL1" + (new SimpleDateFormat("YYYY").format(new Date())), result);
+  }
 }

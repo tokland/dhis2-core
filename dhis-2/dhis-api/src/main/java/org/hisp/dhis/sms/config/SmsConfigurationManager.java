@@ -1,7 +1,5 @@
-package org.hisp.dhis.sms.config;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,19 +25,19 @@ package org.hisp.dhis.sms.config;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.sms.config;
 
-/**
- * Zubair <rajazubair.asghar@gmail.com>
- */
-public interface SmsConfigurationManager
-{
-    SmsConfiguration getSmsConfiguration();
+import javax.annotation.Nonnull;
+import org.hisp.dhis.feedback.BadRequestException;
+import org.hisp.dhis.feedback.ConflictException;
+import org.hisp.dhis.feedback.ForbiddenException;
 
-    void updateSmsConfiguration( SmsConfiguration config );
+/** Zubair <rajazubair.asghar@gmail.com> */
+public interface SmsConfigurationManager {
 
-    SmsGatewayConfig checkInstanceOfGateway( Class<?> clazz );
+  @Nonnull
+  SmsConfiguration getSmsConfiguration();
 
-    boolean setDefaultSMSGateway( String gatewayId );
-
-    boolean gatewayExists( String gatewayId );
+  void updateSmsConfiguration(@Nonnull SmsConfiguration config)
+      throws ConflictException, ForbiddenException, BadRequestException;
 }

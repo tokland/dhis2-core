@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.startup;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,44 +25,61 @@ package org.hisp.dhis.system.startup;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.startup;
 
 /**
- * Defines a startup routine which should be executed when the system is
- * started. The runlevel can be used to group startup routines that are
- * dependent on other startup routines, without too much detail and knowledge.
- * 
+ * Defines a startup routine which should be executed when the system is started. The runlevel can
+ * be used to group startup routines that are dependent on other startup routines, without too much
+ * detail and knowledge.
+ *
  * @author <a href="mailto:torgeilo@gmail.com">Torgeir Lorange Ostby</a>
  * @version $Id: StartupRoutine.java 5781 2008-10-01 12:12:48Z larshelg $
  */
-public interface StartupRoutine
-{
-    /**
-     * Executes the startup routine. It should fail hard if it is required to be
-     * executed successfully, or if any other unexpected errors occur.
-     * 
-     * @throws Exception if anything goes wrong.
-     */
-    void execute()
-        throws Exception;
+public interface StartupRoutine {
+  /**
+   * Executes the startup routine. It should fail hard if it is required to be executed
+   * successfully, or if any other unexpected errors occur.
+   *
+   * @throws Exception if anything goes wrong.
+   */
+  void execute() throws Exception;
 
-    /**
-     * Returns the name of the startup routine.
-     * 
-     * @return the name.
-     */
-    String getName();
-    
-    /**
-     * StartupRoutines with lower runlevels will be executed before
-     * StartupRoutines with higher runlevel.
-     * 
-     * @return the runlevel for the StartupRoutine.
-     */
-    int getRunlevel();
-    
-    /**
-     * Returns whether this StartupRoutine is to be skipped in tests or not.
-     * @return true if this StartupRoutine is skipped in tests, false otherwise.
-     */
-    boolean skipInTests();
+  /**
+   * Returns the name of the startup routine.
+   *
+   * @return the name.
+   */
+  String getName();
+
+  /**
+   * StartupRoutines with lower runlevels will be executed before StartupRoutines with higher
+   * runlevel.
+   *
+   * @return the runlevel for the StartupRoutine.
+   */
+  int getRunlevel();
+
+  /**
+   * Returns whether this StartupRoutine is to be skipped in tests or not.
+   *
+   * @return true if this StartupRoutine is skipped in tests, false otherwise.
+   */
+  boolean skipInTests();
+
+  /**
+   * Returns whether this {@link StartupRoutine} should be skipped or not. <br>
+   * <br>
+   * A system property is checked at startup to see if the routine should be skipped. It looks for
+   * system properties in the format `dhis.skip.startup.{name}` where {name} is the simple class
+   * name of the implementation class of {@link StartupRoutine}. <br>
+   * e.g. to skip the {@link SchedulerStart} routine, pass this VM arg at startup
+   * `-Ddhis.skip.startup.SchedulerStart` <br>
+   * <br>
+   * An example of why a startup routine may want to be skipped is the Job Scheduler that runs every
+   * 20 seconds or so. Skipping these during local development can help reduce noise. <br>
+   * <br>
+   *
+   * @return true if this StartupRoutine should be skipped, false otherwise.
+   */
+  boolean skip();
 }

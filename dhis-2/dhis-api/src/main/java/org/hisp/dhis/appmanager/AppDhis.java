@@ -1,7 +1,5 @@
-package org.hisp.dhis.appmanager;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,44 +25,25 @@ package org.hisp.dhis.appmanager;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.appmanager;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;
+import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
+import org.hisp.dhis.datastore.DatastoreNamespace;
 
 /**
  * @author Saptarshi
  */
-public class AppDhis
-    implements Serializable
-{
-    /**
-     * Determines if a de-serialized file is compatible with this class.
-     */
-    private static final long serialVersionUID = -8854371580010728182L;
+@Setter
+@Getter
+public class AppDhis implements Serializable {
+  /** Determines if a de-serialized file is compatible with this class. */
+  private static final long serialVersionUID = -8854371580010728182L;
 
-    @JsonProperty( "href" )
-    private String href;
-
-    @JsonProperty( "namespace" )
-    private String namespace;
-
-    public String getHref()
-    {
-        return href;
-    }
-
-    public void setHref( String href )
-    {
-        this.href = href;
-    }
-
-    public String getNamespace()
-    {
-        return namespace;
-    }
-
-    public void setNamespace( String namespace )
-    {
-        this.namespace = namespace;
-    }
+  @JsonProperty private String href;
+  @JsonProperty private String namespace;
+  @JsonProperty private List<DatastoreNamespace> additionalNamespaces;
 }

@@ -17,7 +17,7 @@
 
     <property name="name" column="name" not-null="true" unique="true" length="230" />
 
-    <property name="shortName" column="shortname" not-null="false" unique="true" length="50" />
+    <property name="shortName" column="shortname" not-null="true" unique="true" length="50" />
 
     <property name="description" type="text" />
 
@@ -72,45 +72,23 @@
 
     <property name="textPattern" type="jbTextPattern" column="textpattern" not-null="false" />
 
+    <property name="fieldMask" />
+
     <property name="style" type="jbObjectStyle" column="style" />
 
     <property name="orgunitScope" />
 
-    <property name="programScope" />
+    <property name="skipSynchronization" column="skipsynchronization" not-null="false" />
 
-    <property name="skipSynchronization" not-null="false" />
+    <property name="translations" type="jblTranslations"/>
 
-    <!-- Access properties -->
-    <many-to-one name="user" class="org.hisp.dhis.user.User"
-      column="userid" foreign-key="fk_trackedentityattribute_userid" />
+    <many-to-one name="createdBy" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_trackedentityattribute_userid" />
 
-    <property name="publicAccess" length="8" />
-
-    <set name="userGroupAccesses" table="trackedentityattributeusergroupaccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="trackedentityattributeid" />
-      <many-to-many class="org.hisp.dhis.user.UserGroupAccess" column="usergroupaccessid" unique="true" />
-    </set>
-
-    <set name="userAccesses" table="trackedentityattributeuseraccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="trackedentityattributeid" />
-      <many-to-many class="org.hisp.dhis.user.UserAccess" column="useraccessid" unique="true" />
-    </set>
+    <!-- Sharing -->
+    <property name="sharing" type="jsbObjectSharing"/>
 
     <!-- Dynamic attribute values -->
-    <set name="attributeValues" table="trackedentityattributeattributevalues" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="trackedentityattributeid" />
-      <many-to-many class="org.hisp.dhis.attribute.AttributeValue" column="attributevalueid" unique="true" />
-    </set>
-
-    <!-- Object Translation -->
-    <set name="translations" table="trackedentityattributetranslations" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="trackedentityattributeid" foreign-key="fk_objecttranslation_trackedentityattributeid" />
-      <many-to-many class="org.hisp.dhis.translation.ObjectTranslation" column="objecttranslationid" unique="true" />
-    </set>
+    <property name="attributeValues" type="jsbAttributeValues"/>
 
   </class>
 

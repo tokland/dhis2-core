@@ -1,7 +1,5 @@
-package org.hisp.dhis.datastatistics;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.datastatistics;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.datastatistics;
 
 /**
  * Types of DataStatisticsEvents.
@@ -34,26 +33,25 @@ package org.hisp.dhis.datastatistics;
  * @author Yrjan A. F. Fraschetti
  * @author Julie Hill Roa
  */
-public enum DataStatisticsEventType
-{
-    REPORT_TABLE_VIEW( "reporttable" ),
-    CHART_VIEW( "chart" ),
-    MAP_VIEW( "map" ),
-    EVENT_REPORT_VIEW( "eventreport" ),
-    EVENT_CHART_VIEW( "eventchart" ),
-    DASHBOARD_VIEW( "dashboard" ),
-    DATA_SET_REPORT_VIEW( "dataset" ),
-    TOTAL_VIEW( null );
+public enum DataStatisticsEventType {
+  VISUALIZATION_VIEW("visualization"),
+  MAP_VIEW("map"),
+  EVENT_REPORT_VIEW("eventreport"),
+  EVENT_CHART_VIEW("eventchart"),
+  EVENT_VISUALIZATION_VIEW("eventvisualization"),
+  DASHBOARD_VIEW("dashboard"),
+  PASSIVE_DASHBOARD_VIEW("dashboard"),
+  DATA_SET_REPORT_VIEW("dataset"),
+  TOTAL_VIEW(null),
+  ACTIVE_USERS("active_users");
 
-    private String table;
+  private String table;
 
-    DataStatisticsEventType( String table )
-    {
-        this.table = table;
-    }
+  DataStatisticsEventType(String table) {
+    this.table = table;
+  }
 
-    public String getTable()
-    {
-        return table;
-    }
+  public String getTable() {
+    return table;
+  }
 }

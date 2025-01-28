@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,186 +25,131 @@ package org.hisp.dhis.dataset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataset;
 
-import org.hisp.dhis.common.IdentifiableObjectManager;
-import org.hisp.dhis.dataapproval.DataApprovalWorkflow;
-import org.hisp.dhis.dataelement.DataElement;
-import org.hisp.dhis.category.CategoryCombo;
-import org.hisp.dhis.category.CategoryService;
-import org.hisp.dhis.dataelement.DataElementOperand;
-import org.hisp.dhis.dataentryform.DataEntryForm;
-import org.hisp.dhis.indicator.Indicator;
-import org.hisp.dhis.legend.LegendSet;
-import org.hisp.dhis.organisationunit.OrganisationUnit;
-import org.hisp.dhis.system.deletion.DeletionHandler;
-import org.springframework.beans.factory.annotation.Autowired;
+import static org.hisp.dhis.category.CategoryCombo.DEFAULT_CATEGORY_COMBO_NAME;
 
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-
-import static org.hisp.dhis.category.CategoryCombo.DEFAULT_CATEGORY_COMBO_NAME;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.category.CategoryCombo;
+import org.hisp.dhis.category.CategoryService;
+import org.hisp.dhis.dataapproval.DataApprovalWorkflow;
+import org.hisp.dhis.dataelement.DataElement;
+import org.hisp.dhis.dataentryform.DataEntryForm;
+import org.hisp.dhis.indicator.Indicator;
+import org.hisp.dhis.legend.LegendSet;
+import org.hisp.dhis.organisationunit.OrganisationUnit;
+import org.hisp.dhis.system.deletion.IdObjectDeletionHandler;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
  */
-public class DataSetDeletionHandler
-    extends DeletionHandler
-{
-    @Autowired
-    private IdentifiableObjectManager idObjectManager;
+@Component
+@RequiredArgsConstructor
+public class DataSetDeletionHandler extends IdObjectDeletionHandler<DataSet> {
+  private final DataSetService dataSetService;
 
-    @Autowired
-    private DataSetService dataSetService;
+  private final CategoryService categoryService;
 
-    @Autowired
-    private CategoryService categoryService;
+  @Override
+  protected void registerHandler() {
+    whenDeleting(DataElement.class, this::deleteDataElement);
+    whenDeleting(Indicator.class, this::deleteIndicator);
+    whenDeleting(Section.class, this::deleteSection);
+    whenDeleting(LegendSet.class, this::deleteLegendSet);
+    whenDeleting(CategoryCombo.class, this::deleteCategoryCombo);
+    whenDeleting(OrganisationUnit.class, this::deleteOrganisationUnit);
+    whenDeleting(DataEntryForm.class, this::deleteDataEntryForm);
+    whenDeleting(DataApprovalWorkflow.class, this::deleteDataApprovalWorkflow);
+  }
 
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
+  private void deleteDataElement(DataElement dataElement) {
+    Iterator<DataSetElement> elements = dataElement.getDataSetElements().iterator();
 
-    @Override
-    public String getClassName()
-    {
-        return DataSet.class.getSimpleName();
+    while (elements.hasNext()) {
+      DataSetElement element = elements.next();
+      elements.remove();
+
+      dataElement.removeDataSetElement(element);
+      idObjectManager.updateNoAcl(element.getDataSet());
     }
 
-    @Override
-    public void deleteDataElement( DataElement dataElement )
-    {
-        Iterator<DataSetElement> elements = dataElement.getDataSetElements().iterator();
-        
-        while ( elements.hasNext() )
-        {
-            DataSetElement element = elements.next();
-            elements.remove();
-            
-            dataElement.removeDataSetElement( element );
-            idObjectManager.updateNoAcl( element.getDataSet() );
-        }
-        
-        List<DataSet> dataSets = idObjectManager.getAllNoAcl( DataSet.class );
-        
-        for ( DataSet dataSet : dataSets )
-        {
-            boolean update = false;
-            
-            Iterator<DataElementOperand> operands = dataSet.getCompulsoryDataElementOperands().iterator();
-            
-            while ( operands.hasNext() )
-            {
-                DataElementOperand operand = operands.next();
-                
-                if ( operand.getDataElement().equals( dataElement ) )
-                {
-                    operands.remove();
-                    update = true;
-                }
-            }
-            
-            if ( update )
-            {
-                idObjectManager.updateNoAcl( dataSet );
-            }
-        }
-    }
-    
-    @Override
-    public void deleteIndicator( Indicator indicator )
-    {
-        Iterator<DataSet> iterator = indicator.getDataSets().iterator();
-        
-        while ( iterator.hasNext() )
-        {
-            DataSet dataSet = iterator.next();
-            dataSet.getIndicators().remove( indicator );
-            idObjectManager.updateNoAcl( dataSet );
-        }
-    }
-    
-    @Override
-    public void deleteSection( Section section )
-    {
-        DataSet dataSet = section.getDataSet();
-        
-        if ( dataSet != null )
-        {
-            dataSet.getSections().remove( section );
-            idObjectManager.updateNoAcl( dataSet );
-        }
-    }
-    
-    @Override
-    public void deleteLegendSet( LegendSet legendSet )
-    {
-        for ( DataSet dataSet : idObjectManager.getAllNoAcl( DataSet.class ) )
-        {
-            for ( LegendSet ls : dataSet.getLegendSets() )
-            {
-                if( legendSet.equals( ls ) )
-                {
-                    dataSet.getLegendSets().remove( ls );
-                    idObjectManager.updateNoAcl( dataSet );
-                }
+    List<DataSet> dataSets = idObjectManager.getAllNoAcl(DataSet.class);
 
-            }
-        }
+    for (DataSet dataSet : dataSets) {
+      if (dataSet
+          .getCompulsoryDataElementOperands()
+          .removeIf(operand -> operand.getDataElement().equals(dataElement))) {
+        idObjectManager.updateNoAcl(dataSet);
+      }
     }
-    
-    @Override
-    public void deleteCategoryCombo( CategoryCombo categoryCombo )
-    {
-        CategoryCombo defaultCategoryCombo = categoryService
-            .getCategoryComboByName( DEFAULT_CATEGORY_COMBO_NAME );
+  }
 
-        Collection<DataSet> dataSets = idObjectManager.getAllNoAcl( DataSet.class );
-
-        for ( DataSet dataSet : dataSets )
-        {            
-            if ( dataSet != null && categoryCombo.equals( dataSet.getCategoryCombo() ) )
-            {
-                dataSet.setCategoryCombo( defaultCategoryCombo );
-                idObjectManager.updateNoAcl( dataSet );
-            }
-        }        
+  private void deleteIndicator(Indicator indicator) {
+    for (DataSet dataSet : indicator.getDataSets()) {
+      dataSet.getIndicators().remove(indicator);
+      idObjectManager.updateNoAcl(dataSet);
     }
+  }
 
-    @Override
-    public void deleteOrganisationUnit( OrganisationUnit unit )
-    {
-        Iterator<DataSet> iterator = unit.getDataSets().iterator();
-        
-        while ( iterator.hasNext() )
-        {
-            DataSet dataSet = iterator.next();
-            dataSet.getSources().remove( unit );
-            idObjectManager.updateNoAcl( dataSet );
-        }
+  private void deleteSection(Section section) {
+    DataSet dataSet = section.getDataSet();
+
+    if (dataSet != null) {
+      dataSet.getSections().remove(section);
+      idObjectManager.updateNoAcl(dataSet);
     }
+  }
 
-    @Override
-    public void deleteDataEntryForm( DataEntryForm dataEntryForm )
-    {
-        List<DataSet> associatedDataSets = dataSetService.getDataSetsByDataEntryForm( dataEntryForm );
-
-        for ( DataSet dataSet : associatedDataSets )
-        {
-            dataSet.setDataEntryForm( null );
-            idObjectManager.updateNoAcl( dataSet );
+  private void deleteLegendSet(LegendSet legendSet) {
+    for (DataSet ds : idObjectManager.getAllNoAcl(DataSet.class)) {
+      Iterator<LegendSet> lsIterator = ds.getLegendSets().iterator();
+      while (lsIterator.hasNext()) {
+        if (legendSet.equals(lsIterator.next())) {
+          lsIterator.remove();
+          idObjectManager.updateNoAcl(ds);
         }
+      }
     }
-    
-    @Override
-    public void deleteDataApprovalWorkflow( DataApprovalWorkflow workflow )
-    {
-        Iterator<DataSet> iterator = workflow.getDataSets().iterator();
-        
-        while ( iterator.hasNext() )
-        {
-            DataSet dataSet = iterator.next();
-            dataSet.setWorkflow( null );
-            idObjectManager.updateNoAcl( dataSet );
-        }
-    }    
+  }
+
+  private void deleteCategoryCombo(CategoryCombo categoryCombo) {
+    CategoryCombo defaultCategoryCombo =
+        categoryService.getCategoryComboByName(DEFAULT_CATEGORY_COMBO_NAME);
+
+    Collection<DataSet> dataSets = idObjectManager.getAllNoAcl(DataSet.class);
+
+    for (DataSet dataSet : dataSets) {
+      if (dataSet != null && categoryCombo.equals(dataSet.getCategoryCombo())) {
+        dataSet.setCategoryCombo(defaultCategoryCombo);
+        idObjectManager.updateNoAcl(dataSet);
+      }
+    }
+  }
+
+  private void deleteOrganisationUnit(OrganisationUnit unit) {
+    for (DataSet dataSet : unit.getDataSets()) {
+      dataSet.getSources().remove(unit);
+      idObjectManager.updateNoAcl(dataSet);
+    }
+  }
+
+  private void deleteDataEntryForm(DataEntryForm dataEntryForm) {
+    List<DataSet> associatedDataSets = dataSetService.getDataSetsByDataEntryForm(dataEntryForm);
+
+    for (DataSet dataSet : associatedDataSets) {
+      dataSet.setDataEntryForm(null);
+      idObjectManager.updateNoAcl(dataSet);
+    }
+  }
+
+  private void deleteDataApprovalWorkflow(DataApprovalWorkflow workflow) {
+    for (DataSet dataSet : workflow.getDataSets()) {
+      dataSet.setWorkflow(null);
+      idObjectManager.updateNoAcl(dataSet);
+    }
+  }
 }

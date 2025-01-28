@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.util;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,26 +25,25 @@ package org.hisp.dhis.system.util;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.util;
 
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import static org.junit.Assert.*;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Lars Helge Overland
  */
-public class CodeUtilsTest
-{
-    @Test
-    public void testFilenameEncode()
-    {
-        assertEquals( "nicechart", CodecUtils.filenameEncode( "nicechart" ) );
-    }
+class CodeUtilsTest {
 
-    @Test
-    public void test()
-    {
-        assertEquals( "Basic am9objpkb2UxMjM=", CodecUtils.getBasicAuthString( "john", "doe123" ) );
-        assertEquals( "Basic YWRtaW46ZGlzdHJpY3Q=", CodecUtils.getBasicAuthString( "admin", "district" ) );
-    }
+  @Test
+  void testFilenameEncode() {
+    assertEquals("nicechart", CodecUtils.filenameEncode("nicechart"));
+  }
+
+  @Test
+  void test() {
+    assertEquals("Basic am9objpkb2UxMjM=", CodecUtils.getBasicAuthString("john", "doe123"));
+    assertEquals("Basic YWRtaW46ZGlzdHJpY3Q=", CodecUtils.getBasicAuthString("admin", "district"));
+  }
 }

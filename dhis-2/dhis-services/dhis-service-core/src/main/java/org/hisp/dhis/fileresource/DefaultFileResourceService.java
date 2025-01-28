@@ -1,7 +1,5 @@
-package org.hisp.dhis.fileresource;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,173 +25,431 @@ package org.hisp.dhis.fileresource;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.fileresource;
 
+import com.google.common.hash.Hashing;
 import com.google.common.io.ByteSource;
-import org.hisp.dhis.common.IdentifiableObjectStore;
-import org.hisp.dhis.scheduling.SchedulingManager;
+import jakarta.persistence.EntityManager;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.hisp.dhis.common.IllegalQueryException;
+import org.hisp.dhis.feedback.BadRequestException;
+import org.hisp.dhis.feedback.ConflictException;
+import org.hisp.dhis.feedback.ErrorCode;
+import org.hisp.dhis.feedback.NotFoundException;
+import org.hisp.dhis.fileresource.events.BinaryFileSavedEvent;
+import org.hisp.dhis.fileresource.events.FileDeletedEvent;
+import org.hisp.dhis.fileresource.events.FileSavedEvent;
+import org.hisp.dhis.fileresource.events.ImageFileSavedEvent;
+import org.hisp.dhis.period.PeriodService;
+import org.hisp.dhis.user.CurrentUserUtil;
+import org.hisp.dhis.util.ObjectUtils;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.joda.time.Hours;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.concurrent.ListenableFuture;
-
-import java.io.File;
-import java.net.URI;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 /**
  * @author Halvdan Hoem Grelland
  */
-public class DefaultFileResourceService
-    implements FileResourceService
-{
-    private static final Duration IS_ORPHAN_TIME_DELTA = Hours.TWO.toStandardDuration();
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.fileresource.FileResourceService")
+public class DefaultFileResourceService implements FileResourceService {
+  private static final Duration IS_ORPHAN_TIME_DELTA = Hours.TWO.toStandardDuration();
 
-    private static final Predicate<FileResource> IS_ORPHAN_PREDICATE =
-        ( fr -> !fr.isAssigned() || fr.getStorageStatus() != FileResourceStorageStatus.STORED );
+  public static final Predicate<FileResource> IS_ORPHAN_PREDICATE = (fr -> !fr.isAssigned());
 
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Dependencies
+  // -------------------------------------------------------------------------
 
-    private IdentifiableObjectStore<FileResource> fileResourceStore;
+  private final FileResourceStore fileResourceStore;
 
-    public void setFileResourceStore( IdentifiableObjectStore<FileResource> fileResourceStore )
-    {
-        this.fileResourceStore = fileResourceStore;
+  private final PeriodService periodService;
+
+  private final FileResourceContentStore fileResourceContentStore;
+
+  private final ImageProcessingService imageProcessingService;
+
+  private final ApplicationEventPublisher fileEventPublisher;
+
+  private final EntityManager entityManager;
+
+  // -------------------------------------------------------------------------
+  // FileResourceService implementation
+  // -------------------------------------------------------------------------
+
+  @Nonnull
+  @Override
+  @Transactional(readOnly = true)
+  public FileResource getExistingFileResource(String uid) throws NotFoundException {
+    FileResource fr = fileResourceStore.getByUid(uid);
+    if (fr == null) throw new NotFoundException(FileResource.class, uid);
+    return fr;
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public FileResource getFileResource(String uid) {
+    return checkStorageStatus(fileResourceStore.getByUid(uid));
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Optional<FileResource> getFileResource(String uid, FileResourceDomain domain) {
+    return fileResourceStore.findByUidAndDomain(uid, domain);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<FileResource> getFileResources(@Nonnull List<String> uids) {
+    return fileResourceStore.getByUid(uids).stream()
+        .map(this::checkStorageStatus)
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<FileResource> getOrphanedFileResources() {
+    return fileResourceStore
+        .getAllLeCreated(new DateTime().minus(IS_ORPHAN_TIME_DELTA).toDate())
+        .stream()
+        .filter(IS_ORPHAN_PREDICATE)
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Optional<FileResource> findByStorageKey(@CheckForNull String storageKey) {
+    return storageKey == null ? Optional.empty() : fileResourceStore.findByStorageKey(storageKey);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<FileResourceOwner> findOwnersByStorageKey(@CheckForNull String storageKey) {
+    Optional<FileResource> maybeFr = findByStorageKey(storageKey);
+    if (maybeFr.isEmpty()) return List.of();
+    FileResource fr = maybeFr.get();
+    String uid = fr.getUid();
+    return switch (fr.getDomain()) {
+      case PUSH_ANALYSIS -> List.of();
+      case ORG_UNIT ->
+          fileResourceStore.findOrganisationUnitsByImageFileResource(uid).stream()
+              .map(id -> new FileResourceOwner(FileResourceDomain.ORG_UNIT, id))
+              .toList();
+      case DOCUMENT ->
+          fileResourceStore.findDocumentsByFileResource(uid).stream()
+              .map(id -> new FileResourceOwner(FileResourceDomain.DOCUMENT, id))
+              .toList();
+      case MESSAGE_ATTACHMENT ->
+          fileResourceStore.findMessagesByFileResource(uid).stream()
+              .map(id -> new FileResourceOwner(FileResourceDomain.MESSAGE_ATTACHMENT, id))
+              .toList();
+      case USER_AVATAR ->
+          fileResourceStore.findUsersByAvatarFileResource(uid).stream()
+              .map(id -> new FileResourceOwner(FileResourceDomain.USER_AVATAR, id))
+              .toList();
+      case DATA_VALUE ->
+          fileResourceStore.findDataValuesByFileResourceValue(uid).stream()
+              .map(
+                  dv ->
+                      new FileResourceOwner(
+                          dv.de(), dv.ou(), periodService.getPeriod(dv.pe()).getIsoDate(), dv.co()))
+              .toList();
+      case ICON ->
+          fileResourceStore.findCustomIconByFileResource(uid).stream()
+              .map(key -> new FileResourceOwner(FileResourceDomain.ICON, key))
+              .toList();
+      case JOB_DATA -> List.of(new FileResourceOwner(FileResourceDomain.JOB_DATA, uid));
+    };
+  }
+
+  @Override
+  @Transactional
+  public void asyncSaveFileResource(FileResource fileResource, File file) {
+    validateFileResource(fileResource);
+
+    fileResource.setStorageStatus(FileResourceStorageStatus.PENDING);
+    fileResourceStore.save(fileResource);
+    entityManager.flush();
+
+    if (hasMultiDimensionImageSupport(fileResource)) {
+      Map<ImageFileDimension, File> imageFiles =
+          imageProcessingService.createImages(fileResource, file);
+
+      fileEventPublisher.publishEvent(
+          new ImageFileSavedEvent(
+              fileResource.getUid(), imageFiles, CurrentUserUtil.getCurrentUserDetails().getUid()));
+      return;
     }
 
-    private FileResourceContentStore fileResourceContentStore;
+    fileEventPublisher.publishEvent(new FileSavedEvent(fileResource.getUid(), file));
+  }
 
-    public void setFileResourceContentStore( FileResourceContentStore fileResourceContentStore )
-    {
-        this.fileResourceContentStore = fileResourceContentStore;
+  @Override
+  @Transactional
+  public String asyncSaveFileResource(FileResource fileResource, byte[] bytes) {
+    validateFileResource(fileResource);
+
+    fileResource.setStorageStatus(FileResourceStorageStatus.PENDING);
+    fileResourceStore.save(fileResource);
+    entityManager.flush();
+
+    final String uid = fileResource.getUid();
+
+    fileEventPublisher.publishEvent(new BinaryFileSavedEvent(fileResource.getUid(), bytes));
+
+    return uid;
+  }
+
+  @Override
+  @Transactional
+  public String syncSaveFileResource(FileResource fileResource, byte[] bytes)
+      throws ConflictException {
+    validateFileResource(fileResource);
+
+    fileResource.setContentLength(bytes.length);
+    try {
+      fileResource.setContentMd5(ByteSource.wrap(bytes).hash(Hashing.md5()).toString());
+    } catch (IOException ex) {
+      throw new ConflictException("Failed to compute content md5 resource: " + ex.getMessage());
+    }
+    fileResource.setStorageStatus(FileResourceStorageStatus.PENDING);
+    fileResourceStore.save(fileResource);
+    entityManager.flush();
+
+    final String uid = fileResource.getUid();
+
+    String storageId = fileResourceContentStore.saveFileResourceContent(fileResource, bytes);
+    if (storageId == null) throw new ConflictException(ErrorCode.E6102);
+
+    return uid;
+  }
+
+  @Override
+  @Transactional
+  public String syncSaveFileResource(FileResource fileResource, InputStream content)
+      throws ConflictException {
+    try {
+      return syncSaveFileResource(fileResource, IOUtils.toByteArray(content));
+    } catch (IOException ex) {
+      throw new ConflictException("Failed to extract bytes from input stream: " + ex.getMessage());
+    }
+  }
+
+  @Override
+  @Transactional
+  public void deleteFileResource(String uid) {
+    if (uid == null) {
+      return;
     }
 
-    private SchedulingManager schedulingManager;
+    FileResource fileResource = fileResourceStore.getByUid(uid);
 
-    public void setSchedulingManager( SchedulingManager schedulingManager )
-    {
-        this.schedulingManager = schedulingManager;
+    deleteFileResource(fileResource);
+  }
+
+  @Override
+  @Transactional
+  public void deleteFileResource(FileResource fileResource) {
+    if (fileResource == null) {
+      return;
     }
 
-    private FileResourceUploadCallback uploadCallback;
+    FileResource existingResource = fileResourceStore.get(fileResource.getId());
 
-    public void setUploadCallback( FileResourceUploadCallback uploadCallback )
-    {
-        this.uploadCallback = uploadCallback;
+    if (existingResource == null) {
+      return;
     }
 
-    // -------------------------------------------------------------------------
-    // FileResourceService implementation
-    // -------------------------------------------------------------------------
+    FileDeletedEvent deleteFileEvent =
+        new FileDeletedEvent(
+            existingResource.getStorageKey(),
+            existingResource.getContentType(),
+            existingResource.getDomain());
 
-    @Override
-    @Transactional
-    public FileResource getFileResource( String uid )
-    {
-        return fileResourceStore.getByUid( uid );
+    fileResourceStore.delete(existingResource);
+
+    fileEventPublisher.publishEvent(deleteFileEvent);
+  }
+
+  @Override
+  @Nonnull
+  public InputStream getFileResourceContent(FileResource fileResource) throws ConflictException {
+    String key = fileResource.getStorageKey();
+    InputStream content = fileResourceContentStore.getFileResourceContent(key);
+    if (content == null) throw new ConflictException(ErrorCode.E6103);
+    return content;
+  }
+
+  @Override
+  public long getFileResourceContentLength(FileResource fileResource) {
+    return fileResourceContentStore.getFileResourceContentLength(fileResource.getStorageKey());
+  }
+
+  @Override
+  public void copyFileResourceContent(FileResource fileResource, OutputStream outputStream)
+      throws IOException, NoSuchElementException {
+    fileResourceContentStore.copyContent(fileResource.getStorageKey(), outputStream);
+  }
+
+  @Override
+  public byte[] copyFileResourceContent(FileResource fileResource)
+      throws IOException, NoSuchElementException {
+    return fileResourceContentStore.copyContent(fileResource.getStorageKey());
+  }
+
+  @Override
+  public byte[] copyImageContent(FileResource fileResource, ImageFileDimension dimension)
+      throws NoSuchElementException, BadRequestException, IOException {
+    ImageFileDimension imageDimension =
+        ObjectUtils.firstNonNull(dimension, ImageFileDimension.ORIGINAL);
+
+    hasImageDimensionSupport(fileResource, imageDimension);
+
+    return fileResourceContentStore.copyContent(imageKey(fileResource, imageDimension));
+  }
+
+  @Override
+  public InputStream openContentStream(FileResource fileResource)
+      throws IOException, NoSuchElementException {
+    return fileResourceContentStore.openStream(fileResource.getStorageKey());
+  }
+
+  @Override
+  public InputStream openContentStreamToImage(
+      FileResource fileResource, ImageFileDimension dimension)
+      throws IOException, NoSuchElementException, BadRequestException {
+    ImageFileDimension imageDimension =
+        ObjectUtils.firstNonNull(dimension, ImageFileDimension.ORIGINAL);
+
+    hasImageDimensionSupport(fileResource, imageDimension);
+
+    return fileResourceContentStore.openStream(imageKey(fileResource, imageDimension));
+  }
+
+  private static void hasImageDimensionSupport(
+      FileResource fileResource, ImageFileDimension imageDimension) throws BadRequestException {
+    if (!FileResource.isImage(fileResource.getContentType())) {
+      throw new BadRequestException("File is not an image");
     }
 
-    @Override
-    @Transactional
-    public List<FileResource> getFileResources( List<String> uids )
-    {
-        return fileResourceStore.getByUid( uids );
+    if (imageDimension != ImageFileDimension.ORIGINAL
+        && !hasMultiDimensionImageSupport(fileResource)) {
+      throw new BadRequestException("Image does not have support for multiple dimensions");
     }
 
-    @Override
-    @Transactional
-    public List<FileResource> getOrphanedFileResources( )
-    {
-        return fileResourceStore.getAllLeCreated( new DateTime().minus( IS_ORPHAN_TIME_DELTA ).toDate() )
-            .stream().filter( IS_ORPHAN_PREDICATE ).collect( Collectors.toList() );
+    if (imageDimension != ImageFileDimension.ORIGINAL
+        && !fileResource.isHasMultipleStorageFiles()) {
+      throw new BadRequestException("Image is not stored using multiple dimensions");
+    }
+  }
+
+  private static boolean hasMultiDimensionImageSupport(FileResource fileResource) {
+    return FileResource.isImage(fileResource.getContentType())
+        && FileResourceDomain.isDomainForMultipleImages(fileResource.getDomain());
+  }
+
+  private static String imageKey(FileResource fileResource, ImageFileDimension imageDimension) {
+    return StringUtils.join(fileResource.getStorageKey(), imageDimension.getDimension());
+  }
+
+  @Override
+  @Transactional
+  public boolean fileResourceExists(String uid) {
+    return fileResourceStore.getByUid(uid) != null;
+  }
+
+  @Override
+  @Transactional
+  public void updateFileResource(FileResource fileResource) {
+    fileResourceStore.update(fileResource);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public URI getSignedGetFileResourceContentUri(String uid) {
+    FileResource fileResource = getFileResource(uid);
+
+    if (fileResource == null) {
+      return null;
     }
 
-    @Override
-    public String saveFileResource( FileResource fileResource, File file )
-    {
-        return saveFileResourceInternal( fileResource, () -> fileResourceContentStore.saveFileResourceContent( fileResource, file ) );
+    return fileResourceContentStore.getSignedGetContentUri(fileResource.getStorageKey());
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public URI getSignedGetFileResourceContentUri(FileResource fileResource) {
+    if (fileResource == null) {
+      return null;
     }
 
-    @Override
-    public String saveFileResource( FileResource fileResource, byte[] bytes )
-    {
-        return saveFileResourceInternal( fileResource, () -> fileResourceContentStore.saveFileResourceContent( fileResource, bytes ) );
+    return fileResourceContentStore.getSignedGetContentUri(fileResource.getStorageKey());
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<FileResource> getExpiredFileResources(
+      FileResourceRetentionStrategy retentionStrategy) {
+    DateTime expires = DateTime.now().minus(retentionStrategy.getRetentionTime());
+    return fileResourceStore.getExpiredFileResources(expires);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<FileResource> getAllUnProcessedImagesFiles() {
+    return fileResourceStore.getAllUnProcessedImages();
+  }
+
+  // -------------------------------------------------------------------------
+  // Supportive methods
+  // -------------------------------------------------------------------------
+
+  /**
+   * Validates the given {@link FileResource}. Throws an exception if not.
+   *
+   * @param fileResource the file resource.
+   * @throws IllegalQueryException if the given file resource is invalid.
+   */
+  private void validateFileResource(FileResource fileResource) throws IllegalQueryException {
+    if (fileResource.getName() == null) {
+      throw new IllegalQueryException(ErrorCode.E6100);
     }
 
-    @Override
-    @Transactional
-    public void deleteFileResource( String uid )
-    {
-        if ( uid == null )
-        {
-            return;
-        }
+    if (!FileResourceBlocklist.isValid(fileResource)) {
+      throw new IllegalQueryException(ErrorCode.E6101);
+    }
+  }
 
-        FileResource fileResource = fileResourceStore.getByUid( uid );
+  private FileResource checkStorageStatus(FileResource fileResource) {
+    if (fileResource != null) {
+      boolean exists =
+          fileResourceContentStore.fileResourceContentExists(fileResource.getStorageKey());
 
-        if ( fileResource == null )
-        {
-            return;
-        }
-
-        fileResourceContentStore.deleteFileResourceContent( fileResource.getStorageKey() );
-        fileResourceStore.delete( fileResource );
+      if (exists) {
+        fileResource.setStorageStatus(FileResourceStorageStatus.STORED);
+      } else {
+        fileResource.setStorageStatus(FileResourceStorageStatus.PENDING);
+      }
     }
 
-    @Override
-    public ByteSource getFileResourceContent( FileResource fileResource )
-    {
-        return fileResourceContentStore.getFileResourceContent( fileResource.getStorageKey() );
-    }
-
-    @Override
-    @Transactional
-    public boolean fileResourceExists( String uid )
-    {
-        return fileResourceStore.getByUid( uid ) != null;
-    }
-
-    @Override
-    @Transactional
-    public void updateFileResource( FileResource fileResource )
-    {
-        fileResourceStore.update( fileResource );
-    }
-
-    @Override
-    public URI getSignedGetFileResourceContentUri( String uid )
-    {
-        FileResource fileResource = getFileResource( uid );
-
-        if ( fileResource == null )
-        {
-            return null;
-        }
-
-        return fileResourceContentStore.getSignedGetContentUri( fileResource.getStorageKey() );
-    }
-
-    // -------------------------------------------------------------------------
-    // Supportive methods
-    // -------------------------------------------------------------------------
-
-    private String saveFileResourceInternal( FileResource fileResource, Callable<String> saveCallable )
-    {
-        fileResource.setStorageStatus( FileResourceStorageStatus.PENDING );
-        fileResourceStore.save( fileResource );
-        updateFileResource( fileResource );
-
-        final ListenableFuture<String> saveContentTask = schedulingManager.executeJob( saveCallable );
-
-        final String uid = fileResource.getUid();
-
-        saveContentTask.addCallback( uploadCallback.newInstance( uid ) );
-
-        return uid;
-    }
+    return fileResource;
+  }
 }

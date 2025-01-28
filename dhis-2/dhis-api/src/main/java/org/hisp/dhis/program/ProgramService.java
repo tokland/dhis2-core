@@ -1,7 +1,5 @@
-package org.hisp.dhis.program;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,149 +25,121 @@ package org.hisp.dhis.program;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
-
+import javax.annotation.Nonnull;
+import org.apache.commons.collections4.SetValuedMap;
 import org.hisp.dhis.dataentryform.DataEntryForm;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.trackedentity.TrackedEntityType;
-import org.hisp.dhis.user.User;
 
 /**
  * @author Abyot Asalefew
  */
-public interface ProgramService
-{
-    String ID = ProgramService.class.getName();
+public interface ProgramService {
+  /**
+   * Adds an {@link Program}
+   *
+   * @param program The to Program add.
+   * @return A generated unique id of the added {@link Program}.
+   */
+  long addProgram(Program program);
 
-    Pattern INPUT_PATTERN = Pattern.compile( "(<input.*?/>)", Pattern.DOTALL );
-    Pattern DYNAMIC_ATTRIBUTE_PATTERN = Pattern.compile( "attributeid=\"(\\w+)\"" );
-    Pattern PROGRAM_PATTERN = Pattern.compile( "programid=\"(\\w+)\"" );
-    Pattern VALUE_TAG_PATTERN = Pattern.compile( "value=\"(.*?)\"", Pattern.DOTALL );
-    Pattern TITLE_TAG_PATTERN = Pattern.compile( "title=\"(.*?)\"", Pattern.DOTALL );
-    Pattern SUGGESTED_VALUE_PATTERN = Pattern.compile( "suggested=('|\")(\\w*)('|\")" );
-    Pattern CLASS_PATTERN = Pattern.compile( "class=('|\")(\\w*)('|\")" );
-    Pattern STYLE_PATTERN = Pattern.compile( "style=('|\")([\\w|\\d\\:\\;]+)('|\")" );
+  /**
+   * Updates an {@link Program}.
+   *
+   * @param program the Program to update.
+   */
+  void updateProgram(Program program);
 
-    /**
-     * Adds an {@link Program}
-     *
-     * @param program The to Program add.
-     * @return A generated unique id of the added {@link Program}.
-     */
-    int addProgram( Program program );
+  /**
+   * Deletes a {@link Program}. All {@link ProgramStage}, {@link Enrollment} and {@link Event}
+   * belong to this program are removed
+   *
+   * @param program the Program to delete.
+   */
+  void deleteProgram(Program program);
 
-    /**
-     * Updates an {@link Program}.
-     *
-     * @param program the Program to update.
-     */
-    void updateProgram( Program program );
+  /**
+   * Returns a {@link Program}.
+   *
+   * @param id the id of the Program to return.
+   * @return the Program with the given id
+   */
+  Program getProgram(long id);
 
-    /**
-     * Deletes a {@link Program}. All {@link ProgramStage},
-     * {@link ProgramInstance} and {@link ProgramStageInstance} belong to this
-     * program are removed
-     *
-     * @param program the Program to delete.
-     */
-    void deleteProgram( Program program );
+  /**
+   * Returns all {@link Program}.
+   *
+   * @return a collection of all Program, or an empty collection if there are no Programs.
+   */
+  List<Program> getAllPrograms();
 
-    /**
-     * Returns a {@link Program}.
-     *
-     * @param id the id of the Program to return.
-     * @return the Program with the given id
-     */
-    Program getProgram( int id );
+  Collection<Program> getPrograms(@Nonnull Collection<String> uids);
 
-    /**
-     * Returns all {@link Program}.
-     *
-     * @return a collection of all Program, or an empty collection if there are
-     *         no Programs.
-     */
-    List<Program> getAllPrograms();
+  /**
+   * Get all {@link Program} belong to a orgunit
+   *
+   * @param organisationUnit {@link OrganisationUnit}
+   * @return The program list
+   */
+  List<Program> getPrograms(OrganisationUnit organisationUnit);
 
-    /**
-     * Get all {@link Program} belong to a orgunit
-     *
-     * @param organisationUnit {@link OrganisationUnit}
-     * @return The program list
-     */
-    List<Program> getPrograms( OrganisationUnit organisationUnit );
+  /**
+   * Returns the {@link Program} with the given UID.
+   *
+   * @param uid the UID.
+   * @return the Program with the given UID, or null if no match.
+   */
+  Program getProgram(String uid);
 
-    /**
-     * Get {@link Program} by a type
-     *
-     * @param type The type of program. There are three types, include Multi
-     *        events with registration, Single event with registration and
-     *        Single event without registration
-     * @return Program list by a type specified
-     */
-    List<Program> getPrograms( ProgramType type );
+  /**
+   * Get {@link TrackedEntityType} by TrackedEntityType
+   *
+   * @param trackedEntityType {@link TrackedEntityType}
+   */
+  List<Program> getProgramsByTrackedEntityType(TrackedEntityType trackedEntityType);
 
-    /**
-     * Returns the {@link Program} with the given UID.
-     *
-     * @param uid the UID.
-     * @return the Program with the given UID, or null if no match.
-     */
-    Program getProgram( String uid );
+  /**
+   * Get all Programs with the given DataEntryForm.
+   *
+   * @param dataEntryForm the DataEntryForm.
+   * @return a list of Programs.
+   */
+  List<Program> getProgramsByDataEntryForm(DataEntryForm dataEntryForm);
 
-    /**
-     * Get {@link TrackedEntityType} by TrackedEntityType
-     *
-     * @param trackedEntityType {@link TrackedEntityType}
-     */
-    List<Program> getProgramsByTrackedEntityType( TrackedEntityType trackedEntityType );
+  /**
+   * Get {@link Program} by the current user. Returns all programs if current user is superuser.
+   * Returns an empty list if there is no current user.
+   *
+   * @return Immutable set of programs associated with the current user.
+   */
+  List<Program> getCurrentUserPrograms();
 
-    /**
-     * Get all Programs with the given DataEntryForm.
-     *
-     * @param dataEntryForm the DataEntryForm.
-     * @return a list of Programs.
-     */
-    List<Program> getProgramsByDataEntryForm( DataEntryForm dataEntryForm );
+  /**
+   * Returns a list of generated, non-persisted program data elements for the program with the given
+   * identifier.
+   *
+   * @param programUid the program identifier.
+   * @return a list of program data elements.
+   */
+  List<ProgramDataElementDimensionItem> getGeneratedProgramDataElements(String programUid);
 
-    /**
-     * Get {@link Program} by the current user. Returns all programs if current
-     * user is superuser. Returns an empty list if there is no current user.
-     *
-     * @return Immutable set of programs associated with the current user.
-     */
-    Set<Program> getUserPrograms();
+  /** Checks whether the given {@link OrganisationUnit} belongs to the specified {@link Program} */
+  boolean hasOrgUnit(Program program, OrganisationUnit organisationUnit);
 
-    Set<Program> getUserPrograms( User user );
-
-    /**
-     * Get {@link Program} by the current user and a certain type
-     *
-     * @param programType The type of program. There are three types, include Multi
-     *        events with registration, Single event with registration and
-     *        Single event without registration.
-     * @return Immutable set of programs associated with the current user.
-     */
-    Set<Program> getUserPrograms( ProgramType programType );
-
-    /**
-     * Sets the given merge organisation units on the given programs. Only 
-     * the sub-hierarchy of the current user is modified. 
-     * 
-     * @param program the program.
-     * @param mergeOrganisationUnits the merge organisation units.
-     */
-    void mergeWithCurrentUserOrganisationUnits( Program program, Collection<OrganisationUnit> mergeOrganisationUnits );
-    
-    /**
-     * Returns a list of generated, non-persisted program data elements for the
-     * program with the given identifier.
-     * 
-     * @param programUid the program identifier.
-     * @return a list of program data elements.
-     */
-    List<ProgramDataElementDimensionItem> getGeneratedProgramDataElements( String programUid );
+  /**
+   * Get all the organisation unit associated for a set of program uids. This method uses jdbc to
+   * directly fetch the associated org unit uids for every program uid. This method also filters the
+   * results to respect the current users organisation unit scope and sharing settings.
+   *
+   * @param programUids A set of program uids
+   * @return A object of {@link IdentifiableObjectAssociations} containing association for each
+   *     programUid
+   */
+  SetValuedMap<String, String> getProgramOrganisationUnitsAssociationsForCurrentUser(
+      Set<String> programUids);
 }

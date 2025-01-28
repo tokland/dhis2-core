@@ -29,7 +29,9 @@
 
     <property name="title" />
 
-    <list name="mapViews" table="mapmapviews" cascade="all">
+    <property name="translations" type="jblTranslations"/>
+
+    <list name="mapViews" table="mapmapviews" cascade="all-delete-orphan">
       <cache usage="read-write" />
       <key column="mapid" foreign-key="fk_mapmapview_mapid" />
       <list-index column="sort_order" base="0" />
@@ -42,27 +44,18 @@
       <one-to-many class="org.hisp.dhis.interpretation.Interpretation" />
     </set>
 
-    <!-- Access properties -->
-    <property name="externalAccess" />
+    <many-to-one name="createdBy" class="org.hisp.dhis.user.User"
+                 column="userid" foreign-key="fk_mapview_userid"/>
 
-    <many-to-one name="user" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_mapview_userid" />
+    <!-- Sharing -->
+    <property name="sharing" type="jsbObjectSharing"/>
 
-    <property name="publicAccess" length="8" />
+    <property name="favorites" type="jbSet"/>
 
-    <set name="userGroupAccesses" table="mapusergroupaccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="mapid" />
-      <many-to-many class="org.hisp.dhis.user.UserGroupAccess" column="usergroupaccessid" unique="true" />
-    </set>
+    <property name="subscribers" type="jbSet"/>
 
-    <set name="userAccesses" table="mapuseraccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="mapid" />
-      <many-to-many class="org.hisp.dhis.user.UserAccess" column="useraccessid" unique="true" />
-    </set>
-
-    <property name="favorites" type="jbSet" />
-    
+    <!-- Dynamic attribute values -->
+    <property name="attributeValues" type="jsbAttributeValues"/>
   </class>
 
 </hibernate-mapping>

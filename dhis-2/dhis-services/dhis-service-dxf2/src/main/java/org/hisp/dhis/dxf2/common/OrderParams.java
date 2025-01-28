@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.common;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,117 +25,65 @@ package org.hisp.dhis.dxf2.common;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.common;
 
 import com.google.common.base.MoreObjects;
-
-import org.hisp.dhis.query.Order;
-import org.hisp.dhis.schema.Property;
-import org.hisp.dhis.schema.Schema;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.hisp.dhis.common.OpenApi;
+import org.hisp.dhis.query.Order;
+import org.hisp.dhis.query.QueryUtils;
+import org.hisp.dhis.schema.Schema;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class OrderParams
-{
-    private Set<String> order = new HashSet<>();
+@OpenApi.Shared
+public class OrderParams {
+  private Set<String> order = new HashSet<>();
 
-    public OrderParams()
-    {
+  public OrderParams() {}
+
+  public OrderParams(Set<String> order) {
+    this.order = order;
+  }
+
+  public void setOrder(Set<String> order) {
+    this.order = order;
+  }
+
+  public List<Order> getOrders(Schema schema) {
+    return QueryUtils.convertOrderStrings(order, schema);
+  }
+
+  public Set<String> getOrders() {
+    return order;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(order);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
     }
 
-    public OrderParams( Set<String> order )
-    {
-        this.order = order;
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
     }
 
-    public void setOrder( Set<String> order )
-    {
-        this.order = order;
-    }
+    final OrderParams other = (OrderParams) obj;
 
-    public List<Order> getOrders( Schema schema )
-    {
-        Map<String, Order> orders = new LinkedHashMap<>();
+    return Objects.equals(this.order, other.order);
+  }
 
-        for ( String o : order )
-        {
-            String[] split = o.split( ":" );
-
-            //Using ascending as default direction. 
-            String direction = "asc";
-            
-            if ( split.length < 1 )
-            {
-                continue;
-            }
-            else if ( split.length == 2 )
-            {
-                direction = split[1].toLowerCase();
-            }
-
-            String propertyName = split[0];
-            Property property = schema.getProperty( propertyName );
-            
-
-            if ( orders.containsKey( propertyName ) || !schema.haveProperty( propertyName )
-                || !validProperty( property ) || !validDirection( direction ) )
-            {
-                continue;
-            }
-
-            orders.put( propertyName, Order.from( direction, property ) );
-        }
-
-        return new ArrayList<>( orders.values() );
-    }
-
-    private boolean validProperty( Property property )
-    {
-        return property.isSimple();
-    }
-
-    private boolean validDirection( String direction )
-    {
-        return "asc".equals( direction ) || "desc".equals( direction )
-            || "iasc".equals( direction ) || "idesc".equals( direction );
-    }
-
-    @Override
-    public int hashCode()
-    {
-        return Objects.hash( order );
-    }
-
-    @Override
-    public boolean equals( Object obj )
-    {
-        if ( this == obj )
-        {
-            return true;
-        }
-
-        if ( obj == null || getClass() != obj.getClass() )
-        {
-            return false;
-        }
-
-        final OrderParams other = (OrderParams) obj;
-
-        return Objects.equals( this.order, other.order );
-    }
-
-    @Override
-    public String toString()
-    {
-        return MoreObjects.toStringHelper( this )
-            .add( "order", order )
-            .toString();
-    }
+  @Override
+  public String toString() {
+    return MoreObjects.toStringHelper(this).add("order", order).toString();
+  }
 }

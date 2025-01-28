@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataelement;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,237 +25,201 @@ package org.hisp.dhis.dataelement;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.category.CategoryCombo;
-import org.hisp.dhis.common.ValueType;
-import org.hisp.dhis.hierarchy.HierarchyViolationException;
-import org.hisp.dhis.period.PeriodType;
+package org.hisp.dhis.dataelement;
 
 import java.util.Collection;
 import java.util.List;
+import javax.annotation.Nonnull;
+import org.hisp.dhis.common.IllegalQueryException;
+import org.hisp.dhis.hierarchy.HierarchyViolationException;
 
 /**
  * Defines service functionality for DataElements and DataElementGroups.
  *
  * @author Kristian Nordal
- * @version $Id: DataElementService.java 6289 2008-11-14 17:53:24Z larshelg $
  */
-public interface DataElementService
-{
-    String ID = DataElementService.class.getName();
+public interface DataElementService {
+  // -------------------------------------------------------------------------
+  // DataElement
+  // -------------------------------------------------------------------------
 
-    // -------------------------------------------------------------------------
-    // DataElement
-    // -------------------------------------------------------------------------
+  /**
+   * Adds a DataElement.
+   *
+   * @param dataElement the DataElement to add.
+   * @return a generated unique id of the added DataElement.
+   */
+  long addDataElement(DataElement dataElement);
 
-    /**
-     * Adds a DataElement.
-     *
-     * @param dataElement the DataElement to add.
-     * @return a generated unique id of the added DataElement.
-     */
-    int addDataElement( DataElement dataElement );
+  /**
+   * Updates a DataElement.
+   *
+   * @param dataElement the DataElement to update.
+   */
+  void updateDataElement(DataElement dataElement);
 
-    /**
-     * Updates a DataElement.
-     *
-     * @param dataElement the DataElement to update.
-     */
-    void updateDataElement( DataElement dataElement );
+  /**
+   * Validate the data consistency of the provided data element.
+   *
+   * @param dataElement the element to check for validity
+   * @throws IllegalQueryException when the provided data element is not valid
+   */
+  void validateDateElement(DataElement dataElement) throws IllegalQueryException;
 
-    /**
-     * Deletes a DataElement. The DataElement is also removed from any
-     * DataElementGroups it is a member of. It is not possible to delete a
-     * DataElement with children.
-     *
-     * @param dataElement the DataElement to delete.
-     * @throws HierarchyViolationException if the DataElement has children.
-     */
-    void deleteDataElement( DataElement dataElement );
+  /**
+   * Deletes a DataElement. The DataElement is also removed from any DataElementGroups it is a
+   * member of. It is not possible to delete a DataElement with children.
+   *
+   * @param dataElement the DataElement to delete.
+   * @throws HierarchyViolationException if the DataElement has children.
+   */
+  void deleteDataElement(DataElement dataElement);
 
-    /**
-     * Returns a DataElement.
-     *
-     * @param id the id of the DataElement to return.
-     * @return the DataElement with the given id, or null if no match.
-     */
-    DataElement getDataElement( int id );
+  /**
+   * Returns a DataElement.
+   *
+   * @param id the id of the DataElement to return.
+   * @return the DataElement with the given id, or null if no match.
+   */
+  DataElement getDataElement(long id);
 
-    /**
-     * Returns the DataElement with the given UID.
-     *
-     * @param uid the UID.
-     * @return the DataElement with the given UID, or null if no match.
-     */
-    DataElement getDataElement( String uid );
+  /**
+   * Returns the DataElement with the given UID.
+   *
+   * @param uid the UID.
+   * @return the DataElement with the given UID, or null if no match.
+   */
+  DataElement getDataElement(String uid);
 
-    /**
-     * Returns the DataElement with the given code.
-     *
-     * @param code the code.
-     * @return the DataElement with the given code, or null if no match.
-     */
-    DataElement getDataElementByCode( String code );
+  /**
+   * Returns the DataElement with the given code.
+   *
+   * @param code the code.
+   * @return the DataElement with the given code, or null if no match.
+   */
+  DataElement getDataElementByCode(String code);
 
-    /**
-     * Returns all DataElements.
-     *
-     * @return a list of all DataElements, or an empty list if there
-     * are no DataElements.
-     */
-    List<DataElement> getAllDataElements();
+  /**
+   * Returns all DataElements.
+   *
+   * @return a list of all DataElements, or an empty list if there are no DataElements.
+   */
+  List<DataElement> getAllDataElements();
 
-    /**
-     * Returns all DataElements of a given type.
-     *
-     * @param valueType the value type restriction
-     * @return a list of all DataElements with the given value type,
-     * or an empty list if there are no DataElements.
-     */
-    List<DataElement> getAllDataElementsByValueType( ValueType valueType );
+  /**
+   * Returns all DataElements which are not member of any DataElementGroups.
+   *
+   * @return all DataElements which are not member of any DataElementGroups.
+   */
+  List<DataElement> getDataElementsWithoutGroups();
 
-    /**
-     * Returns all DataElements with the given domain type.
-     *
-     * @param domainType the DataElementDomainType.
-     * @return all DataElements with the given domainType.
-     */
-    List<DataElement> getDataElementsByDomainType( DataElementDomain domainType );
+  /**
+   * Returns all DataElements which are not assigned to any DataSets.
+   *
+   * @return all DataElements which are not assigned to any DataSets.
+   */
+  List<DataElement> getDataElementsWithoutDataSets();
 
-    /**
-     * Returns the DataElements with the given PeriodType.
-     *
-     * @param periodType the PeriodType.
-     * @return a list of DataElements.
-     */
-    List<DataElement> getDataElementsByPeriodType( PeriodType periodType );
+  /**
+   * Returns all DataElements which are assigned to at least one DataSet.
+   *
+   * @return all DataElements which are assigned to at least one DataSet.
+   */
+  List<DataElement> getDataElementsWithDataSets();
 
-    /**
-     * Returns all DataElements with the given category combo.
-     *
-     * @param categoryCombo the CategoryCombo.
-     * @return all DataElements with the given category combo.
-     */
-    List<DataElement> getDataElementByCategoryCombo( CategoryCombo categoryCombo );
+  /**
+   * Returns all DataElements which have the given aggregation level assigned.
+   *
+   * @param aggregationLevel the aggregation level.
+   * @return all DataElements which have the given aggregation level assigned.
+   */
+  List<DataElement> getDataElementsByAggregationLevel(int aggregationLevel);
 
-    /**
-     * Returns all DataElements which are not member of any DataElementGroups.
-     *
-     * @return all DataElements which are not member of any DataElementGroups.
-     */
-    List<DataElement> getDataElementsWithoutGroups();
+  /**
+   * Get all {@link DataElement}s by string value of {@link org.hisp.dhis.common.UID}
+   *
+   * @param dataElements data element {@link org.hisp.dhis.common.UID}s
+   * @return {@link DataElement}s found
+   */
+  List<DataElement> getDataElementsByUid(List<String> dataElements);
 
-    /**
-     * Returns all DataElements which are not assigned to any DataSets.
-     *
-     * @return all DataElements which are not assigned to any DataSets.
-     */
-    List<DataElement> getDataElementsWithoutDataSets();
+  // -------------------------------------------------------------------------
+  // DataElementGroup
+  // -------------------------------------------------------------------------
 
-    /**
-     * Returns all DataElements which are assigned to at least one DataSet.
-     *
-     * @return all DataElements which are assigned to at least one DataSet.
-     */
-    List<DataElement> getDataElementsWithDataSets();
+  /**
+   * Adds a DataElementGroup.
+   *
+   * @param dataElementGroup the DataElementGroup to add.
+   * @return a generated unique id of the added DataElementGroup.
+   */
+  long addDataElementGroup(DataElementGroup dataElementGroup);
 
-    /**
-     * Returns all DataElements which have the given aggregation level assigned.
-     *
-     * @param aggregationLevel the aggregation level.
-     * @return all DataElements which have the given aggregation level assigned.
-     */
-    List<DataElement> getDataElementsByAggregationLevel( int aggregationLevel );
+  /**
+   * Updates a DataElementGroup.
+   *
+   * @param dataElementGroup the DataElementGroup to update.
+   */
+  void updateDataElementGroup(DataElementGroup dataElementGroup);
 
-    // -------------------------------------------------------------------------
-    // DataElementGroup
-    // -------------------------------------------------------------------------
+  /**
+   * Deletes a DataElementGroup.
+   *
+   * @param dataElementGroup the DataElementGroup to delete.
+   */
+  void deleteDataElementGroup(DataElementGroup dataElementGroup);
 
-    /**
-     * Adds a DataElementGroup.
-     *
-     * @param dataElementGroup the DataElementGroup to add.
-     * @return a generated unique id of the added DataElementGroup.
-     */
-    int addDataElementGroup( DataElementGroup dataElementGroup );
+  /**
+   * Returns a DataElementGroup.
+   *
+   * @param id the id of the DataElementGroup to return.
+   * @return the DataElementGroup with the given id, or null if no match.
+   */
+  DataElementGroup getDataElementGroup(long id);
 
-    /**
-     * Updates a DataElementGroup.
-     *
-     * @param dataElementGroup the DataElementGroup to update.
-     */
-    void updateDataElementGroup( DataElementGroup dataElementGroup );
+  /**
+   * Returns the data element groups with the given uids.
+   *
+   * @param uids the uid collection.
+   * @return the data element groups with the given uids.
+   */
+  List<DataElementGroup> getDataElementGroupsByUid(@Nonnull Collection<String> uids);
 
-    /**
-     * Deletes a DataElementGroup.
-     *
-     * @param dataElementGroup the DataElementGroup to delete.
-     */
-    void deleteDataElementGroup( DataElementGroup dataElementGroup );
+  /**
+   * Returns the DataElementGroup with the given UID.
+   *
+   * @param uid the UID of the DataElementGroup to return.
+   * @return the DataElementGroup with the given UID, or null if no match.
+   */
+  DataElementGroup getDataElementGroup(String uid);
 
-    /**
-     * Returns a DataElementGroup.
-     *
-     * @param id the id of the DataElementGroup to return.
-     * @return the DataElementGroup with the given id, or null if no match.
-     */
-    DataElementGroup getDataElementGroup( int id );
+  /**
+   * Returns a DataElementGroup with a given name.
+   *
+   * @param name the name of the DataElementGroup to return.
+   * @return the DataElementGroup with the given name, or null if no match.
+   */
+  DataElementGroup getDataElementGroupByName(String name);
 
-    /**
-     * Returns the data element groups with the given uids.
-     *
-     * @param uids the uid collection.
-     * @return the data element groups with the given uids.
-     */
-    List<DataElementGroup> getDataElementGroupsByUid( Collection<String> uids );
+  /**
+   * Returns all DataElementGroups.
+   *
+   * @return a collection of all DataElementGroups, or an empty collection if no DataElementGroups
+   *     exist.
+   */
+  List<DataElementGroup> getAllDataElementGroups();
 
-    /**
-     * Returns the DataElementGroup with the given UID.
-     *
-     * @param uid the UID of the DataElementGroup to return.
-     * @return the DataElementGroup with the given UID, or null if no match.
-     */
-    DataElementGroup getDataElementGroup( String uid );
+  // -------------------------------------------------------------------------
+  // DataElementGroupSet
+  // -------------------------------------------------------------------------
 
-    /**
-     * Returns a DataElementGroup with a given name.
-     *
-     * @param name the name of the DataElementGroup to return.
-     * @return the DataElementGroup with the given name, or null if no match.
-     */
-    DataElementGroup getDataElementGroupByName( String name );
+  long addDataElementGroupSet(DataElementGroupSet groupSet);
 
-    /**
-     * Returns all DataElementGroups.
-     *
-     * @return a collection of all DataElementGroups, or an empty collection if
-     * no DataElementGroups exist.
-     */
-    List<DataElementGroup> getAllDataElementGroups();
+  void updateDataElementGroupSet(DataElementGroupSet groupSet);
 
-    /**
-     * Returns all DataElements which zeroIsSignificant property is true or false.
-     *
-     * @param zeroIsSignificant whether zero is significant is true for this query.
-     * @return a collection of DataElements.
-     */
-    List<DataElement> getDataElementsByZeroIsSignificant( boolean zeroIsSignificant );
+  void deleteDataElementGroupSet(DataElementGroupSet groupSet);
 
-    // -------------------------------------------------------------------------
-    // DataElementGroupSet
-    // -------------------------------------------------------------------------
+  DataElementGroupSet getDataElementGroupSet(long id);
 
-    int addDataElementGroupSet( DataElementGroupSet groupSet );
-
-    void updateDataElementGroupSet( DataElementGroupSet groupSet );
-
-    void deleteDataElementGroupSet( DataElementGroupSet groupSet );
-
-    DataElementGroupSet getDataElementGroupSet( int id );
-
-    DataElementGroupSet getDataElementGroupSet( String uid );
-
-    DataElementGroupSet getDataElementGroupSetByName( String name );
-
-    List<DataElementGroupSet> getAllDataElementGroupSets();
+  DataElementGroupSet getDataElementGroupSet(String uid);
 }

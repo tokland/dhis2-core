@@ -1,7 +1,5 @@
-package org.hisp.dhis.period;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,17 +25,20 @@ package org.hisp.dhis.period;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.period;
 
 /**
  * @author Kristian Wærstad
  */
-public class BiWeeklyPeriodType
-    extends BiWeeklyAbstractPeriodType
-{
-    public static final String NAME = "BiWeekly";
+public class BiWeeklyPeriodType extends BiWeeklyAbstractPeriodType {
+  public static final String NAME = "BiWeekly";
 
-    public BiWeeklyPeriodType()
-    {
-        super( NAME, 1, "yyyyBiWn", "P14D", 14, "BiW" );
-    }
+  public BiWeeklyPeriodType() {
+    super(NAME, 1, "yyyyBiWn", "P14D", 14, "2 weeks", "BiW");
+  }
+
+  @Override
+  public PeriodTypeEnum getPeriodTypeEnum() {
+    return PeriodTypeEnum.BI_WEEKLY;
+  }
 }

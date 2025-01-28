@@ -1,9 +1,5 @@
-package org.hisp.dhis.sms.config;
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,58 +25,22 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.sms.config;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import java.io.Serial;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
  */
-public class ClickatellGatewayConfig
-    extends SmsGatewayConfig
-{
-    private static final long serialVersionUID = -4286107769356591957L;
+@Getter
+@Setter
+@JsonTypeName("clickatell")
+public class ClickatellGatewayConfig extends SmsGatewayConfig {
+  @Serial private static final long serialVersionUID = -4286107769356591957L;
 
-    private final String URL_TEMPLATE = "https://platform.clickatell.com/rest/messages";
-    
-    private String authToken;
-
-    @JsonProperty( value = "authtoken" )
-    public String getAuthToken()
-    {
-        return authToken;
-    }
-
-    public void setAuthToken( String authToken )
-    {
-        this.authToken = authToken;
-    }
-
-    @JsonProperty( value = "default" )
-    public boolean getStatus()
-    {
-        return super.isDefault();
-    }
-
-    @JsonProperty( value = "name" )
-    public String getName()
-    {
-        return super.getName();
-    }
-
-    @Override
-    public boolean isInbound()
-    {
-        return false;
-    }
-
-    @Override
-    public boolean isOutbound()
-    {
-        return true;
-    }
-    
-    @Override
-    @JsonProperty( value = "urlTemplate" )
-    public String getUrlTemplate()
-    {
-        return this.URL_TEMPLATE;
-    }
+  @JsonProperty private String authToken;
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.sms.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,114 +25,93 @@ package org.hisp.dhis.sms.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.sms.hibernate;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import java.util.Date;
 import java.util.List;
-
-import org.hibernate.Criteria;
-import org.hibernate.Session;
-import org.hibernate.criterion.Order;
-import org.hibernate.criterion.Restrictions;
-import org.hisp.dhis.hibernate.HibernateGenericStore;
+import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
+import org.hisp.dhis.hibernate.JpaQueryParameters;
+import org.hisp.dhis.security.acl.AclService;
 import org.hisp.dhis.sms.outbound.OutboundSms;
 import org.hisp.dhis.sms.outbound.OutboundSmsStatus;
 import org.hisp.dhis.sms.outbound.OutboundSmsStore;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
-public class HibernateOutboundSmsStore
-    extends HibernateGenericStore<OutboundSms>
-    implements OutboundSmsStore
-{
-    // -------------------------------------------------------------------------
-    // Implementation
-    // -------------------------------------------------------------------------
+@Repository("org.hisp.dhis.sms.hibernate.OutboundSmsStore")
+public class HibernateOutboundSmsStore extends HibernateIdentifiableObjectStore<OutboundSms>
+    implements OutboundSmsStore {
+  public HibernateOutboundSmsStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, OutboundSms.class, aclService, true);
+  }
 
-    @Override
-    public void saveOutboundSms( OutboundSms sms )
-    {
-        checkDate( sms );
-        save( sms );
+  // -------------------------------------------------------------------------
+  // Implementation
+  // -------------------------------------------------------------------------
+
+  @Override
+  public void saveOutboundSms(OutboundSms sms) {
+    checkDate(sms);
+    save(sms);
+  }
+
+  private void checkDate(OutboundSms sms) {
+    if (sms.getDate() == null) {
+      sms.setDate(new Date());
+    }
+  }
+
+  @Override
+  public List<OutboundSms> get(OutboundSmsStatus status) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    JpaQueryParameters<OutboundSms> parameters =
+        new JpaQueryParameters<OutboundSms>().addOrder(root -> builder.desc(root.get("date")));
+
+    if (status != null) {
+      parameters.addPredicate(root -> builder.equal(root.get("status"), status));
     }
 
-    private void checkDate( OutboundSms sms )
-    {
-        if ( sms.getDate() == null )
-        {
-            sms.setDate( new Date() );
-        }
+    return getList(builder, parameters);
+  }
+
+  @Override
+  public List<OutboundSms> get(
+      OutboundSmsStatus status, Integer min, Integer max, boolean hasPagination) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    JpaQueryParameters<OutboundSms> parameters =
+        new JpaQueryParameters<OutboundSms>().addOrder(root -> builder.desc(root.get("date")));
+
+    if (status != null) {
+      parameters.addPredicate(root -> builder.equal(root.get("status"), status));
     }
 
-    @Override
-    public OutboundSms getOutboundSmsbyId( int id )
-    {
-        return get( id );
+    if (hasPagination) {
+      parameters.setFirstResult(min).setMaxResults(max);
     }
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<OutboundSms> getAllOutboundSms()
-    {
-        return getCriteria().addOrder( Order.desc( "date" ) ).list();
+    return getList(builder, parameters);
+  }
+
+  @Override
+  public List<OutboundSms> getAllOutboundSms(Integer min, Integer max, boolean hasPagination) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    JpaQueryParameters<OutboundSms> parameters =
+        new JpaQueryParameters<OutboundSms>().addOrder(root -> builder.desc(root.get("date")));
+
+    if (hasPagination) {
+      parameters.setFirstResult(min).setMaxResults(max);
     }
 
-    @SuppressWarnings( "unchecked" )
-    @Override
-    public List<OutboundSms> get( OutboundSmsStatus status )
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        Criteria criteria = session.createCriteria( OutboundSms.class ).addOrder( Order.desc( "date" ) );
-
-        if ( status != null )
-        {
-            criteria.add( Restrictions.eq( "status", status ) );
-        }
-        return criteria.list();
-    }
-
-    @Override
-    public void updateOutboundSms( OutboundSms sms )
-    {
-        update( sms );
-    }
-
-    @Override
-    public void deleteOutboundSms( OutboundSms sms )
-    {
-        delete( sms );
-    }
-
-    @SuppressWarnings( "unchecked" )
-    @Override
-    public List<OutboundSms> get( OutboundSmsStatus status, Integer min, Integer max )
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        Criteria criteria = session.createCriteria( OutboundSms.class ).addOrder( Order.desc( "date" ) );
-
-        if ( status != null )
-        {
-            criteria.add( Restrictions.eq( "status", status ) );
-        }
-
-        if ( min != null && max != null )
-        {
-            criteria.setFirstResult( min ).setMaxResults( max );
-        }
-        return criteria.list();
-    }
-
-    @SuppressWarnings( "unchecked" )
-    @Override
-    public List<OutboundSms> getAllOutboundSms( Integer min, Integer max )
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        Criteria criteria = session.createCriteria( OutboundSms.class ).addOrder( Order.desc( "date" ) );
-
-        if ( min != null && max != null )
-        {
-            criteria.setFirstResult( min ).setMaxResults( max );
-        }
-        return criteria.list();
-    }
+    return getList(builder, parameters);
+  }
 }

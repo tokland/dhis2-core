@@ -1,7 +1,5 @@
-package org.hisp.dhis.minmax;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,117 +25,98 @@ package org.hisp.dhis.minmax;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.dataelement.DataElement;
-import org.hisp.dhis.category.CategoryOptionCombo;
-import org.hisp.dhis.organisationunit.OrganisationUnit;
-import org.springframework.transaction.annotation.Transactional;
+package org.hisp.dhis.minmax;
 
 import java.util.Collection;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.category.CategoryOptionCombo;
+import org.hisp.dhis.dataelement.DataElement;
+import org.hisp.dhis.organisationunit.OrganisationUnit;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Lars Helge Overland
- * @version $Id$
  */
-@Transactional
-public class DefaultMinMaxDataElementService
-    implements MinMaxDataElementService
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.minmax.MinMaxDataElementService")
+public class DefaultMinMaxDataElementService implements MinMaxDataElementService {
+  private final MinMaxDataElementStore minMaxDataElementStore;
 
-    private MinMaxDataElementStore minMaxDataElementStore;
+  // -------------------------------------------------------------------------
+  // MinMaxDataElementService implementation
+  // -------------------------------------------------------------------------
 
-    public void setMinMaxDataElementStore( MinMaxDataElementStore minMaxDataElementStore )
-    {
-        this.minMaxDataElementStore = minMaxDataElementStore;
-    }
+  @Transactional
+  @Override
+  public long addMinMaxDataElement(MinMaxDataElement minMaxDataElement) {
+    minMaxDataElementStore.save(minMaxDataElement);
 
-    // -------------------------------------------------------------------------
-    // MinMaxDataElementService implementation
-    // -------------------------------------------------------------------------
+    return minMaxDataElement.getId();
+  }
 
-    @Override
-    public int addMinMaxDataElement( MinMaxDataElement minMaxDataElement )
-    {
-        minMaxDataElementStore.save( minMaxDataElement );
+  @Transactional
+  @Override
+  public void deleteMinMaxDataElement(MinMaxDataElement minMaxDataElement) {
+    minMaxDataElementStore.delete(minMaxDataElement);
+  }
 
-        return minMaxDataElement.getId();
-    }
+  @Transactional
+  @Override
+  public void updateMinMaxDataElement(MinMaxDataElement minMaxDataElement) {
+    minMaxDataElementStore.update(minMaxDataElement);
+  }
 
-    @Override
-    public void deleteMinMaxDataElement( MinMaxDataElement minMaxDataElement )
-    {
-        minMaxDataElementStore.delete( minMaxDataElement );
-    }
+  @Override
+  public MinMaxDataElement getMinMaxDataElement(long id) {
+    return minMaxDataElementStore.get(id);
+  }
 
-    @Override
-    public void updateMinMaxDataElement( MinMaxDataElement minMaxDataElement )
-    {
-        minMaxDataElementStore.update( minMaxDataElement );
-    }
+  @Override
+  public MinMaxDataElement getMinMaxDataElement(
+      OrganisationUnit source, DataElement dataElement, CategoryOptionCombo optionCombo) {
+    return minMaxDataElementStore.get(source, dataElement, optionCombo);
+  }
 
-    @Override
-    public MinMaxDataElement getMinMaxDataElement( int id )
-    {
-        return minMaxDataElementStore.get( id );
-    }
+  @Override
+  public List<MinMaxDataElement> getMinMaxDataElements(
+      OrganisationUnit source, Collection<DataElement> dataElements) {
+    return minMaxDataElementStore.get(source, dataElements);
+  }
 
-    @Override
-    public MinMaxDataElement getMinMaxDataElement( OrganisationUnit source, DataElement dataElement, CategoryOptionCombo optionCombo )
-    {
-        return minMaxDataElementStore.get( source, dataElement, optionCombo );
-    }
+  @Override
+  public List<MinMaxDataElement> getMinMaxDataElements(MinMaxDataElementQueryParams query) {
+    return minMaxDataElementStore.query(query);
+  }
 
-    @Override
-    public List<MinMaxDataElement> getMinMaxDataElements( OrganisationUnit source, DataElement dataElement )
-    {
-        return minMaxDataElementStore.get( source, dataElement );
-    }
+  @Override
+  public int countMinMaxDataElements(MinMaxDataElementQueryParams query) {
+    return minMaxDataElementStore.countMinMaxDataElements(query);
+  }
 
-    @Override
-    public List<MinMaxDataElement> getMinMaxDataElements( OrganisationUnit source, Collection<DataElement> dataElements )
-    {
-        return minMaxDataElementStore.get( source, dataElements );
-    }
+  @Transactional
+  @Override
+  public void removeMinMaxDataElements(OrganisationUnit organisationUnit) {
+    minMaxDataElementStore.delete(organisationUnit);
+  }
 
-    @Override
-    public List<MinMaxDataElement> getMinMaxDataElements( MinMaxDataElementQueryParams query )
-    {
-        return minMaxDataElementStore.query( query );
-    }
+  @Transactional
+  @Override
+  public void removeMinMaxDataElements(DataElement dataElement) {
+    minMaxDataElementStore.delete(dataElement);
+  }
 
-    @Override
-    public int countMinMaxDataElements( MinMaxDataElementQueryParams query )
-    {
-        return minMaxDataElementStore.countMinMaxDataElements( query );
-    }
+  @Transactional
+  @Override
+  public void removeMinMaxDataElements(CategoryOptionCombo optionCombo) {
+    minMaxDataElementStore.delete(optionCombo);
+  }
 
-    @Override
-    public void removeMinMaxDataElements( OrganisationUnit organisationUnit )
-    {
-        minMaxDataElementStore.delete( organisationUnit );
-    }
-
-    @Override
-    public void removeMinMaxDataElements( DataElement dataElement )
-    {
-        minMaxDataElementStore.delete( dataElement );
-    }
-
-    @Override
-    public void removeMinMaxDataElements( CategoryOptionCombo optionCombo )
-    {
-        minMaxDataElementStore.delete( optionCombo );
-    }
-
-    @Override
-    public void removeMinMaxDataElements( Collection<DataElement> dataElements, OrganisationUnit parent )
-    {
-        minMaxDataElementStore.delete( dataElements, parent );
-    }
+  @Transactional
+  @Override
+  public void removeMinMaxDataElements(
+      Collection<DataElement> dataElements, OrganisationUnit parent) {
+    minMaxDataElementStore.delete(dataElements, parent);
+  }
 }
-
-

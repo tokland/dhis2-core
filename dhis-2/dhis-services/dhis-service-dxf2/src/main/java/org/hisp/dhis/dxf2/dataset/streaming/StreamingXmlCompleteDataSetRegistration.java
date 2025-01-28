@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.dataset.streaming;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,142 +25,124 @@ package org.hisp.dhis.dxf2.dataset.streaming;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.dataset.streaming;
 
+import org.hisp.dhis.dxf2.dataset.CompleteDataSetRegistration;
 import org.hisp.staxwax.reader.XMLReader;
 import org.hisp.staxwax.writer.XMLWriter;
-import org.hisp.dhis.dxf2.dataset.CompleteDataSetRegistration;
 
 /**
  * @author Halvdan Hoem Grelland
  */
-public class StreamingXmlCompleteDataSetRegistration
-    extends CompleteDataSetRegistration
-{
-    private XMLWriter writer;
+public class StreamingXmlCompleteDataSetRegistration extends CompleteDataSetRegistration {
+  private XMLWriter writer;
 
-    private XMLReader reader;
+  private XMLReader reader;
 
-    //--------------------------------------------------------------------------
-    // Constructors
-    //--------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // Constructors
+  // --------------------------------------------------------------------------
 
-    public StreamingXmlCompleteDataSetRegistration( XMLWriter writer )
-    {
-        this.writer = writer;
+  public StreamingXmlCompleteDataSetRegistration(XMLWriter writer) {
+    this.writer = writer;
+  }
+
+  public StreamingXmlCompleteDataSetRegistration(XMLReader reader) {
+    this.reader = reader;
+  }
+
+  // --------------------------------------------------------------------------
+  // Logic
+  // --------------------------------------------------------------------------
+
+  @Override
+  protected void open() {
+    writer.openElement(FIELD_COMPLETE_DATA_SET_REGISTRATION);
+  }
+
+  @Override
+  public void close() {
+    if (writer == null) {
+      return;
     }
 
-    public StreamingXmlCompleteDataSetRegistration( XMLReader reader )
-    {
-        this.reader = reader;
+    writer.closeElement();
+  }
+
+  @Override
+  protected void writeField(String fieldName, String value) {
+    if (value == null) {
+      return;
     }
 
-    //--------------------------------------------------------------------------
-    // Logic
-    //--------------------------------------------------------------------------
+    writer.writeAttribute(fieldName, value);
+  }
 
-    @Override
-    protected void open()
-    {
-        writer.openElement( FIELD_COMPLETE_DATA_SET_REGISTRATION );
-    }
+  // --------------------------------------------------------------------------
+  // Getters and setters
+  // --------------------------------------------------------------------------
 
-    @Override
-    public void close()
-    {
-        if ( writer == null )
-        {
-            return;
-        }
+  @Override
+  public String getDataSet() {
+    return dataSet = dataSet == null ? reader.getAttributeValue(FIELD_DATASET) : dataSet;
+  }
 
-        writer.closeElement();
-    }
+  @Override
+  public void setDataSet(String dataSet) {
+    writeField(FIELD_DATASET, dataSet);
+  }
 
-    @Override
-    protected void writeField( String fieldName, String value )
-    {
-        if ( value == null )
-        {
-            return;
-        }
+  @Override
+  public String getPeriod() {
+    return period = period == null ? reader.getAttributeValue(FIELD_PERIOD) : period;
+  }
 
-        writer.writeAttribute( fieldName, value );
-    }
+  @Override
+  public void setPeriod(String period) {
+    writeField(FIELD_PERIOD, period);
+  }
 
-    //--------------------------------------------------------------------------
-    // Getters and setters
-    //--------------------------------------------------------------------------
+  @Override
+  public String getOrganisationUnit() {
+    return organisationUnit =
+        organisationUnit == null ? reader.getAttributeValue(FIELD_ORGUNIT) : organisationUnit;
+  }
 
-    @Override
-    public String getDataSet()
-    {
-        return dataSet = dataSet == null ? reader.getAttributeValue( FIELD_DATASET ) : dataSet;
-    }
+  @Override
+  public void setOrganisationUnit(String organisationUnit) {
+    writeField(FIELD_ORGUNIT, organisationUnit);
+  }
 
-    @Override
-    public void setDataSet( String dataSet )
-    {
-        writeField( FIELD_DATASET, dataSet );
-    }
+  @Override
+  public String getAttributeOptionCombo() {
+    return attributeOptionCombo =
+        attributeOptionCombo == null
+            ? reader.getAttributeValue(FIELD_ATTR_OPTION_COMBO)
+            : attributeOptionCombo;
+  }
 
-    @Override
-    public String getPeriod()
-    {
-        return period = period == null ? reader.getAttributeValue( FIELD_PERIOD ) : period;
-    }
+  @Override
+  public void setAttributeOptionCombo(String attributeOptionCombo) {
+    writeField(FIELD_ATTR_OPTION_COMBO, attributeOptionCombo);
+  }
 
-    @Override
-    public void setPeriod( String period )
-    {
-        writeField( FIELD_PERIOD, period );
-    }
+  @Override
+  public String getDate() {
+    return date = date == null ? reader.getAttributeValue(FIELD_DATE) : date;
+  }
 
-    @Override
-    public String getOrganisationUnit()
-    {
-        return organisationUnit = organisationUnit == null ?
-            reader.getAttributeValue( FIELD_ORGUNIT ) : organisationUnit;
-    }
+  @Override
+  public void setDate(String date) {
+    writeField(FIELD_DATE, date);
+  }
 
-    @Override
-    public void setOrganisationUnit( String organisationUnit )
-    {
-        writeField( FIELD_ORGUNIT, organisationUnit );
-    }
+  @Override
+  public String getStoredBy() {
+    return storedBy = storedBy == null ? reader.getAttributeValue(FIELD_STORED_BY) : storedBy;
+  }
 
-    @Override
-    public String getAttributeOptionCombo()
-    {
-        return attributeOptionCombo = attributeOptionCombo == null ?
-            reader.getAttributeValue( FIELD_ATTR_OPTION_COMBO ) : attributeOptionCombo;
-    }
-
-    @Override
-    public void setAttributeOptionCombo( String attributeOptionCombo )
-    {
-        writeField( FIELD_ATTR_OPTION_COMBO, attributeOptionCombo );
-    }
-
-    @Override
-    public String getDate()
-    {
-        return date = date == null ? reader.getAttributeValue( FIELD_DATE ) : date;
-    }
-
-    @Override
-    public void setDate( String date )
-    {
-        writeField( FIELD_DATE, date );
-    }
-
-    @Override
-    public String getStoredBy()
-    {
-        return storedBy = storedBy == null ? reader.getAttributeValue( FIELD_STORED_BY ) : storedBy;
-    }
-
-    @Override
-    public void setStoredBy( String storedBy )
-    {
-        writeField( FIELD_STORED_BY, storedBy );
-    }
+  @Override
+  public void setStoredBy(String storedBy) {
+    writeField(FIELD_STORED_BY, storedBy);
+  }
 }

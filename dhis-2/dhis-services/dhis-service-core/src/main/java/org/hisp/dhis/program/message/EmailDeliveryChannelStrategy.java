@@ -1,7 +1,5 @@
-package org.hisp.dhis.program.message;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,91 +25,82 @@ package org.hisp.dhis.program.message;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program.message;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
+import lombok.extern.slf4j.Slf4j;
+import org.hisp.dhis.common.DeliveryChannel;
 import org.hisp.dhis.common.IllegalQueryException;
 import org.hisp.dhis.common.ValueType;
-import org.hisp.dhis.common.DeliveryChannel;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
-import org.hisp.dhis.trackedentity.TrackedEntityInstance;
+import org.hisp.dhis.trackedentity.TrackedEntity;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
  */
-public class EmailDeliveryChannelStrategy
-    extends DeliveryChannelStrategy
-{
-    private static final Log log = LogFactory.getLog( EmailDeliveryChannelStrategy.class );
+@Slf4j
+@Component("org.hisp.dhis.program.message.EmailDeliveryChannelStrategy")
+public class EmailDeliveryChannelStrategy extends DeliveryChannelStrategy {
+  // -------------------------------------------------------------------------
+  // Implementation
+  // -------------------------------------------------------------------------
 
-    // -------------------------------------------------------------------------
-    // Implementation
-    // -------------------------------------------------------------------------
+  @Override
+  public DeliveryChannel getDeliveryChannel() {
+    return DeliveryChannel.EMAIL;
+  }
 
-    @Override
-    public DeliveryChannel getDeliveryChannel()
-    {
-        return DeliveryChannel.EMAIL;
+  @Override
+  public ProgramMessage setAttributes(ProgramMessage message) {
+    validate(message);
+
+    OrganisationUnit orgUnit = getOrganisationUnit(message);
+
+    TrackedEntity te = getTrackedEntity(message);
+
+    if (orgUnit != null) {
+      message.getRecipients().getEmailAddresses().add(getOrganisationUnitRecipient(orgUnit));
     }
 
-    @Override
-    public ProgramMessage setAttributes( ProgramMessage message )
-    {
-        validate( message );
-
-        OrganisationUnit orgUnit = getOrganisationUnit( message );
-
-        TrackedEntityInstance tei = getTrackedEntityInstance( message );
-
-        if ( orgUnit != null )
-        {
-            message.getRecipients().getEmailAddresses().add( getOrganisationUnitRecipient( orgUnit ) );
-        }
-
-        if ( tei != null )
-        {
-            message.getRecipients().getEmailAddresses()
-                .add( getTrackedEntityInstanceRecipient( tei, ValueType.EMAIL ) );
-        }
-
-        return message;
+    if (te != null) {
+      message
+          .getRecipients()
+          .getEmailAddresses()
+          .add(getTrackedEntityRecipient(te, ValueType.EMAIL));
     }
 
-    @Override
-    public void validate( ProgramMessage message )
-    {
-        String violation = null;
+    return message;
+  }
 
-        ProgramMessageRecipients recipient = message.getRecipients();
+  @Override
+  public void validate(ProgramMessage message) {
+    String violation = null;
 
-        if ( message.getDeliveryChannels().contains( DeliveryChannel.EMAIL ) )
-        {
-            if ( !recipient.hasOrganisationUnit() && !recipient.hasTrackedEntityInstance()
-                && recipient.getEmailAddresses().isEmpty() )
-            {                
-                violation = "No destination found for delivery channel " + DeliveryChannel.EMAIL;
-            }
-        }
+    ProgramMessageRecipients recipient = message.getRecipients();
 
-        if ( violation != null )
-        {
-            log.info( "Message validation failed: " + violation );
-
-            throw new IllegalQueryException( violation );
-        }
+    if (message.getDeliveryChannels().contains(DeliveryChannel.EMAIL)) {
+      if (!recipient.hasOrganisationUnit()
+          && !recipient.hasTrackedEntity()
+          && recipient.getEmailAddresses().isEmpty()) {
+        violation = "No destination found for delivery channel " + DeliveryChannel.EMAIL;
+      }
     }
 
-    @Override
-    public String getOrganisationUnitRecipient( OrganisationUnit orgUnit )
-    {
-        if ( orgUnit.getEmail() == null )
-        {
-            log.error( "Organisation unit does not have an email address" );
+    if (violation != null) {
+      log.info("Message validation failed: " + violation);
 
-            throw new IllegalQueryException( "Organisation unit does not have an email address" );
-        }
-
-        return orgUnit.getEmail();
+      throw new IllegalQueryException(violation);
     }
+  }
+
+  @Override
+  public String getOrganisationUnitRecipient(OrganisationUnit orgUnit) {
+    if (orgUnit.getEmail() == null) {
+      log.error("Organisation unit does not have an email address");
+
+      throw new IllegalQueryException("Organisation unit does not have an email address");
+    }
+
+    return orgUnit.getEmail();
+  }
 }

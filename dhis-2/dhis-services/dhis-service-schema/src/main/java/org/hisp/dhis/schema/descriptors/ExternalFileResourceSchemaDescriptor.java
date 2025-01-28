@@ -1,7 +1,5 @@
-package org.hisp.dhis.schema.descriptors;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.schema.descriptors;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.schema.descriptors;
 
 import org.hisp.dhis.fileresource.ExternalFileResource;
 import org.hisp.dhis.schema.Schema;
@@ -35,23 +34,19 @@ import org.hisp.dhis.schema.SchemaDescriptor;
 /**
  * @author Stian Sandvold
  */
+public class ExternalFileResourceSchemaDescriptor implements SchemaDescriptor {
+  public static final String SINGULAR = "externalFileResource";
 
-public class ExternalFileResourceSchemaDescriptor
-    implements SchemaDescriptor
-{
-    public static final String SINGULAR = "externalFileResource";
+  public static final String PLURAL = "externalFileResources";
 
-    public static final String PLURAL = "externalFileResources";
+  public static final String API_ENDPOINT = "/" + PLURAL;
 
-    public static final String API_ENDPOINT = "/" + PLURAL;
+  @Override
+  public Schema getSchema() {
+    Schema schema = new Schema(ExternalFileResource.class, SINGULAR, PLURAL);
+    schema.setRelativeApiEndpoint(API_ENDPOINT);
+    schema.setOrder(1000);
 
-    @Override
-    public Schema getSchema()
-    {
-        Schema schema = new Schema( ExternalFileResource.class, SINGULAR, PLURAL );
-        schema.setRelativeApiEndpoint( API_ENDPOINT );
-        schema.setOrder( 1000 );
-
-        return schema;
-    }
+    return schema;
+  }
 }

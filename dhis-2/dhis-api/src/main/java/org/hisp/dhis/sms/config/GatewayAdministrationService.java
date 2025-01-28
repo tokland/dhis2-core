@@ -1,8 +1,5 @@
-
-package org.hisp.dhis.sms.config;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,33 +25,37 @@ package org.hisp.dhis.sms.config;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.sms.config;
 
-import java.util.List;
-import java.util.Map;
+import javax.annotation.CheckForNull;
+import org.hisp.dhis.feedback.BadRequestException;
+import org.hisp.dhis.feedback.ConflictException;
+import org.hisp.dhis.feedback.ForbiddenException;
+import org.hisp.dhis.feedback.NotFoundException;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
- *
  */
-public interface GatewayAdministrationService
-{
-    String setDefaultGateway( String uid );
+public interface GatewayAdministrationService {
 
-    boolean removeGatewayByUid( String uid );
+  void setDefaultGateway(SmsGatewayConfig config)
+      throws ForbiddenException, ConflictException, BadRequestException;
 
-    boolean removeGatewayByName( String gatewayName );
-    
-    Map<String, SmsGatewayConfig> getGatewayConfigurationMap();
+  boolean removeGatewayByUid(String uid)
+      throws ForbiddenException, ConflictException, BadRequestException;
 
-    SmsGatewayConfig getDefaultGateway();
+  boolean hasGateways();
 
-    List<SmsGatewayConfig> listGateways();
+  SmsGatewayConfig getDefaultGateway();
 
-    SmsGatewayConfig getGatewayConfigurationByUid( String uid );
+  boolean hasDefaultGateway();
 
-    SmsGatewayConfig getGatewayConfigurationByName( String gatewayName );
+  SmsGatewayConfig getByUid(String uid);
 
-    boolean addOrUpdateGateway( SmsGatewayConfig config, Class<?> klass );
+  boolean addGateway(SmsGatewayConfig config)
+      throws ForbiddenException, ConflictException, BadRequestException;
 
-    boolean loadGatewayConfigurationMap( SmsConfiguration smsConfiguration );
+  void updateGateway(
+      @CheckForNull SmsGatewayConfig persisted, @CheckForNull SmsGatewayConfig updatedConfig)
+      throws NotFoundException, ConflictException, ForbiddenException, BadRequestException;
 }

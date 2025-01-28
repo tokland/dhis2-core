@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,68 +25,43 @@ package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
 
-import org.hisp.dhis.common.IdentifiableObject;
 import org.hisp.dhis.dxf2.metadata.objectbundle.ObjectBundle;
 import org.hisp.dhis.expression.Expression;
 import org.hisp.dhis.predictor.Predictor;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Ken Haase
  */
-public class PredictorObjectBundleHook
-    extends AbstractObjectBundleHook
-{
-    @Override
-    public void preCreate( IdentifiableObject object, ObjectBundle bundle )
-    {
-        if ( !Predictor.class.isInstance( object ) )
-        {
-            return;
-        }
+@Component
+public class PredictorObjectBundleHook extends AbstractObjectBundleHook<Predictor> {
+  @Override
+  public void preCreate(Predictor predictor, ObjectBundle bundle) {
+    saveSkipTest(predictor, bundle);
+  }
 
-        Predictor predictor = (Predictor) object;
-        Expression skipTest = predictor.getSampleSkipTest();
+  @Override
+  public void preUpdate(Predictor predictor, Predictor persistedPredictor, ObjectBundle bundle) {
+    saveSkipTest(predictor, bundle);
+  }
 
-        preheatService.connectReferences( predictor.getGenerator(), bundle.getPreheat(), bundle.getPreheatIdentifier() );
+  private void saveSkipTest(Predictor predictor, ObjectBundle bundle) {
+    Expression skipTest = predictor.getSampleSkipTest();
 
-        if ( skipTest != null )
-        {
-            preheatService.connectReferences( skipTest, bundle.getPreheat(), bundle.getPreheatIdentifier() );
-        }
+    preheatService.connectReferences(
+        predictor.getGenerator(), bundle.getPreheat(), bundle.getPreheatIdentifier());
 
-        sessionFactory.getCurrentSession().save( predictor.getGenerator() );
-
-        if ( skipTest != null )
-        {
-            sessionFactory.getCurrentSession().save( skipTest );
-        }
+    if (skipTest != null) {
+      preheatService.connectReferences(
+          skipTest, bundle.getPreheat(), bundle.getPreheatIdentifier());
     }
 
-    @Override
-    public void preUpdate( IdentifiableObject object, IdentifiableObject persistedObject, ObjectBundle bundle )
-    {
-        if ( !Predictor.class.isInstance( object ) )
-        {
-            return;
-        }
+    getSession().save(predictor.getGenerator());
 
-        Predictor predictor = (Predictor) object;
-        Expression skipTest = predictor.getSampleSkipTest();
-
-        preheatService.connectReferences( predictor.getGenerator(), bundle.getPreheat(),
-            bundle.getPreheatIdentifier() );
-
-        if ( skipTest != null )
-        {
-            preheatService.connectReferences( skipTest, bundle.getPreheat(), bundle.getPreheatIdentifier() );
-        }
-
-        sessionFactory.getCurrentSession().save( predictor.getGenerator() );
-
-        if ( skipTest != null )
-        {
-            sessionFactory.getCurrentSession().save( skipTest );
-        }
+    if (skipTest != null) {
+      getSession().save(skipTest);
     }
+  }
 }

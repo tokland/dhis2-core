@@ -1,7 +1,5 @@
-package org.hisp.dhis.trackedentity.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,37 +25,139 @@ package org.hisp.dhis.trackedentity.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.trackedentity.hibernate;
 
-import org.hibernate.criterion.Restrictions;
+import com.google.common.collect.Sets;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.hibernate.query.Query;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
+import org.hisp.dhis.program.Program;
+import org.hisp.dhis.program.ProgramTrackedEntityAttribute;
+import org.hisp.dhis.security.acl.AclService;
 import org.hisp.dhis.trackedentity.TrackedEntityAttribute;
 import org.hisp.dhis.trackedentity.TrackedEntityAttributeStore;
-
-import java.util.List;
+import org.hisp.dhis.trackedentity.TrackedEntityTypeAttribute;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Abyot Asalefew Gizaw
  */
+@Repository("org.hisp.dhis.trackedentity.TrackedEntityAttributeStore")
 public class HibernateTrackedEntityAttributeStore
     extends HibernateIdentifiableObjectStore<TrackedEntityAttribute>
-    implements TrackedEntityAttributeStore
-{
-    // -------------------------------------------------------------------------
-    // Implementation methods
-    // -------------------------------------------------------------------------
+    implements TrackedEntityAttributeStore {
 
+  public HibernateTrackedEntityAttributeStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, TrackedEntityAttribute.class, aclService, true);
+  }
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<TrackedEntityAttribute> getByDisplayOnVisitSchedule( boolean displayOnVisitSchedule )
-    {
-        return getCriteria( Restrictions.eq( "displayOnVisitSchedule", displayOnVisitSchedule ) ).list();
+  // -------------------------------------------------------------------------
+  // Implementation methods
+  // -------------------------------------------------------------------------
+
+  @Override
+  public List<TrackedEntityAttribute> getByDisplayOnVisitSchedule(boolean displayOnVisitSchedule) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicate(
+                root -> builder.equal(root.get("displayOnVisitSchedule"), displayOnVisitSchedule)));
+  }
+
+  @Override
+  public List<TrackedEntityAttribute> getDisplayInListNoProgram() {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("displayInListNoProgram"), true)));
+  }
+
+  @Override
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public Set<TrackedEntityAttribute> getTrackedEntityAttributesByTrackedEntityTypes() {
+    TypedQuery<TrackedEntityTypeAttribute> query =
+        entityManager.createQuery(
+            "select distinct tea from TrackedEntityType tet inner join tet.trackedEntityTypeAttributes tea",
+            TrackedEntityTypeAttribute.class);
+
+    Set<TrackedEntityTypeAttribute> trackedEntityTypeAttributes =
+        new HashSet<>(query.getResultList());
+
+    return trackedEntityTypeAttributes.stream()
+        .map(TrackedEntityTypeAttribute::getTrackedEntityAttribute)
+        .collect(Collectors.toSet());
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
+  public Set<TrackedEntityAttribute> getAllSearchableAndUniqueTrackedEntityAttributes() {
+    Set<TrackedEntityAttribute> result = new HashSet<>();
+
+    Query<TrackedEntityAttribute> programTeaQuery =
+        getSession()
+            .createQuery(
+                "select attribute from ProgramTrackedEntityAttribute ptea where ptea.searchable=true and ptea.attribute.valueType in ('TEXT','LONG_TEXT','PHONE_NUMBER','EMAIL','USERNAME','URL')");
+    Query<TrackedEntityAttribute> tetypeAttributeQuery =
+        getSession()
+            .createQuery(
+                "select trackedEntityAttribute from TrackedEntityTypeAttribute teta where teta.searchable=true and teta.trackedEntityAttribute.valueType in ('TEXT','LONG_TEXT','PHONE_NUMBER','EMAIL','USERNAME','URL')");
+    Query<TrackedEntityAttribute> uniqueAttributeQuery =
+        getSession().createQuery("from TrackedEntityAttribute tea where tea.unique=true");
+
+    List<TrackedEntityAttribute> programSearchableTrackedEntityAttributes = programTeaQuery.list();
+    List<TrackedEntityAttribute> trackedEntityTypeSearchableAttributes =
+        tetypeAttributeQuery.list();
+    List<TrackedEntityAttribute> uniqueAttributes = uniqueAttributeQuery.list();
+
+    result.addAll(programSearchableTrackedEntityAttributes);
+    result.addAll(trackedEntityTypeSearchableAttributes);
+    result.addAll(uniqueAttributes);
+
+    return result;
+  }
+
+  @Override
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public Map<Program, Set<TrackedEntityAttribute>> getTrackedEntityAttributesByProgram() {
+    Map<Program, Set<TrackedEntityAttribute>> result = new HashMap<>();
+
+    TypedQuery<ProgramTrackedEntityAttribute> query =
+        entityManager.createQuery(
+            "select distinct pa from Program p inner join p.programAttributes pa",
+            ProgramTrackedEntityAttribute.class);
+
+    List<ProgramTrackedEntityAttribute> programTrackedEntityAttributes = query.getResultList();
+
+    for (ProgramTrackedEntityAttribute programTrackedEntityAttribute :
+        programTrackedEntityAttributes) {
+      if (!result.containsKey(programTrackedEntityAttribute.getProgram())) {
+        result.put(
+            programTrackedEntityAttribute.getProgram(),
+            Sets.newHashSet(programTrackedEntityAttribute.getAttribute()));
+      } else {
+        result
+            .get(programTrackedEntityAttribute.getProgram())
+            .add(programTrackedEntityAttribute.getAttribute());
+      }
     }
-
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<TrackedEntityAttribute> getDisplayInListNoProgram()
-    {
-        return getCriteria( Restrictions.eq( "displayInListNoProgram", true ) ).list();
-    }
+    return result;
+  }
 }

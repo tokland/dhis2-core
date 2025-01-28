@@ -1,7 +1,5 @@
-package org.hisp.dhis.analytics.table;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,229 +25,193 @@ package org.hisp.dhis.analytics.table;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.analytics.table;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import org.hisp.dhis.analytics.AnalyticsTable;
-import org.hisp.dhis.analytics.AnalyticsTableColumn;
-import org.hisp.dhis.analytics.AnalyticsTablePartition;
+import static org.hisp.dhis.util.DateUtils.toLongDate;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import org.hisp.dhis.analytics.AnalyticsTableHookService;
 import org.hisp.dhis.analytics.AnalyticsTableType;
-import org.hisp.dhis.common.ValueType;
+import org.hisp.dhis.analytics.AnalyticsTableUpdateParams;
+import org.hisp.dhis.analytics.partition.PartitionManager;
+import org.hisp.dhis.analytics.table.model.AnalyticsTable;
+import org.hisp.dhis.analytics.table.model.AnalyticsTableColumn;
+import org.hisp.dhis.analytics.table.model.AnalyticsTablePartition;
+import org.hisp.dhis.analytics.table.setting.AnalyticsTableSettings;
+import org.hisp.dhis.category.CategoryService;
+import org.hisp.dhis.common.IdentifiableObjectManager;
 import org.hisp.dhis.commons.collection.UniqueArrayList;
-import org.hisp.dhis.commons.util.TextUtils;
-import org.hisp.dhis.dataelement.DataElement;
-import org.hisp.dhis.organisationunit.OrganisationUnitGroupSet;
-import org.hisp.dhis.organisationunit.OrganisationUnitLevel;
-import org.hisp.dhis.period.PeriodType;
+import org.hisp.dhis.dataapproval.DataApprovalLevelService;
+import org.hisp.dhis.db.model.Logged;
+import org.hisp.dhis.db.sql.SqlBuilder;
+import org.hisp.dhis.organisationunit.OrganisationUnitService;
+import org.hisp.dhis.period.PeriodDataProvider;
 import org.hisp.dhis.program.Program;
-import org.hisp.dhis.program.ProgramStage;
-import org.hisp.dhis.program.ProgramStageDataElement;
-import org.hisp.dhis.trackedentity.TrackedEntityAttribute;
+import org.hisp.dhis.resourcetable.ResourceTableService;
+import org.hisp.dhis.setting.SystemSettingsProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.*;
-
-import static org.hisp.dhis.program.ProgramIndicator.DB_SEPARATOR_ID;
-import static org.hisp.dhis.system.util.MathUtils.NUMERIC_LENIENT_REGEXP;
 
 /**
  * @author Markus Bekken
  */
-public class JdbcEnrollmentAnalyticsTableManager
-    extends AbstractEventJdbcTableManager
-{
-    private static final Set<ValueType> NO_INDEX_VAL_TYPES = ImmutableSet.of( ValueType.TEXT, ValueType.LONG_TEXT );
-    
-    @Override
-    public AnalyticsTableType getAnalyticsTableType()
-    {
-        return AnalyticsTableType.ENROLLMENT;
-    }
-    
-    @Override
-    @Transactional
-    public List<AnalyticsTable> getAnalyticsTables( Date earliest )
-    {        
-        List<AnalyticsTable> tables = new UniqueArrayList<>();
-        List<Program> programs = idObjectManager.getAllNoAcl( Program.class );
+@Service("org.hisp.dhis.analytics.EnrollmentAnalyticsTableManager")
+public class JdbcEnrollmentAnalyticsTableManager extends AbstractEventJdbcTableManager {
 
-        String baseName = getTableName();
-        
-        for ( Program program : programs )
-        {            
-            AnalyticsTable table = new AnalyticsTable( baseName, getDimensionColumns( program ), Lists.newArrayList(), program );
-                        
-            tables.add( table );
-        }
-        
-        return tables;
-    }
-    
-    @Override
-    public Set<String> getExistingDatabaseTables()
-    {
-        return new HashSet<>();
-    }
+  private final List<AnalyticsTableColumn> fixedColumns;
 
-    @Override
-    protected List<String> getPartitionChecks( AnalyticsTablePartition partition )
-    {
-        return Lists.newArrayList();
-    }
-    
-    @Override
-    protected void populateTable( AnalyticsTablePartition partition )
-    {
-        final Program program = partition.getMasterTable().getProgram();
-        final String tableName = partition.getTempTableName();
+  public JdbcEnrollmentAnalyticsTableManager(
+      IdentifiableObjectManager idObjectManager,
+      OrganisationUnitService organisationUnitService,
+      CategoryService categoryService,
+      SystemSettingsProvider settingsProvider,
+      DataApprovalLevelService dataApprovalLevelService,
+      ResourceTableService resourceTableService,
+      AnalyticsTableHookService tableHookService,
+      PartitionManager partitionManager,
+      @Qualifier("analyticsJdbcTemplate") JdbcTemplate jdbcTemplate,
+      AnalyticsTableSettings analyticsTableSettings,
+      PeriodDataProvider periodDataProvider,
+      SqlBuilder sqlBuilder) {
+    super(
+        idObjectManager,
+        organisationUnitService,
+        categoryService,
+        settingsProvider,
+        dataApprovalLevelService,
+        resourceTableService,
+        tableHookService,
+        partitionManager,
+        jdbcTemplate,
+        analyticsTableSettings,
+        periodDataProvider,
+        sqlBuilder);
+    fixedColumns = EnrollmentAnalyticsColumn.getColumns(sqlBuilder);
+  }
 
-        String sql = "insert into " + partition.getTempTableName() + " (";
+  @Override
+  public AnalyticsTableType getAnalyticsTableType() {
+    return AnalyticsTableType.ENROLLMENT;
+  }
 
-        List<AnalyticsTableColumn> columns = getDimensionColumns( program );
-        
-        validateDimensionColumns( columns );
+  @Override
+  @Transactional
+  public List<AnalyticsTable> getAnalyticsTables(AnalyticsTableUpdateParams params) {
+    return params.isLatestUpdate() ? List.of() : getRegularAnalyticsTables(params);
+  }
 
-        for ( AnalyticsTableColumn col : columns )
-        {
-            sql += col.getName() + ",";
-        }
+  /**
+   * Creates a list of {@link AnalyticsTable} for each program.
+   *
+   * @param params the {@link AnalyticsTableUpdateParams}.
+   * @return a list of {@link AnalyticsTableUpdateParams}.
+   */
+  private List<AnalyticsTable> getRegularAnalyticsTables(AnalyticsTableUpdateParams params) {
+    List<AnalyticsTable> tables = new UniqueArrayList<>();
 
-        sql = TextUtils.removeLastComma( sql ) + ") select ";
+    Logged logged = analyticsTableSettings.getTableLogged();
+    List<Program> programs = idObjectManager.getAllNoAcl(Program.class);
 
-        for ( AnalyticsTableColumn col : columns )
-        {
-            sql += col.getAlias() + ",";
-        }
+    for (Program program : programs) {
+      AnalyticsTable table =
+          new AnalyticsTable(getAnalyticsTableType(), getColumns(program), logged, program);
 
-        sql = TextUtils.removeLastComma( sql ) + " ";
-
-        sql += "from programinstance pi " +
-            "inner join program pr on pi.programid=pr.programid " +
-            "left join trackedentityinstance tei on pi.trackedentityinstanceid=tei.trackedentityinstanceid and tei.deleted is false " +
-            "inner join organisationunit ou on pi.organisationunitid=ou.organisationunitid " +
-            "left join _orgunitstructure ous on pi.organisationunitid=ous.organisationunitid " +
-            "left join _organisationunitgroupsetstructure ougs on pi.organisationunitid=ougs.organisationunitid " +
-                "and (cast(date_trunc('month', pi.enrollmentdate) as date)=ougs.startdate or ougs.startdate is null) " +
-            "left join _dateperiodstructure dps on cast(pi.enrollmentdate as date)=dps.dateperiod " +
-            "where pr.programid=" + program.getId() + " " + 
-            "and pi.organisationunitid is not null " +
-            "and pi.incidentdate is not null " +
-            "and pi.deleted is false ";
-
-        populateAndLog( sql, tableName );
+      tables.add(table);
     }
 
-    private List<AnalyticsTableColumn> getDimensionColumns( Program program )
-    {
-        final String dbl = statementBuilder.getDoubleColumnType();
-        final String numericClause = " and value " + statementBuilder.getRegexpMatch() + " '" + NUMERIC_LENIENT_REGEXP + "'";
-        final String dateClause = " and value " + statementBuilder.getRegexpMatch() + " '" + DATE_REGEXP + "'";
+    return tables;
+  }
 
-        List<AnalyticsTableColumn> columns = new ArrayList<>();
+  @Override
+  protected List<String> getPartitionChecks(Integer year, Date endDate) {
+    return List.of();
+  }
 
-        List<OrganisationUnitLevel> levels = 
-            organisationUnitService.getFilledOrganisationUnitLevels();
+  @Override
+  public void populateTable(AnalyticsTableUpdateParams params, AnalyticsTablePartition partition) {
+    Program program = partition.getMasterTable().getProgram();
+    String attributeJoinClause = getAttributeValueJoinClause(program);
 
-        List<OrganisationUnitGroupSet> orgUnitGroupSets = 
-            idObjectManager.getDataDimensionsNoAcl( OrganisationUnitGroupSet.class );
+    String fromClause =
+        replaceQualify(
+            """
+            \sfrom ${enrollment} en \
+            inner join ${program} pr on en.programid=pr.programid \
+            left join ${trackedentity} te on en.trackedentityid=te.trackedentityid and te.deleted = false \
+            left join ${organisationunit} registrationou on te.organisationunitid=registrationou.organisationunitid \
+            inner join ${organisationunit} ou on en.organisationunitid=ou.organisationunitid \
+            left join analytics_rs_dateperiodstructure dps on cast(en.enrollmentdate as date)=dps.dateperiod \
+            left join analytics_rs_orgunitstructure ous on en.organisationunitid=ous.organisationunitid \
+            left join analytics_rs_organisationunitgroupsetstructure ougs on en.organisationunitid=ougs.organisationunitid \
+            ${attributeJoinClause}\
+            where pr.programid = ${programId} \
+            and en.organisationunitid is not null \
+            and (ougs.startdate is null or dps.monthstartdate=ougs.startdate) \
+            and en.lastupdated <= '${startTime}' \
+            and en.occurreddate is not null \
+            and en.deleted = false\s""",
+            Map.of(
+                "attributeJoinClause", attributeJoinClause,
+                "programId", String.valueOf(program.getId()),
+                "startTime", toLongDate(params.getStartTime())));
 
-        for ( OrganisationUnitLevel level : levels )
-        {
-            String column = quote( PREFIX_ORGUNITLEVEL + level.getLevel() );
-            columns.add( new AnalyticsTableColumn( column, "character(11)", "ous." + column, level.getCreated() ) );
-        }
-        
-        for ( OrganisationUnitGroupSet groupSet : orgUnitGroupSets )
-        {
-            columns.add( new AnalyticsTableColumn( quote( groupSet.getUid() ), "character(11)", "ougs." + quote( groupSet.getUid() ), groupSet.getCreated() ) );
-        }
+    populateTableInternal(partition, fromClause);
+  }
 
-        for ( PeriodType periodType : PeriodType.getAvailablePeriodTypes() )
-        {
-            String column = quote( periodType.getName().toLowerCase() );
-            columns.add( new AnalyticsTableColumn( column, "text", "dps." + column ) );
-        }
+  /**
+   * Returns a list of columns for the given program.
+   *
+   * @param program the {@link Program}.
+   * @return a list of {@link AnalyticsTableColumn}.
+   */
+  private List<AnalyticsTableColumn> getColumns(Program program) {
+    List<AnalyticsTableColumn> columns = new ArrayList<>();
+    columns.addAll(fixedColumns);
+    columns.addAll(getOrganisationUnitLevelColumns());
+    columns.add(getOrganisationUnitNameHierarchyColumn());
+    columns.addAll(getOrganisationUnitGroupSetColumns());
+    columns.addAll(getPeriodTypeColumns("dps"));
+    columns.addAll(getTrackedEntityAttributeColumns(program));
+    columns.addAll(getTrackedEntityColumns(program));
 
-        for ( ProgramStage programStage : program.getProgramStages() )
-        {
-            for( ProgramStageDataElement programStageDataElement : 
-                programStage.getProgramStageDataElements() )
-            {
-                DataElement dataElement = programStageDataElement.getDataElement();
-                ValueType valueType = dataElement.getValueType();
-                String dataType = getColumnType( valueType );
-                String dataClause = dataElement.isNumericType() ? numericClause : dataElement.getValueType().isDate() ? dateClause : "";
-                String select = getSelectClause( valueType );
-                boolean skipIndex = NO_INDEX_VAL_TYPES.contains( dataElement.getValueType() ) && !dataElement.hasOptionSet();
+    return filterDimensionColumns(columns);
+  }
 
-                String sql = "(select " + select + " from trackedentitydatavalue tedv " + 
-                    "inner join programstageinstance psi on psi.programstageinstanceid = tedv.programstageinstanceid " + 
-                    "where psi.executiondate is not null " + 
-                    "and psi.deleted is false " + 
-                    "and psi.programinstanceid=pi.programinstanceid " +
-                    dataClause + " " +
-                    "and tedv.dataelementid=" + dataElement.getId() + " " +
-                    "and psi.programstageid=" + programStage.getId() + " " +
-                    "order by psi.executiondate desc " +
-                    "limit 1) as " + quote( programStage.getUid() + DB_SEPARATOR_ID + dataElement.getUid() );
+  /**
+   * Returns a list of tracked entity attribute {@link AnalyticsTableColumn}.
+   *
+   * @param program the {@link Program}.
+   * @return a list of {@link AnalyticsTableColumn}.
+   */
+  private List<AnalyticsTableColumn> getTrackedEntityAttributeColumns(Program program) {
+    return program.getNonConfidentialTrackedEntityAttributes().stream()
+        .map(this::getColumnForAttribute)
+        .flatMap(Collection::stream)
+        .toList();
+  }
 
-                columns.add( new AnalyticsTableColumn( quote( programStage.getUid() + DB_SEPARATOR_ID + dataElement.getUid() ), dataType, sql, skipIndex ) ); 
-            }
-        }
+  /**
+   * Returns a list of tracked entity {@link AnalyticsTableColumn}.
+   *
+   * @param program the {@link Program}.
+   * @return a list of {@link AnalyticsTableColumn}.
+   */
+  private List<AnalyticsTableColumn> getTrackedEntityColumns(Program program) {
+    List<AnalyticsTableColumn> columns = new ArrayList<>();
 
-        for ( TrackedEntityAttribute attribute : program.getNonConfidentialTrackedEntityAttributes() )
-        {
-            String dataType = getColumnType( attribute.getValueType() );
-            String dataClause = attribute.isNumericType() ? numericClause : attribute.isDateType() ? dateClause : "";
-            String select = getSelectClause( attribute.getValueType() );
-            boolean skipIndex = NO_INDEX_VAL_TYPES.contains( attribute.getValueType() ) && !attribute.hasOptionSet();
+    if (program.isRegistration()) {
+      columns.add(EnrollmentAnalyticsColumn.TRACKED_ENTITY);
+      if (sqlBuilder.supportsGeospatialData()) {
+        columns.add(EnrollmentAnalyticsColumn.TRACKED_ENTITY_GEOMETRY);
+      }
+    }
 
-            String sql = "(select " + select + " from trackedentityattributevalue " +
-                "where trackedentityinstanceid=pi.trackedentityinstanceid " + 
-                "and trackedentityattributeid=" + attribute.getId() + dataClause + ") as " + quote( attribute.getUid() );
-
-            columns.add( new AnalyticsTableColumn( quote( attribute.getUid() ), dataType, sql, skipIndex ) );
-        }
-        
-        columns.add( new AnalyticsTableColumn( quote( "pi" ), "character(11) not null", "pi.uid" ) );
-        columns.add( new AnalyticsTableColumn( quote( "enrollmentdate" ), "timestamp", "pi.enrollmentdate" ) );
-        columns.add( new AnalyticsTableColumn( quote( "incidentdate" ), "timestamp", "pi.incidentdate" ) );
-        
-        final String executionDateSql = "(select psi.executionDate from programstageinstance psi " +
-            "where psi.programinstanceid=pi.programinstanceid " + 
-            "and psi.executiondate is not null " + 
-            "and psi.deleted is false " +
-            "order by psi.executiondate desc " +
-            "limit 1) as " + quote( "executiondate" );        
-        columns.add( new AnalyticsTableColumn( quote( "executiondate" ), "timestamp", executionDateSql ) );
-        
-        final String dueDateSql = "(select psi.duedate from programstageinstance psi " + 
-            "where psi.programinstanceid = pi.programinstanceid " + 
-            "and psi.duedate is not null " + 
-            "and psi.deleted is false " +
-            "order by psi.duedate desc " +
-            "limit 1) as " + quote( "duedate" );        
-        columns.add( new AnalyticsTableColumn( quote( "duedate" ), "timestamp", dueDateSql ) );
-        
-        columns.add( new AnalyticsTableColumn( quote( "completeddate" ), "timestamp", "case pi.status when 'COMPLETED' then pi.enddate end" ) );
-        columns.add( new AnalyticsTableColumn( quote( "enrollmentstatus" ), "character(50)", "pi.status" ) );
-        columns.add( new AnalyticsTableColumn( quote( "longitude" ), dbl, "pi.longitude" ) );
-        columns.add( new AnalyticsTableColumn( quote( "latitude" ), dbl, "pi.latitude" ) );
-        columns.add( new AnalyticsTableColumn( quote( "ou" ), "character(11) not null", "ou.uid" ) );
-        columns.add( new AnalyticsTableColumn( quote( "ouname" ), "text not null", "ou.name" ) );
-        columns.add( new AnalyticsTableColumn( quote( "oucode" ), "text", "ou.code" ) );
-
-        if ( databaseInfo.isSpatialSupport() )
-        {
-            String alias = "(select ST_SetSRID(ST_MakePoint(pi.longitude, pi.latitude), 4326)) as geom";
-            columns.add( new AnalyticsTableColumn( quote( "geom" ), "geometry(Point, 4326)", alias, false, "gist" ) );
-        }
-        
-        if ( program.isRegistration() )
-        {
-            columns.add( new AnalyticsTableColumn( quote( "tei" ), "character(11)", "tei.uid" ) );
-        }
-        
-        return filterDimensionColumns( columns );
-    }    
+    return columns;
+  }
 }

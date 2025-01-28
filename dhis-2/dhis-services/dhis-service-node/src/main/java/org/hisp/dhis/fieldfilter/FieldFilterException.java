@@ -1,7 +1,5 @@
-package org.hisp.dhis.fieldfilter;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,33 +25,33 @@ package org.hisp.dhis.fieldfilter;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.fieldfilter;
 
 import org.hisp.dhis.schema.Schema;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class FieldFilterException
-    extends RuntimeException
-{
-    private final String fieldKey;
+public class FieldFilterException extends RuntimeException {
+  private final String fieldKey;
 
-    private final Schema schema;
+  private final Schema schema;
 
-    public FieldFilterException( String fieldKey, Schema schema )
-    {
-        super( "Unknown field property `" + fieldKey + "`, available fields are " + schema.getPropertyMap().keySet() );
-        this.fieldKey = fieldKey;
-        this.schema = schema;
-    }
+  public FieldFilterException(String fieldKey, Schema schema) {
+    super(
+        "Unknown field property `"
+            + fieldKey
+            + "`, available fields are "
+            + schema.getPropertyMap().keySet());
+    this.fieldKey = fieldKey;
+    this.schema = schema;
+  }
 
-    public String getFieldKey()
-    {
-        return fieldKey;
-    }
+  public String getFieldKey() {
+    return fieldKey;
+  }
 
-    public Schema getSchema()
-    {
-        return schema;
-    }
+  public Schema getSchema() {
+    return schema;
+  }
 }

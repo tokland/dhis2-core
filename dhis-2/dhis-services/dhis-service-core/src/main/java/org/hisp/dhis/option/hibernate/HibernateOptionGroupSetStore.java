@@ -1,7 +1,5 @@
-package org.hisp.dhis.option.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,16 +25,28 @@ package org.hisp.dhis.option.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.option.hibernate;
 
+import jakarta.persistence.EntityManager;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.option.OptionGroupSet;
 import org.hisp.dhis.option.OptionGroupSetStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Viet Nguyen <viet@dhis2.org>
  */
-public class HibernateOptionGroupSetStore
-    extends HibernateIdentifiableObjectStore<OptionGroupSet>
-    implements OptionGroupSetStore
-{
+@Repository("org.hisp.dhis.option.OptionGroupSetStore")
+public class HibernateOptionGroupSetStore extends HibernateIdentifiableObjectStore<OptionGroupSet>
+    implements OptionGroupSetStore {
+  public HibernateOptionGroupSetStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, OptionGroupSet.class, aclService, true);
+  }
 }

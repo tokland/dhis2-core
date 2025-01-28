@@ -1,7 +1,5 @@
-package org.hisp.dhis.program.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,26 +25,65 @@ package org.hisp.dhis.program.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program.hibernate;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
+import java.util.List;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.program.Program;
 import org.hisp.dhis.program.ProgramTrackedEntityAttribute;
 import org.hisp.dhis.program.ProgramTrackedEntityAttributeStore;
+import org.hisp.dhis.security.acl.AclService;
 import org.hisp.dhis.trackedentity.TrackedEntityAttribute;
-
-import org.hibernate.criterion.Restrictions;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Lars Helge Overland
  */
+@Repository("org.hisp.dhis.program.ProgramTrackedEntityAttributeStore")
 public class HibernateProgramTrackedEntityAttributeStore
     extends HibernateIdentifiableObjectStore<ProgramTrackedEntityAttribute>
-        implements ProgramTrackedEntityAttributeStore
-{
-    public ProgramTrackedEntityAttribute get( Program program, TrackedEntityAttribute attribute )
-    {
-        return (ProgramTrackedEntityAttribute) getCriteria( 
-            Restrictions.eq( "program", program ),
-            Restrictions.eq( "attribute", attribute ) ).uniqueResult();
-    }
+    implements ProgramTrackedEntityAttributeStore {
+  public HibernateProgramTrackedEntityAttributeStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(
+        entityManager,
+        jdbcTemplate,
+        publisher,
+        ProgramTrackedEntityAttribute.class,
+        aclService,
+        true);
+  }
+
+  @Override
+  public ProgramTrackedEntityAttribute get(Program program, TrackedEntityAttribute attribute) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getSingleResult(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("program"), program))
+            .addPredicate(root -> builder.equal(root.get("attribute"), attribute)));
+  }
+
+  @Override
+  public List<TrackedEntityAttribute> getAttributes(List<Program> programs) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    CriteriaQuery<TrackedEntityAttribute> query = builder.createQuery(TrackedEntityAttribute.class);
+    Root<ProgramTrackedEntityAttribute> root = query.from(ProgramTrackedEntityAttribute.class);
+    query.select(root.get("attribute"));
+    query.where(root.get("program").in(programs));
+    query.distinct(true);
+
+    return entityManager.createQuery(query).getResultList();
+  }
 }

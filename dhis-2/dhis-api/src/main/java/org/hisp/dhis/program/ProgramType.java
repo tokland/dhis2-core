@@ -1,7 +1,5 @@
-package org.hisp.dhis.program;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,39 +25,41 @@ package org.hisp.dhis.program;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program;
+
+import lombok.Getter;
 
 /**
  * @author Chau Thu Tran
- * @version $ ProgramType.java Jul 1, 2015 3:09:12 PM $
  */
-public enum ProgramType
-{
-    WITH_REGISTRATION( "with_registration" ),
-    WITHOUT_REGISTRATION( "without_registration" );
+@Getter
+public enum ProgramType {
+  /** Aka tracker program */
+  WITH_REGISTRATION("with_registration"),
+  /** Aka event program */
+  WITHOUT_REGISTRATION("without_registration");
 
-    private final String value;
+  private final String value;
 
-    ProgramType( String value )
-    {
-        this.value = value;
+  ProgramType(String value) {
+    this.value = value;
+  }
+
+  public static ProgramType fromValue(String value) {
+    for (ProgramType programType : ProgramType.values()) {
+      if (programType.value.equalsIgnoreCase(value)) {
+        return programType;
+      }
     }
 
-    public static ProgramType fromValue( String value )
-    {
-        for ( ProgramType programType : ProgramType.values() )
-        {
-            if ( programType.value.equalsIgnoreCase( value ) )
-            {
-                return programType;
-            }
-        }
+    return null;
+  }
 
-        return null;
-    }
+  public boolean isTrackerProgram() {
+    return this == WITH_REGISTRATION;
+  }
 
-    public String getValue()
-    {
-        return value;
-    }
-
+  public boolean isEventProgram() {
+    return this == WITHOUT_REGISTRATION;
+  }
 }

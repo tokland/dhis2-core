@@ -1,7 +1,5 @@
-package org.hisp.dhis.fieldfilter;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,86 +25,88 @@ package org.hisp.dhis.fieldfilter;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.user.User;
+package org.hisp.dhis.fieldfilter;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.hisp.dhis.user.UserDetails;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public final class FieldFilterParams
-{
-    private User user;
+public final class FieldFilterParams {
+  private UserDetails userDetails;
 
-    /**
-     * List of object(s) to filter through. If more than one, a wrapper
-     * is required.
-     */
-    private List<?> objects = new ArrayList<>();
+  /** List of object(s) to filter through. If more than one, a wrapper is required. */
+  private List<?> objects = new ArrayList<>();
 
-    /**
-     * Fields to filter by.
-     */
-    private List<String> fields;
+  /** Fields to filter by. */
+  private List<String> fields;
 
-    private Defaults defaults = Defaults.EXCLUDE;
+  /** Filters out sharing fields if true */
+  private boolean skipSharing;
 
-    public FieldFilterParams( List<?> objects, List<String> fields )
-    {
-        this.objects = objects;
-        this.fields = fields;
-    }
+  private Defaults defaults = Defaults.INCLUDE;
 
-    public FieldFilterParams( List<?> objects, List<String> fields, Defaults defaults )
-    {
-        this.objects = objects;
-        this.fields = fields;
-        this.defaults = defaults;
-    }
+  public FieldFilterParams(List<?> objects, List<String> fields) {
+    this.objects = objects;
+    this.fields = fields;
+  }
 
-    public User getUser()
-    {
-        return user;
-    }
+  public FieldFilterParams(List<?> objects, List<String> fields, Defaults defaults) {
+    this.objects = objects;
+    this.fields = fields;
+    this.defaults = defaults;
+  }
 
-    public FieldFilterParams setUser( User user )
-    {
-        this.user = user;
-        return this;
-    }
+  public FieldFilterParams(
+      List<?> objects, List<String> fields, Defaults defaults, boolean skipSharing) {
+    this.objects = objects;
+    this.fields = fields;
+    this.defaults = defaults;
+    this.skipSharing = skipSharing;
+  }
 
-    public List<?> getObjects()
-    {
-        return objects;
-    }
+  public UserDetails getUserDetails() {
+    return userDetails;
+  }
 
-    public FieldFilterParams setObjects( List<?> objects )
-    {
-        this.objects = objects;
-        return this;
-    }
+  public void setUserDetails(UserDetails userDetails) {
+    this.userDetails = userDetails;
+  }
 
-    public List<String> getFields()
-    {
-        return fields;
-    }
+  public List<?> getObjects() {
+    return objects;
+  }
 
-    public FieldFilterParams setFields( List<String> fields )
-    {
-        this.fields = fields;
-        return this;
-    }
+  public FieldFilterParams setObjects(List<?> objects) {
+    this.objects = objects;
+    return this;
+  }
 
-    public Defaults getDefaults()
-    {
-        return defaults;
-    }
+  public List<String> getFields() {
+    return fields;
+  }
 
-    public FieldFilterParams setDefaults( Defaults defaults )
-    {
-        this.defaults = defaults;
-        return this;
-    }
+  public FieldFilterParams setFields(List<String> fields) {
+    this.fields = fields;
+    return this;
+  }
+
+  public Defaults getDefaults() {
+    return defaults;
+  }
+
+  public FieldFilterParams setDefaults(Defaults defaults) {
+    this.defaults = defaults;
+    return this;
+  }
+
+  public boolean getSkipSharing() {
+    return this.skipSharing;
+  }
+
+  public void setSkipSharing(boolean skipSharing) {
+    this.skipSharing = skipSharing;
+  }
 }

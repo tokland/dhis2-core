@@ -1,7 +1,5 @@
-package org.hisp.dhis.security.spring;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,47 +25,38 @@ package org.hisp.dhis.security.spring;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.security.spring;
 
+import lombok.RequiredArgsConstructor;
 import org.hisp.dhis.security.PasswordManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Torgeir Lorange Ostby
  * @author Halvdan Hoem Grelland
  */
-public class SpringSecurityPasswordManager
-    implements PasswordManager
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@RequiredArgsConstructor
+@Component("org.hisp.dhis.security.PasswordManager")
+public class SpringSecurityPasswordManager implements PasswordManager {
+  private final PasswordEncoder passwordEncoder;
 
-    private PasswordEncoder passwordEncoder;
+  // -------------------------------------------------------------------------
+  // PasswordManager implementation
+  // -------------------------------------------------------------------------
 
-    public void setPasswordEncoder( PasswordEncoder passwordEncoder )
-    {
-        this.passwordEncoder = passwordEncoder;
-    }
+  @Override
+  public final String encode(String password) {
+    return passwordEncoder.encode(password);
+  }
 
-    // -------------------------------------------------------------------------
-    // PasswordManager implementation
-    // -------------------------------------------------------------------------
+  @Override
+  public boolean matches(String rawPassword, String encodedPassword) {
+    return passwordEncoder.matches(rawPassword, encodedPassword);
+  }
 
-    @Override
-    public final String encode( String password )
-    {
-        return passwordEncoder.encode( password );
-    }
-
-    @Override
-    public boolean matches( String rawPassword, String encodedPassword )
-    {
-        return passwordEncoder.matches( rawPassword, encodedPassword );
-    }
-
-    @Override
-    public String getPasswordEncoderClassName()
-    {
-        return passwordEncoder.getClass().getName();
-    }
+  @Override
+  public String getPasswordEncoderClassName() {
+    return passwordEncoder.getClass().getName();
+  }
 }

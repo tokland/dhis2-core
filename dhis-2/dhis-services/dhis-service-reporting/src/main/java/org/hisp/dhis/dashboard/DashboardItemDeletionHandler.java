@@ -1,7 +1,5 @@
-package org.hisp.dhis.dashboard;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,70 +25,109 @@ package org.hisp.dhis.dashboard;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dashboard;
 
-import org.hisp.dhis.chart.Chart;
+import lombok.RequiredArgsConstructor;
 import org.hisp.dhis.document.Document;
 import org.hisp.dhis.eventchart.EventChart;
+import org.hisp.dhis.eventreport.EventReport;
+import org.hisp.dhis.eventvisualization.EventVisualization;
 import org.hisp.dhis.mapping.Map;
 import org.hisp.dhis.report.Report;
-import org.hisp.dhis.reporttable.ReportTable;
 import org.hisp.dhis.system.deletion.DeletionHandler;
 import org.hisp.dhis.user.User;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.hisp.dhis.visualization.Visualization;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class DashboardItemDeletionHandler extends DeletionHandler
-{
-    @Autowired
-    private DashboardService dashboardService;
+@Component
+@RequiredArgsConstructor
+public class DashboardItemDeletionHandler extends DeletionHandler {
+  private final DashboardService dashboardService;
 
-    @Override
-    protected String getClassName()
-    {
-        return DashboardItem.class.getSimpleName();
-    }
+  @Override
+  protected void register() {
+    whenDeleting(Visualization.class, this::deleteVisualization);
+    whenDeleting(EventVisualization.class, this::deleteEventVisualization);
+    whenDeleting(EventChart.class, this::deleteEventChart);
+    whenDeleting(Map.class, this::deleteMap);
+    whenDeleting(EventReport.class, this::deleteEventReport);
+    whenDeleting(User.class, this::deleteUser);
+    whenDeleting(Report.class, this::deleteReport);
+    whenDeleting(Document.class, this::deleteDocument);
+  }
 
-    @Override
-    public String allowDeleteMap( Map map )
-    {
-        return dashboardService.countMapDashboardItems( map ) == 0 ? null : ERROR;
+  private void deleteVisualization(Visualization visualization) {
+    for (DashboardItem item : dashboardService.getVisualizationDashboardItems(visualization)) {
+      dashboardService.deleteDashboardItem(item);
     }
+  }
 
-    @Override
-    public String allowDeleteChart( Chart chart )
-    {
-        return dashboardService.countChartDashboardItems( chart ) == 0 ? null : ERROR;
+  private void deleteEventVisualization(EventVisualization eventVisualization) {
+    for (DashboardItem item :
+        dashboardService.getEventVisualizationDashboardItems(eventVisualization)) {
+      dashboardService.deleteDashboardItem(item);
     }
+  }
 
-    @Override
-    public String allowDeleteEventChart( EventChart eventChart )
-    {
-        return dashboardService.countEventChartDashboardItems( eventChart ) == 0 ? null : ERROR;
+  private void deleteEventChart(EventChart eventChart) {
+    for (DashboardItem item : dashboardService.getEventChartDashboardItems(eventChart)) {
+      dashboardService.deleteDashboardItem(item);
     }
+  }
 
-    @Override
-    public String allowDeleteReportTable( ReportTable reportTable )
-    {
-        return dashboardService.countReportTableDashboardItems( reportTable ) == 0 ? null : ERROR;
+  private void deleteMap(Map map) {
+    for (DashboardItem item : dashboardService.getMapDashboardItems(map)) {
+      dashboardService.deleteDashboardItem(item);
     }
+  }
 
-    @Override
-    public String allowDeleteReport( Report report )
-    {
-        return dashboardService.countReportDashboardItems( report ) == 0 ? null : ERROR;
+  private void deleteEventReport(EventReport eventReport) {
+    for (DashboardItem item : dashboardService.getEventReportDashboardItems(eventReport)) {
+      dashboardService.deleteDashboardItem(item);
     }
-    
-    @Override
-    public String allowDeleteDocument( Document document )
-    {
-        return dashboardService.countDocumentDashboardItems( document ) == 0 ? null : ERROR;
+  }
+
+  private void deleteUser(User user) {
+    for (DashboardItem item : dashboardService.getUserDashboardItems(user)) {
+      while (item.getUsers().contains(user)) // In case of duplicates
+      {
+        item.getUsers().remove(user);
+      }
+
+      if (item.getUsers().isEmpty()) {
+        dashboardService.deleteDashboardItem(item);
+      }
     }
-    
-    @Override
-    public String allowDeleteUser( User user )
-    {
-        return dashboardService.countUserDashboardItems( user ) == 0 ? null : ERROR;
+  }
+
+  private void deleteReport(Report report) {
+    for (DashboardItem item : dashboardService.getReportDashboardItems(report)) {
+      while (item.getReports().contains(report)) // In case of
+      // duplicates
+      {
+        item.getReports().remove(report);
+      }
+
+      if (item.getReports().isEmpty()) {
+        dashboardService.deleteDashboardItem(item);
+      }
     }
+  }
+
+  private void deleteDocument(Document document) {
+    for (DashboardItem item : dashboardService.getDocumentDashboardItems(document)) {
+      while (item.getResources().contains(document)) // In case of
+      // duplicates
+      {
+        item.getResources().remove(document);
+      }
+
+      if (item.getResources().isEmpty()) {
+        dashboardService.deleteDashboardItem(item);
+      }
+    }
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.sync.exception;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,25 +25,19 @@ package org.hisp.dhis.dxf2.metadata.sync.exception;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.sync.exception;
 
-/**
- * Created by vanyas on 5/1/17.
- */
-public class MetadataSyncImportException extends
-    RuntimeException
-{
-    public MetadataSyncImportException( String message )
-    {
-        super( message );
-    }
+/** Created by vanyas on 5/1/17. */
+public class MetadataSyncImportException extends RuntimeException {
+  public MetadataSyncImportException(String message) {
+    super(message);
+  }
 
-    public MetadataSyncImportException( Throwable cause )
-    {
-        super( cause );
-    }
+  public MetadataSyncImportException(Throwable cause) {
+    super(cause);
+  }
 
-    public MetadataSyncImportException( String message, Throwable cause )
-    {
-        super( message, cause );
-    }
+  public MetadataSyncImportException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

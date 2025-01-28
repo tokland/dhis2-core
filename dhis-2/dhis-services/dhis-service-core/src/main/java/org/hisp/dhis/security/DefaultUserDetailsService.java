@@ -1,7 +1,5 @@
-package org.hisp.dhis.security;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,85 +25,39 @@ package org.hisp.dhis.security;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.security;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import org.hisp.dhis.system.util.SecurityUtils;
-import org.hisp.dhis.user.UserCredentials;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.user.User;
 import org.hisp.dhis.user.UserService;
-import org.hisp.dhis.util.ObjectUtils;
+import org.hisp.dhis.user.UserStore;
 import org.springframework.dao.DataAccessException;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Torgeir Lorange Ostby
  */
-public class DefaultUserDetailsService
-    implements UserDetailsService
-{
-    public static final String ID = UserDetailsService.class.getName();
-    
-    private static final Log log = LogFactory.getLog( DefaultUserDetailsService.class );
+@Service("userDetailsService")
+@RequiredArgsConstructor
+public class DefaultUserDetailsService implements UserDetailsService {
 
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+  private final UserStore userStore;
+  private final UserService userService;
 
-    private UserService userService;
+  @Override
+  @Transactional(readOnly = true)
+  public org.springframework.security.core.userdetails.UserDetails loadUserByUsername(
+      String username) throws UsernameNotFoundException, DataAccessException {
 
-    public void setUserService( UserService userService )
-    {
-        this.userService = userService;
-    }
-    
-    private SecurityService securityService;
-
-    public void setSecurityService( SecurityService securityService )
-    {
-        this.securityService = securityService;
+    User user = userStore.getUserByUsername(username);
+    if (user == null) {
+      throw new UsernameNotFoundException(
+          String.format("User with username '%s' not found", username));
     }
 
-    // -------------------------------------------------------------------------
-    // UserDetailsService implementation
-    // -------------------------------------------------------------------------
-
-    @Override
-    @Transactional
-    public final UserDetails loadUserByUsername( String username )
-        throws UsernameNotFoundException, DataAccessException
-    {
-        UserCredentials credentials = userService.getUserCredentialsByUsername( username );
-
-        // ---------------------------------------------------------------------
-        // OpenId
-        // ---------------------------------------------------------------------
-
-        if ( credentials == null )
-        {
-            credentials = userService.getUserCredentialsByOpenId( username );
-
-            if ( credentials == null )
-            {
-                throw new UsernameNotFoundException( "Username does not exist" );
-            }
-        }
-
-        boolean enabled = !credentials.isDisabled();
-        boolean credentialsNonExpired = userService.credentialsNonExpired( credentials );
-        boolean accountNonLocked = !securityService.isLocked( credentials.getUsername() );
-
-        if ( ObjectUtils.anyIsFalse( enabled, credentialsNonExpired, accountNonLocked ) )
-        {
-            log.info( String.format( "Login attempt for disabled/locked user: '%s', enabled: %b, credentials non-expired: %b, account non-locked: %b", 
-                username, enabled, credentialsNonExpired, accountNonLocked ) );
-        }
-        
-        return new User( credentials.getUsername(), credentials.getPassword(),
-            enabled, true, credentialsNonExpired, accountNonLocked, SecurityUtils.getGrantedAuthorities( credentials ) );
-    }
+    return userService.createUserDetails(user);
+  }
 }

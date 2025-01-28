@@ -1,7 +1,5 @@
-package org.hisp.dhis.programrule;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,86 +25,84 @@ package org.hisp.dhis.programrule;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.program.Program;
-import org.springframework.transaction.annotation.Transactional;
+package org.hisp.dhis.programrule;
 
 import java.util.List;
+import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.program.Program;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author markusbekken
  */
-@Transactional
-public class DefaultProgramRuleService
-    implements ProgramRuleService
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.programrule.ProgramRuleService")
+public class DefaultProgramRuleService implements ProgramRuleService {
+  private final ProgramRuleStore programRuleStore;
 
-    private ProgramRuleStore programRuleStore;
+  // -------------------------------------------------------------------------
+  // ProgramRule implementation
+  // -------------------------------------------------------------------------
 
-    public void setProgramRuleStore( ProgramRuleStore programRuleStore )
-    {
-        this.programRuleStore = programRuleStore;
-    }
+  @Override
+  @Transactional
+  public long addProgramRule(ProgramRule programRule) {
+    programRuleStore.save(programRule);
+    return programRule.getId();
+  }
 
-    // -------------------------------------------------------------------------
-    // ProgramRule implementation
-    // -------------------------------------------------------------------------
+  @Override
+  @Transactional
+  public void deleteProgramRule(ProgramRule programRule) {
+    programRuleStore.delete(programRule);
+  }
 
-    @Override
-    public int addProgramRule( ProgramRule programRule )
-    {
-        programRuleStore.save( programRule );
-        return programRule.getId();
-    }
+  @Override
+  @Transactional
+  public void updateProgramRule(ProgramRule programRule) {
+    programRuleStore.update(programRule);
+  }
 
-    @Override
-    public void deleteProgramRule( ProgramRule programRule )
-    {
-        programRuleStore.delete( programRule );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public ProgramRule getProgramRule(long id) {
+    return programRuleStore.get(id);
+  }
 
-    @Override
-    public void updateProgramRule( ProgramRule programRule )
-    {
-        programRuleStore.update( programRule );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<String> getDataElementsPresentInProgramRules() {
+    return programRuleStore.getDataElementsPresentInProgramRules(
+        ProgramRuleActionType.SERVER_SUPPORTED_TYPES);
+  }
 
-    @Override
-    public ProgramRule getProgramRule( int id )
-    {
-        return programRuleStore.get( id );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<String> getTrackedEntityAttributesPresentInProgramRules() {
+    return programRuleStore.getTrackedEntityAttributesPresentInProgramRules(
+        ProgramRuleActionType.SERVER_SUPPORTED_TYPES);
+  }
 
-    @Override
-    public ProgramRule getProgramRule( String uid )
-    {
-        return programRuleStore.getByUid( uid );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<ProgramRule> getProgramRulesByActionTypes(
+      Program program, Set<ProgramRuleActionType> actionTypes) {
+    return programRuleStore.getProgramRulesByActionTypes(program, actionTypes);
+  }
 
-    @Override
-    public ProgramRule getProgramRuleByName( String name, Program program )
-    {
-        return programRuleStore.getByName( name, program );
-    }
-    
-    @Override
-    public List<ProgramRule> getAllProgramRule()
-    {
-        return programRuleStore.getAll();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<ProgramRule> getProgramRulesByActionTypes(
+      Program program, Set<ProgramRuleActionType> serverSupportedTypes, String programStageUid) {
+    return programRuleStore.getProgramRulesByActionTypes(
+        program, serverSupportedTypes, programStageUid);
+  }
 
-    @Override
-    public List<ProgramRule> getProgramRule( Program program )
-    {
-        return programRuleStore.get( program );
-    }
-    
-    @Override
-    public List<ProgramRule> getProgramRules( Program program, String key )
-    {
-        return programRuleStore.get( program, key );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<ProgramRule> getProgramRule(Program program) {
+    return programRuleStore.get(program);
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.common;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,35 +25,90 @@ package org.hisp.dhis.common;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.common;
 
+import static org.hisp.dhis.common.BaseIdentifiableObject.copySet;
+import static org.hisp.dhis.common.IdScheme.CODE;
+import static org.hisp.dhis.common.IdScheme.NAME;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Set;
 import org.hisp.dhis.dataelement.DataElement;
-import org.junit.Test;
-
-import static org.junit.Assert.*;
+import org.hisp.dhis.program.Program;
+import org.hisp.dhis.program.ProgramSection;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Lars Helge Overland
  */
-public class BaseIdentifiableObjectTest
-{
-    @Test
-    public void testGetValue()
-    {
-        DataElement deA = new DataElement();
-        deA.setUid( "A1234567890" );
-        deA.setCode( "CodeA" );
-        deA.setName( "NameA" );        
+class BaseIdentifiableObjectTest {
 
-        DataElement deB = new DataElement();
+  @Test
+  void testGetValue() {
+    DataElement deA = new DataElement();
+    deA.setUid("A1234567890");
+    deA.setCode("CodeA");
+    deA.setName("NameA");
+    DataElement deB = new DataElement();
+    IdScheme idSchemeUid = IdScheme.from(IdentifiableProperty.UID);
+    IdScheme idSchemeCode = IdScheme.from(IdentifiableProperty.CODE);
+    IdScheme idSchemeName = IdScheme.from(IdentifiableProperty.NAME);
+    assertEquals("A1234567890", deA.getPropertyValue(idSchemeUid));
+    assertEquals("CodeA", deA.getPropertyValue(idSchemeCode));
+    assertEquals("NameA", deA.getPropertyValue(idSchemeName));
+    assertNull(deB.getPropertyValue(idSchemeCode));
+  }
 
-        IdScheme idSchemeUid = IdScheme.from( IdentifiableProperty.UID );
-        IdScheme idSchemeCode = IdScheme.from( IdentifiableProperty.CODE );
-        IdScheme idSchemeName = IdScheme.from( IdentifiableProperty.NAME );
-        
-        assertEquals( "A1234567890", deA.getPropertyValue( idSchemeUid ) );
-        assertEquals( "CodeA", deA.getPropertyValue( idSchemeCode ) );
-        assertEquals( "NameA", deA.getPropertyValue( idSchemeName ) );
-        
-        assertNull( deB.getPropertyValue( idSchemeCode ) );
-    }
+  @Test
+  void testCopySet() {
+    Program program1 = new Program("Program 1");
+    Program program2 = new Program("Program 2");
+    ProgramSection section1 = new ProgramSection();
+    section1.setAutoFields();
+    section1.setProgram(program1);
+    ProgramSection section2 = new ProgramSection();
+    section2.setAutoFields();
+    section2.setProgram(program1);
+
+    Set<ProgramSection> sections = Set.of(section1, section2);
+    program1.setProgramSections(sections);
+
+    Set<ProgramSection> copiedSections =
+        copySet(program2, program1.getProgramSections(), ProgramSection.copyOf);
+
+    assertEquals(sections.size(), copiedSections.size());
+  }
+
+  @Test
+  void testCopySetNullCollection() {
+    Program program = new Program("Program 1");
+
+    Set<ProgramSection> copiedSections = copySet(program, null, ProgramSection.copyOf);
+
+    assertTrue(copiedSections.isEmpty());
+  }
+
+  @Test
+  void testGetDisplayPropertyValueName() {
+    IdScheme idSchemeName = NAME;
+    Program p = new Program("Any program");
+    p.setCode("AnyCode");
+
+    String value = p.getDisplayPropertyValue(idSchemeName);
+
+    assertEquals("Any program", value);
+  }
+
+  @Test
+  void testGetDisplayPropertyValueCode() {
+    IdScheme idSchemeCode = CODE;
+    Program p = new Program("Any program");
+    p.setCode("AnyCode");
+
+    String value = p.getDisplayPropertyValue(idSchemeCode);
+
+    assertEquals("AnyCode", value);
+  }
 }

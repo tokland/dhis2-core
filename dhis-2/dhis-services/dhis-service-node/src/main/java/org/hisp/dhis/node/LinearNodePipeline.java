@@ -1,7 +1,5 @@
-package org.hisp.dhis.node;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,61 +25,55 @@ package org.hisp.dhis.node;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.node;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Simple linear pipeline that run transformers sequentially.
  *
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class LinearNodePipeline implements NodePipeline
-{
-    private class NodeTransformerWithArgs
-    {
-        NodeTransformer transformer;
-        List<String> arguments;
+public class LinearNodePipeline implements NodePipeline {
+  private class NodeTransformerWithArgs {
+    NodeTransformer transformer;
 
-        NodeTransformerWithArgs( NodeTransformer transformer, List<String> arguments )
-        {
-            this.transformer = transformer;
-            this.arguments = arguments;
-        }
+    List<String> arguments;
 
-        Node transform( Node node )
-        {
-            return transformer.transform( node, arguments );
-        }
+    NodeTransformerWithArgs(NodeTransformer transformer, List<String> arguments) {
+      this.transformer = transformer;
+      this.arguments = arguments;
     }
 
-    private List<NodeTransformerWithArgs> nodeTransformers = new ArrayList<>();
+    Node transform(Node node) {
+      return transformer.transform(node, arguments);
+    }
+  }
 
-    @Override
-    public Node process( Node node )
-    {
-        for ( NodeTransformerWithArgs nodeTransformer : nodeTransformers )
-        {
-            node = nodeTransformer.transform( node );
+  private List<NodeTransformerWithArgs> nodeTransformers = new ArrayList<>();
 
-            if ( node == null )
-            {
-                return null;
-            }
-        }
+  @Override
+  public Node process(Node node) {
+    for (NodeTransformerWithArgs nodeTransformer : nodeTransformers) {
+      node = nodeTransformer.transform(node);
 
-        return node;
+      if (node == null) {
+        return null;
+      }
     }
 
-    public void addTransformer( NodeTransformer nodeTransformer )
-    {
-        nodeTransformers.add( new NodeTransformerWithArgs( checkNotNull( nodeTransformer ), new ArrayList<>() ) );
-    }
+    return node;
+  }
 
-    public void addTransformer( NodeTransformer nodeTransformer, List<String> arguments )
-    {
-        nodeTransformers.add( new NodeTransformerWithArgs( checkNotNull( nodeTransformer ), arguments ) );
-    }
+  public void addTransformer(NodeTransformer nodeTransformer) {
+    nodeTransformers.add(
+        new NodeTransformerWithArgs(checkNotNull(nodeTransformer), new ArrayList<>()));
+  }
+
+  public void addTransformer(NodeTransformer nodeTransformer, List<String> arguments) {
+    nodeTransformers.add(new NodeTransformerWithArgs(checkNotNull(nodeTransformer), arguments));
+  }
 }

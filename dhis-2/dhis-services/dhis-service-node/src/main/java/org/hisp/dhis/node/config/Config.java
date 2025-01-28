@@ -1,7 +1,5 @@
-package org.hisp.dhis.node.config;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,45 +25,63 @@ package org.hisp.dhis.node.config;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.node.config;
 
 import com.google.common.collect.Maps;
-
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class Config
-{
-    /**
-     * Inclusion strategy to use. There are a few already defined inclusions in the Inclusions enum.
-     *
-     * @see org.hisp.dhis.node.config.InclusionStrategy.Include
-     */
-    private InclusionStrategy inclusionStrategy = InclusionStrategy.Include.NON_NULL;
+public class Config {
+  /**
+   * Inclusion strategy to use. There are a few already defined inclusions in the Inclusions enum.
+   *
+   * @see org.hisp.dhis.node.config.InclusionStrategy.Include
+   */
+  private InclusionStrategy inclusionStrategy = InclusionStrategy.Include.NON_NULL;
 
-    /**
-     * Property map that can hold any key=value pair, can be used to set custom
-     * properties that only certain serializers know about.
-     */
-    private final Map<String, Object> properties = Maps.newHashMap();
+  /**
+   * Property map that can hold any key=value pair, can be used to set custom properties that only
+   * certain serializers know about.
+   */
+  private final Map<String, Object> properties = Maps.newHashMap();
 
-    public Config()
-    {
+  public Config() {}
+
+  public InclusionStrategy getInclusionStrategy() {
+    return inclusionStrategy;
+  }
+
+  public void setInclusionStrategy(InclusionStrategy inclusionStrategy) {
+    this.inclusionStrategy = inclusionStrategy;
+  }
+
+  public Map<String, Object> getProperties() {
+    return properties;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
-
-    public InclusionStrategy getInclusionStrategy()
-    {
-        return inclusionStrategy;
+    if (o == null || getClass() != o.getClass()) {
+      return false;
     }
+    Config config = (Config) o;
 
-    public void setInclusionStrategy( InclusionStrategy inclusionStrategy )
-    {
-        this.inclusionStrategy = inclusionStrategy;
-    }
+    final boolean propertiesAreEqual =
+        Arrays.deepEquals(
+            properties.entrySet().toArray(), ((Config) o).getProperties().entrySet().toArray());
 
-    public Map<String, Object> getProperties()
-    {
-        return properties;
-    }
+    return Objects.equals(inclusionStrategy, config.inclusionStrategy) && propertiesAreEqual;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(inclusionStrategy, properties);
+  }
 }

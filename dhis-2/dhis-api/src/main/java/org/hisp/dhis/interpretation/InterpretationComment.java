@@ -1,7 +1,5 @@
-package org.hisp.dhis.interpretation;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,78 +25,68 @@ package org.hisp.dhis.interpretation;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.interpretation;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
-import org.hisp.dhis.common.BaseIdentifiableObject;
-import org.hisp.dhis.common.DxfNamespaces;
-import org.hisp.dhis.user.User;
-
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import org.hisp.dhis.common.BaseIdentifiableObject;
+import org.hisp.dhis.common.DxfNamespaces;
+import org.hisp.dhis.user.User;
 
 /**
  * @author Lars Helge Overland
  */
-@JacksonXmlRootElement( localName = "interpretationComment", namespace = DxfNamespaces.DXF_2_0 )
-public class InterpretationComment
-    extends BaseIdentifiableObject
-{
-    private String text;
-    
-    private List<Mention> mentions = new ArrayList<>();
+@JacksonXmlRootElement(localName = "interpretationComment", namespace = DxfNamespaces.DXF_2_0)
+public class InterpretationComment extends BaseIdentifiableObject {
+  private String text;
 
-    public InterpretationComment()
-    {
-        this.created = new Date();
-    }
+  private List<Mention> mentions = new ArrayList<>();
 
-    public InterpretationComment( String text )
-    {
-        this.text = text;
-        this.created = new Date();
-    }
+  public InterpretationComment() {
+    this.created = new Date();
+  }
 
-    public InterpretationComment( String text, User user )
-    {
-        this.text = text;
-        this.user = user;
-        this.created = new Date();
-    }
+  public InterpretationComment(String text) {
+    this.text = text;
+    this.created = new Date();
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public String getText()
-    {
-        return text;
-    }
+  public InterpretationComment(String text, User user) {
+    this.text = text;
+    this.created = new Date();
+    this.sharing.setOwner(user);
+  }
 
-    public void setText( String text )
-    {
-        this.text = text;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public String getText() {
+    return text;
+  }
 
-    @JsonProperty( "mentions" )
-    @JacksonXmlElementWrapper( localName = "mentions", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "mentions", namespace = DxfNamespaces.DXF_2_0 )
-    public List<Mention> getMentions()
-    {
-        return mentions;
-    }
+  public void setText(String text) {
+    this.text = text;
+  }
 
-    public void setMentions( List<Mention> mentions )
-    {
-        this.mentions = mentions;
-    }
-    
-    @JsonIgnore
-    public void setMentionsFromUsers( Set<User> users )
-    {
-        this.mentions = MentionUtils.convertUsersToMentions( users );
-    }
+  @JsonProperty("mentions")
+  @JacksonXmlElementWrapper(localName = "mentions", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "mentions", namespace = DxfNamespaces.DXF_2_0)
+  public List<Mention> getMentions() {
+    return mentions;
+  }
+
+  public void setMentions(List<Mention> mentions) {
+    this.mentions = mentions;
+  }
+
+  @JsonIgnore
+  public void setMentionsFromUsers(Set<User> users) {
+    this.mentions = MentionUtils.convertUsersToMentions(users);
+  }
 }

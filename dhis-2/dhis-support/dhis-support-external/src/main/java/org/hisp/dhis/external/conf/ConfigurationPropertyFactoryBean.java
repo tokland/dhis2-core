@@ -1,7 +1,5 @@
-package org.hisp.dhis.external.conf;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,58 +25,50 @@ package org.hisp.dhis.external.conf;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.external.conf;
 
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.Assert;
 
 /**
- * Factory bean which allows for DHIS configuration property values to be 
- * injected into target beans. 
- * 
+ * Factory bean which allows for DHIS configuration property values to be injected into target
+ * beans.
+ *
  * @param key must reflect a {@link ConfigurationKey}.
- * 
  * @author Lars Helge Overland
  */
-public class ConfigurationPropertyFactoryBean
-    implements FactoryBean<Object>
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+public class ConfigurationPropertyFactoryBean implements FactoryBean<Object> {
+  // -------------------------------------------------------------------------
+  // Dependencies
+  // -------------------------------------------------------------------------
 
-    @Autowired
-    private DhisConfigurationProvider configurationProvider;
-    
-    private ConfigurationKey key;
-    
-    public ConfigurationPropertyFactoryBean( ConfigurationKey key )
-    {
-        this.key = key;
-    }
-    
-    // -------------------------------------------------------------------------
-    // FactoryBean implementation
-    // -------------------------------------------------------------------------
+  @Autowired private DhisConfigurationProvider configurationProvider;
 
-    @Override
-    public Object getObject()
-        throws Exception
-    {
-        Assert.notNull( key, "Configuration key must be specified" );
-        
-        return configurationProvider.getProperty( key );
-    }
+  private ConfigurationKey key;
 
-    @Override
-    public Class<String> getObjectType()
-    {
-        return String.class;
-    }
+  public ConfigurationPropertyFactoryBean(ConfigurationKey key) {
+    this.key = key;
+  }
 
-    @Override
-    public boolean isSingleton()
-    {
-        return true;
-    }
+  // -------------------------------------------------------------------------
+  // FactoryBean implementation
+  // -------------------------------------------------------------------------
+
+  @Override
+  public Object getObject() {
+    Assert.notNull(key, "Configuration key must be specified");
+
+    return configurationProvider.getProperty(key);
+  }
+
+  @Override
+  public Class<String> getObjectType() {
+    return String.class;
+  }
+
+  @Override
+  public boolean isSingleton() {
+    return true;
+  }
 }

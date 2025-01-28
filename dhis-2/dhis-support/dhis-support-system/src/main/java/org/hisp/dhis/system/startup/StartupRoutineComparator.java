@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.startup;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,21 +25,19 @@ package org.hisp.dhis.system.startup;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.startup;
 
 import java.util.Comparator;
 
 /**
  * Compares StartupRoutines based on their runlevel values.
- * 
+ *
  * @author <a href="mailto:torgeilo@gmail.com">Torgeir Lorange Ostby</a>
  * @version $Id: StartupRoutineComparator.java 3217 2007-04-02 08:54:21Z torgeilo $
  */
-public class StartupRoutineComparator
-    implements Comparator<StartupRoutine>
-{
-    @Override
-    public int compare( StartupRoutine routineA, StartupRoutine routineB )
-    {
-        return routineA.getRunlevel() - routineB.getRunlevel();
-    }
+public class StartupRoutineComparator implements Comparator<StartupRoutine> {
+  @Override
+  public int compare(StartupRoutine routineA, StartupRoutine routineB) {
+    return routineA.getRunlevel() - routineB.getRunlevel();
+  }
 }

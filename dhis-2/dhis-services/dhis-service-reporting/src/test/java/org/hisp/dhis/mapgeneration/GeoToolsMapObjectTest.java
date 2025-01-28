@@ -1,7 +1,5 @@
-package org.hisp.dhis.mapgeneration;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,80 +25,93 @@ package org.hisp.dhis.mapgeneration;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.mapgeneration;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.awt.Color;
-
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import java.io.IOException;
+import org.geotools.geojson.geom.GeometryJSON;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.locationtech.jts.geom.Geometry;
 
 /**
  * @author Kenneth Solbø Andersen <kennetsa@ifi.uio.no>
  */
-public class GeoToolsMapObjectTest
-{
-    private InternalMapObject geoToolsMapObject;
+class GeoToolsMapObjectTest {
 
-    @Before
-    public void before()
-    {
-        geoToolsMapObject = new InternalMapObject();
-    }
+  private InternalMapObject geoToolsMapObject;
+  private GeometryJSON geometryJSON = new GeometryJSON();
+  private String multiPolygonCoordinates =
+      "[[[[11.11,22.22],[33.33,44.44],[55.55,66.66],[11.11,22.22]]],"
+          + "[[[77.77,88.88],[99.99,11.11],[22.22,33.33],[77.77,88.88]]],"
+          + "[[[44.44,55.55],[66.66,77.77],[88.88,99.99],[44.44,55.55]]]]";
 
-    @Test
-    public void testSetGetName()
-    {
-        geoToolsMapObject.setName( "Name1" );
-        assertEquals( "Name1", geoToolsMapObject.getName() );
-        geoToolsMapObject.setName( "Another name" );
-        assertEquals( "Another name", geoToolsMapObject.getName() );
-    }
+  @BeforeEach
+  void before() {
+    geoToolsMapObject = new InternalMapObject();
+  }
 
-    @Test
-    public void testSetGetValue()
-    {
-        geoToolsMapObject.setValue( 489.3 );
-        assertEquals( 489.3, geoToolsMapObject.getValue(), 0.00001 );
-        geoToolsMapObject.setValue( 41.423 );
-        assertEquals( 41.423, geoToolsMapObject.getValue(), 0.00001 );
-    }
+  @Test
+  void testSetGetName() {
+    geoToolsMapObject.setName("Name1");
+    assertEquals("Name1", geoToolsMapObject.getName());
+    geoToolsMapObject.setName("Another name");
+    assertEquals("Another name", geoToolsMapObject.getName());
+  }
 
-    @Test
-    @Ignore
-    public void testSetGetRadius()
-    {
-        geoToolsMapObject.setRadius( 32 );
-        assertEquals( 32.5264F, geoToolsMapObject.getRadius(), 0.00001 );
-        geoToolsMapObject.setRadius( 61 );
-        assertEquals( 61441.5F, geoToolsMapObject.getRadius(), 0.00001 );
-    }
+  @Test
+  void testSetGetValue() {
+    geoToolsMapObject.setValue(489.3);
+    assertEquals(geoToolsMapObject.getValue(), 0.00001, 489.3);
+    geoToolsMapObject.setValue(41.423);
+    assertEquals(geoToolsMapObject.getValue(), 0.00001, 41.423);
+  }
 
-    @Test
-    public void testSetGetFillColor()
-    {
-        geoToolsMapObject.setFillColor( Color.BLUE );
-        assertEquals( Color.BLUE, geoToolsMapObject.getFillColor() );
-        geoToolsMapObject.setFillColor( Color.CYAN );
-        assertEquals( Color.CYAN, geoToolsMapObject.getFillColor() );
-    }
+  @Test
+  void testSetGetRadius() {
+    geoToolsMapObject.setRadius(32);
+    assertEquals(geoToolsMapObject.getRadius(), 0.00001, 32.5264F);
+    geoToolsMapObject.setRadius(61);
+    assertEquals(geoToolsMapObject.getRadius(), 0.00001, 61441.5F);
+  }
 
-    @Test
-    public void testSetGetFillOpacity()
-    {
-        geoToolsMapObject.setFillOpacity( 5.23F );
-        assertEquals( 5.23F, geoToolsMapObject.getFillOpacity(), 0.00001 );
-        geoToolsMapObject.setFillOpacity( 594208420.134F );
-        assertEquals( 594208420.134F, geoToolsMapObject.getFillOpacity(), 0.00001 );
-    }
+  @Test
+  void testSetGetFillColor() {
+    geoToolsMapObject.setFillColor(Color.BLUE);
+    assertEquals(Color.BLUE, geoToolsMapObject.getFillColor());
+    geoToolsMapObject.setFillColor(Color.CYAN);
+    assertEquals(Color.CYAN, geoToolsMapObject.getFillColor());
+  }
 
-    @Test
-    public void testSetGetStrokeColor()
-    {
-        geoToolsMapObject.setStrokeColor( Color.GREEN );
-        assertEquals( Color.GREEN, geoToolsMapObject.getStrokeColor() );
-        geoToolsMapObject.setStrokeColor( Color.WHITE );
-        assertEquals( Color.WHITE, geoToolsMapObject.getStrokeColor() );
-    }
+  @Test
+  void testSetGetFillOpacity() {
+    geoToolsMapObject.setFillOpacity(5.23F);
+    assertEquals(geoToolsMapObject.getFillOpacity(), 0.00001, 5.23F);
+    geoToolsMapObject.setFillOpacity(594208420.134F);
+    assertEquals(geoToolsMapObject.getFillOpacity(), 0.00001, 594208420.134F);
+  }
+
+  @Test
+  void testSetGetStrokeColor() {
+    geoToolsMapObject.setStrokeColor(Color.GREEN);
+    assertEquals(Color.GREEN, geoToolsMapObject.getStrokeColor());
+    geoToolsMapObject.setStrokeColor(Color.WHITE);
+    assertEquals(Color.WHITE, geoToolsMapObject.getStrokeColor());
+  }
+
+  @Test
+  void testCreateFeatureType() throws IOException {
+    Geometry geometry =
+        geometryJSON.read(
+            "{\"type\":\"MultiPolygon\", \"coordinates\":" + multiPolygonCoordinates + "}");
+    geoToolsMapObject.setGeometry(geometry);
+    assertDoesNotThrow(
+        () -> {
+          assertNotNull(MapUtils.createFeatureLayerFromMapObject(geoToolsMapObject));
+        });
+  }
 }

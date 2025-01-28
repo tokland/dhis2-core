@@ -1,7 +1,5 @@
-package org.hisp.dhis.schema;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,43 +25,40 @@ package org.hisp.dhis.schema;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.schema;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import com.google.common.collect.Lists;
-import org.hisp.dhis.common.DxfNamespaces;
-
 import java.util.List;
+import org.hisp.dhis.common.DxfNamespaces;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-@JacksonXmlRootElement( localName = "schemas", namespace = DxfNamespaces.DXF_2_0 )
-public class Schemas
-{
-    private List<Schema> schemas = Lists.newArrayList();
+@JacksonXmlRootElement(localName = "schemas", namespace = DxfNamespaces.DXF_2_0)
+public class Schemas {
+  private List<Schema> schemas = Lists.newArrayList();
 
-    public Schemas()
-    {
-    }
+  public Schemas() {}
 
-    public Schemas( List<Schema> schemas )
-    {
-        this.schemas = schemas;
-    }
+  public Schemas(List<Schema> schemas) {
+    this.schemas = schemas;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( localName = "schema", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlElementWrapper( localName = "schemas", namespace = DxfNamespaces.DXF_2_0, useWrapping = false )
-    public List<Schema> getSchemas()
-    {
-        return schemas;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(localName = "schema", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlElementWrapper(
+      localName = "schemas",
+      namespace = DxfNamespaces.DXF_2_0,
+      useWrapping = false)
+  public List<Schema> getSchemas() {
+    return schemas;
+  }
 
-    public void setSchemas( List<Schema> schemas )
-    {
-        this.schemas = schemas;
-    }
+  public void setSchemas(List<Schema> schemas) {
+    this.schemas = schemas;
+  }
 }

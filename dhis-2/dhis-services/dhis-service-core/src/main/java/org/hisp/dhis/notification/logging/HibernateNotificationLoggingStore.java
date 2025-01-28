@@ -1,7 +1,5 @@
-package org.hisp.dhis.notification.logging;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,31 +25,50 @@ package org.hisp.dhis.notification.logging;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.notification.logging;
 
-import org.hibernate.Criteria;
-import org.hibernate.criterion.Restrictions;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
-/**
- * Created by zubair@dhis2.org on 10.01.18.
- */
+/** Created by zubair@dhis2.org on 10.01.18. */
+@Repository("org.hisp.dhis.notification.logging.NotificationLoggingStore")
 public class HibernateNotificationLoggingStore
     extends HibernateIdentifiableObjectStore<ExternalNotificationLogEntry>
-    implements NotificationLoggingStore
-{
-    @Override
-    public ExternalNotificationLogEntry getByTemplateUid( String templateUid )
-    {
-        Criteria criteria = getCriteria().add( Restrictions.eq( "notificationTemplateUid", templateUid ) );
+    implements NotificationLoggingStore {
+  public HibernateNotificationLoggingStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(
+        entityManager,
+        jdbcTemplate,
+        publisher,
+        ExternalNotificationLogEntry.class,
+        aclService,
+        true);
+  }
 
-        return (ExternalNotificationLogEntry) criteria.uniqueResult();
-    }
+  @Override
+  public ExternalNotificationLogEntry getByTemplateUid(String templateUid) {
+    CriteriaBuilder builder = getCriteriaBuilder();
 
-    @Override
-    public ExternalNotificationLogEntry getByKey( String key )
-    {
-        Criteria criteria = getCriteria().add( Restrictions.eq( "key", key ) );
+    return getSingleResult(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("notificationTemplateUid"), templateUid)));
+  }
 
-        return (ExternalNotificationLogEntry) criteria.uniqueResult();
-    }
+  @Override
+  public ExternalNotificationLogEntry getByKey(String key) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getSingleResult(
+        builder, newJpaParameters().addPredicate(root -> builder.equal(root.get("key"), key)));
+  }
 }

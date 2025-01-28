@@ -1,7 +1,5 @@
-package org.hisp.dhis.schema.descriptors;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,36 +25,35 @@ package org.hisp.dhis.schema.descriptors;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.schema.descriptors;
 
+import com.google.common.collect.Lists;
 import org.hisp.dhis.analytics.AnalyticsTableHook;
 import org.hisp.dhis.schema.Schema;
 import org.hisp.dhis.schema.SchemaDescriptor;
 import org.hisp.dhis.security.Authority;
 import org.hisp.dhis.security.AuthorityType;
 
-import com.google.common.collect.Lists;
-
 /**
  * @author Lars Helge Overland
  */
-public class AnalyticsTableHookSchemaDescriptor implements SchemaDescriptor
-{
-    public static final String SINGULAR = "analyticsTableHook";
+public class AnalyticsTableHookSchemaDescriptor implements SchemaDescriptor {
+  public static final String SINGULAR = "analyticsTableHook";
 
-    public static final String PLURAL = "analyticsTableHooks";
+  public static final String PLURAL = "analyticsTableHooks";
 
-    public static final String API_ENDPOINT = "/" + PLURAL;
+  public static final String API_ENDPOINT = "/" + PLURAL;
 
-    @Override
-    public Schema getSchema()
-    {
-        Schema schema = new Schema( AnalyticsTableHook.class, SINGULAR, PLURAL );
-        schema.setRelativeApiEndpoint( API_ENDPOINT );
-        schema.setOrder( 1240 );
+  @Override
+  public Schema getSchema() {
+    Schema schema = new Schema(AnalyticsTableHook.class, SINGULAR, PLURAL);
+    schema.setRelativeApiEndpoint(API_ENDPOINT);
+    schema.setOrder(1240);
 
-        schema.getAuthorities().add( new Authority( AuthorityType.CREATE, Lists.newArrayList( "F_ANALYTICSTABLEHOOK_ADD" ) ) );
-        schema.getAuthorities().add( new Authority( AuthorityType.DELETE, Lists.newArrayList( "F_ANALYTICSTABLEHOOK_DELETE" ) ) );
+    schema.add(new Authority(AuthorityType.CREATE, Lists.newArrayList("F_ANALYTICSTABLEHOOK_ADD")));
+    schema.add(
+        new Authority(AuthorityType.DELETE, Lists.newArrayList("F_ANALYTICSTABLEHOOK_DELETE")));
 
-        return schema;
-    }
+    return schema;
+  }
 }

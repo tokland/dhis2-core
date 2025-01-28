@@ -1,7 +1,5 @@
-package org.hisp.dhis.dashboard;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,33 +25,31 @@ package org.hisp.dhis.dashboard;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dashboard;
 
+import lombok.RequiredArgsConstructor;
 import org.hisp.dhis.system.deletion.DeletionHandler;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class DashboardDeletionHandler extends DeletionHandler
-{
-    @Autowired
-    private DashboardService dashboardService;
+@Component
+@RequiredArgsConstructor
+public class DashboardDeletionHandler extends DeletionHandler {
+  private final DashboardService dashboardService;
 
-    @Override
-    protected String getClassName()
-    {
-        return Dashboard.class.getSimpleName();
+  @Override
+  protected void register() {
+    whenDeleting(DashboardItem.class, this::deleteDashboardItem);
+  }
+
+  private void deleteDashboardItem(DashboardItem dashboardItem) {
+    Dashboard dashboard = dashboardService.getDashboardFromDashboardItem(dashboardItem);
+
+    if (dashboard != null) {
+      dashboard.getItems().remove(dashboardItem);
+      dashboardService.updateDashboard(dashboard);
     }
-
-    @Override
-    public void deleteDashboardItem( DashboardItem dashboardItem )
-    {
-        Dashboard dashboard = dashboardService.getDashboardFromDashboardItem( dashboardItem );
-
-        if ( dashboard != null )
-        {
-            dashboard.getItems().remove( dashboardItem );
-            dashboardService.updateDashboard( dashboard );
-        }
-    }
+  }
 }

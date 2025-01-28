@@ -1,7 +1,5 @@
-package org.hisp.dhis.eventchart;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.eventchart;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.eventchart;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -34,8 +33,11 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
 import org.hisp.dhis.analytics.EventOutputType;
-import org.hisp.dhis.chart.BaseChart;
 import org.hisp.dhis.common.AnalyticsType;
 import org.hisp.dhis.common.BaseDimensionalItemObject;
 import org.hisp.dhis.common.BaseIdentifiableObject;
@@ -47,374 +49,332 @@ import org.hisp.dhis.common.EventAnalyticalObject;
 import org.hisp.dhis.common.MetadataObject;
 import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.event.EventStatus;
+import org.hisp.dhis.eventvisualization.EventRepetition;
+import org.hisp.dhis.eventvisualization.SimpleDimension;
 import org.hisp.dhis.i18n.I18nFormat;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
+import org.hisp.dhis.program.EnrollmentStatus;
 import org.hisp.dhis.program.Program;
 import org.hisp.dhis.program.ProgramStage;
-import org.hisp.dhis.program.ProgramStatus;
 import org.hisp.dhis.trackedentity.TrackedEntityAttribute;
 import org.hisp.dhis.user.User;
 import org.hisp.dhis.util.ObjectUtils;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
 /**
+ * DEPRECATED: THIS CLASS IS DEPRECATED IN FAVOUR OF THE EventVisualization MODEL. WE SHOULD AVOID
+ * CHANGES ON THIS CLASS AS MUCH AS POSSIBLE. NEW FEATURES SHOULD BE ADDED ON TOP OF
+ * EventVisualization.
+ *
  * @author Jan Henrik Overland
  */
-@JacksonXmlRootElement( localName = "eventChart", namespace = DxfNamespaces.DXF_2_0 )
-public class EventChart
-    extends BaseChart
-    implements EventAnalyticalObject, MetadataObject
-{
-    /**
-     * Program. Required.
-     */
-    private Program program;
+@JacksonXmlRootElement(localName = "eventChart", namespace = DxfNamespaces.DXF_2_0)
+public class EventChart extends BaseChart implements EventAnalyticalObject, MetadataObject {
+  /** Program. Required. */
+  private Program program;
 
-    /**
-     * Program stage.
-     */
-    private ProgramStage programStage;
+  /** Program stage. */
+  private ProgramStage programStage;
 
-    /**
-     * Start date.
-     */
-    private Date startDate;
+  /** Data element value dimension. */
+  private DataElement dataElementValueDimension;
 
-    /**
-     * End date.
-     */
-    private Date endDate;
+  /** Attribute value dimension. */
+  private TrackedEntityAttribute attributeValueDimension;
 
-    /**
-     * Data element value dimension.
-     */
-    private DataElement dataElementValueDimension;
+  /** Dimensions to crosstabulate / use as columns. */
+  private List<String> columnDimensions = new ArrayList<>();
 
-    /**
-     * Attribute value dimension.
-     */
-    private TrackedEntityAttribute attributeValueDimension;
+  /** Dimensions to use as rows. */
+  private List<String> rowDimensions = new ArrayList<>();
 
-    /**
-     * Dimensions to crosstabulate / use as columns.
-     */
-    private List<String> columnDimensions = new ArrayList<>();
+  /** Indicates output type. */
+  private EventOutputType outputType;
 
-    /**
-     * Dimensions to use as rows.
-     */
-    private List<String> rowDimensions = new ArrayList<>();
+  /** Indicates whether to collapse all data dimensions into a single dimension. */
+  private boolean collapseDataDimensions;
 
-    /**
-     * Indicates output type.
-     */
-    private EventOutputType outputType;
+  /** Indicates whether to hide n/a data. */
+  private boolean hideNaData;
 
-    /**
-     * Indicates whether to collapse all data dimensions into a single dimension.
-     */
-    private boolean collapseDataDimensions;
+  /** The enrollment status. */
+  private EnrollmentStatus enrollmentStatus;
 
-    /**
-     * Indicates whether to hide n/a data.
-     */
-    private boolean hideNaData;
+  /** The event status. */
+  private EventStatus eventStatus;
 
-    /**
-     * The program status.
-     */
-    private ProgramStatus programStatus;
+  // -------------------------------------------------------------------------
+  // Analytical properties
+  // -------------------------------------------------------------------------
 
-    /**
-     * The event status.
-     */
-    private EventStatus eventStatus;
-    
-    // -------------------------------------------------------------------------
-    // Analytical properties
-    // -------------------------------------------------------------------------
+  /** Value dimension. */
+  private transient DimensionalItemObject value;
 
-    /**
-     * Value dimension.
-     */
-    private transient DimensionalItemObject value;
+  // -------------------------------------------------------------------------
+  // BACKWARD compatible attributes.
+  // They are not exposed and should be always false for EventChart.
+  // Needed to enable backward compatibility with EventVisualization.
+  // Cannot be removed until EventChart if fully deprecated.
+  // -------------------------------------------------------------------------
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------
+  private boolean rowTotals;
 
-    public EventChart()
-    {
-    }
+  private boolean colTotals;
 
-    public EventChart( String name )
-    {
-        this.name = name;
-    }
+  private boolean rowSubTotals;
 
-    // -------------------------------------------------------------------------
-    // AnalyticalObject
-    // -------------------------------------------------------------------------
+  private boolean colSubTotals;
 
-    @Override
-    public void init( User user, Date date, OrganisationUnit organisationUnit,
-        List<OrganisationUnit> organisationUnitsAtLevel, List<OrganisationUnit> organisationUnitsInGroups,
-        I18nFormat format )
-    {
-        this.relativeUser = user;
-        this.format = format;
-    }
+  private boolean hideEmptyRows;
 
-    @Override
-    public void populateAnalyticalProperties()
-    {
-        for ( String column : columnDimensions )
-        {
-            columns.add( getDimensionalObject( column ) );
-        }
+  private boolean showHierarchy;
 
-        for ( String row : rowDimensions )
-        {
-            rows.add( getDimensionalObject( row ) );
-        }
+  private boolean showDimensionLabels;
 
-        for ( String filter : filterDimensions )
-        {
-            filters.add( getDimensionalObject( filter ) );
-        }
+  /** Default to true, as this entity is always legacy. */
+  private boolean legacy = true;
 
-        value = ObjectUtils.firstNonNull( dataElementValueDimension, attributeValueDimension );
-    }
+  // -------------------------------------------------------------------------
+  // Constructors
+  // -------------------------------------------------------------------------
 
-    @Override
-    protected void clearTransientChartStateProperties()
-    {
-        value = null;
-    }
+  public EventChart() {}
 
-    @Override
-    public List<DimensionalItemObject> series()
-    {
-        String series = columnDimensions.get( 0 );
+  public EventChart(String name) {
+    this.name = name;
+  }
 
-        DimensionalObject object = getDimensionalObject( series, relativePeriodDate, relativeUser, true,
-            organisationUnitsAtLevel, organisationUnitsInGroups, format );
+  // -------------------------------------------------------------------------
+  // AnalyticalObject
+  // -------------------------------------------------------------------------
 
-        DimensionalObjectUtils.setDimensionItemsForFilters( object, dataItemGrid, true );
+  @Override
+  public void init(
+      User user,
+      Date date,
+      OrganisationUnit organisationUnit,
+      List<OrganisationUnit> organisationUnitsAtLevel,
+      List<OrganisationUnit> organisationUnitsInGroups,
+      I18nFormat format) {
+    this.relativeUser = user;
+    this.format = format;
+  }
 
-        return object != null ? object.getItems() : null;
-    }
+  @Override
+  public void populateAnalyticalProperties() {
+    super.populateDimensions(columnDimensions, columns);
+    super.populateDimensions(rowDimensions, rows);
+    super.populateDimensions(filterDimensions, filters);
 
-    @Override
-    public List<DimensionalItemObject> category()
-    {
-        String category = rowDimensions.get( 0 );
+    value = ObjectUtils.firstNonNull(dataElementValueDimension, attributeValueDimension);
+  }
 
-        DimensionalObject object = getDimensionalObject( category, relativePeriodDate, relativeUser, true,
-            organisationUnitsAtLevel, organisationUnitsInGroups, format );
+  @Override
+  protected void clearTransientChartStateProperties() {
+    value = null;
+  }
 
-        DimensionalObjectUtils.setDimensionItemsForFilters( object, dataItemGrid, true );
+  @Override
+  public List<DimensionalItemObject> series() {
+    String series = columnDimensions.get(0);
 
-        return object != null ? object.getItems() : null;
-    }
+    DimensionalObject object =
+        getDimensionalObject(
+            series,
+            relativePeriodDate,
+            relativeUser,
+            true,
+            organisationUnitsAtLevel,
+            organisationUnitsInGroups,
+            format);
 
-    @Override
-    public AnalyticsType getAnalyticsType()
-    {
-        return AnalyticsType.EVENT;
-    }
+    DimensionalObjectUtils.setDimensionItemsForFilters(object, dataItemGrid, true);
 
-    // -------------------------------------------------------------------------
-    // Getters and setters properties
-    // -------------------------------------------------------------------------
+    return object != null ? object.getItems() : null;
+  }
 
-    @Override
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public Program getProgram()
-    {
-        return program;
-    }
+  @Override
+  public List<DimensionalItemObject> category() {
+    String category = rowDimensions.get(0);
 
-    public void setProgram( Program program )
-    {
-        this.program = program;
-    }
+    DimensionalObject object =
+        getDimensionalObject(
+            category,
+            relativePeriodDate,
+            relativeUser,
+            true,
+            organisationUnitsAtLevel,
+            organisationUnitsInGroups,
+            format);
 
-    @Override
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public ProgramStage getProgramStage()
-    {
-        return programStage;
-    }
+    DimensionalObjectUtils.setDimensionItemsForFilters(object, dataItemGrid, true);
 
-    public void setProgramStage( ProgramStage programStage )
-    {
-        this.programStage = programStage;
-    }
+    return object != null ? object.getItems() : null;
+  }
 
-    @Override
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public Date getStartDate()
-    {
-        return startDate;
-    }
+  @Override
+  public AnalyticsType getAnalyticsType() {
+    return AnalyticsType.EVENT;
+  }
 
-    public void setStartDate( Date startDate )
-    {
-        this.startDate = startDate;
-    }
+  // -------------------------------------------------------------------------
+  // Getters and setters properties
+  // -------------------------------------------------------------------------
 
-    @Override
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public Date getEndDate()
-    {
-        return endDate;
-    }
+  @Override
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public Program getProgram() {
+    return program;
+  }
 
-    public void setEndDate( Date endDate )
-    {
-        this.endDate = endDate;
-    }
+  public void setProgram(Program program) {
+    this.program = program;
+  }
 
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public DataElement getDataElementValueDimension()
-    {
-        return dataElementValueDimension;
-    }
+  @Override
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public ProgramStage getProgramStage() {
+    return programStage;
+  }
 
-    @Override
-    public void setDataElementValueDimension( DataElement dataElementValueDimension )
-    {
-        this.dataElementValueDimension = dataElementValueDimension;
-    }
+  public void setProgramStage(ProgramStage programStage) {
+    this.programStage = programStage;
+  }
 
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public TrackedEntityAttribute getAttributeValueDimension()
-    {
-        return attributeValueDimension;
-    }
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public DataElement getDataElementValueDimension() {
+    return dataElementValueDimension;
+  }
 
-    @Override
-    public void setAttributeValueDimension( TrackedEntityAttribute attributeValueDimension )
-    {
-        this.attributeValueDimension = attributeValueDimension;
-    }
+  @Override
+  public void setDataElementValueDimension(DataElement dataElementValueDimension) {
+    this.dataElementValueDimension = dataElementValueDimension;
+  }
 
-    @JsonProperty
-    @JacksonXmlElementWrapper( localName = "columnDimensions", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "columnDimension", namespace = DxfNamespaces.DXF_2_0 )
-    public List<String> getColumnDimensions()
-    {
-        return columnDimensions;
-    }
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public TrackedEntityAttribute getAttributeValueDimension() {
+    return attributeValueDimension;
+  }
 
-    public void setColumnDimensions( List<String> columnDimensions )
-    {
-        this.columnDimensions = columnDimensions;
-    }
+  @Override
+  public void setAttributeValueDimension(TrackedEntityAttribute attributeValueDimension) {
+    this.attributeValueDimension = attributeValueDimension;
+  }
 
-    @JsonProperty
-    @JacksonXmlElementWrapper( localName = "rowDimensions", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "rowDimension", namespace = DxfNamespaces.DXF_2_0 )
-    public List<String> getRowDimensions()
-    {
-        return rowDimensions;
-    }
+  @JsonProperty
+  @JacksonXmlElementWrapper(localName = "columnDimensions", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "columnDimension", namespace = DxfNamespaces.DXF_2_0)
+  public List<String> getColumnDimensions() {
+    return columnDimensions;
+  }
 
-    public void setRowDimensions( List<String> rowDimensions )
-    {
-        this.rowDimensions = rowDimensions;
-    }
+  public void setColumnDimensions(List<String> columnDimensions) {
+    this.columnDimensions = columnDimensions;
+  }
 
-    @Override
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public EventOutputType getOutputType()
-    {
-        return outputType;
-    }
+  @JsonProperty
+  @JacksonXmlElementWrapper(localName = "rowDimensions", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "rowDimension", namespace = DxfNamespaces.DXF_2_0)
+  public List<String> getRowDimensions() {
+    return rowDimensions;
+  }
 
-    public void setOutputType( EventOutputType outputType )
-    {
-        this.outputType = outputType;
-    }
+  public void setRowDimensions(List<String> rowDimensions) {
+    this.rowDimensions = rowDimensions;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public boolean isCollapseDataDimensions()
-    {
-        return collapseDataDimensions;
-    }
+  /** This method is not used/implemented in EventChart. */
+  @Override
+  public List<SimpleDimension> getSimpleDimensions() {
+    return Collections.emptyList();
+  }
 
-    public void setCollapseDataDimensions( boolean collapseDataDimensions )
-    {
-        this.collapseDataDimensions = collapseDataDimensions;
-    }
+  @Override
+  public List<EventRepetition> getEventRepetitions() {
+    return Collections.emptyList();
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public ProgramStatus getProgramStatus()
-    {
-        return programStatus;
-    }
+  @Override
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public EventOutputType getOutputType() {
+    return outputType;
+  }
 
-    public void setProgramStatus( ProgramStatus programStatus )
-    {
-        this.programStatus = programStatus;
-    }
+  public void setOutputType(EventOutputType outputType) {
+    this.outputType = outputType;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public EventStatus getEventStatus()
-    {
-        return eventStatus;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public boolean isCollapseDataDimensions() {
+    return collapseDataDimensions;
+  }
 
-    public void setEventStatus( EventStatus eventStatus )
-    {
-        this.eventStatus = eventStatus;
-    }
+  public void setCollapseDataDimensions(boolean collapseDataDimensions) {
+    this.collapseDataDimensions = collapseDataDimensions;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public boolean isHideNaData()
-    {
-        return hideNaData;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public EnrollmentStatus getProgramStatus() {
+    return enrollmentStatus;
+  }
 
-    public void setHideNaData( boolean hideNaData )
-    {
-        this.hideNaData = hideNaData;
-    }
+  public void setProgramStatus(EnrollmentStatus enrollmentStatus) {
+    this.enrollmentStatus = enrollmentStatus;
+  }
 
-    // -------------------------------------------------------------------------
-    // Analytical properties
-    // -------------------------------------------------------------------------
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public EventStatus getEventStatus() {
+    return eventStatus;
+  }
 
-    @Override
-    @JsonProperty
-    @JsonDeserialize( as = BaseDimensionalItemObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public DimensionalItemObject getValue()
-    {
-        return value;
-    }
+  public void setEventStatus(EventStatus eventStatus) {
+    this.eventStatus = eventStatus;
+  }
 
-    public void setValue( DimensionalItemObject value )
-    {
-        this.value = value;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public boolean isHideNaData() {
+    return hideNaData;
+  }
+
+  public void setHideNaData(boolean hideNaData) {
+    this.hideNaData = hideNaData;
+  }
+
+  // -------------------------------------------------------------------------
+  // Analytical properties
+  // -------------------------------------------------------------------------
+
+  @Override
+  @JsonProperty
+  @JsonDeserialize(as = BaseDimensionalItemObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public DimensionalItemObject getValue() {
+    return value;
+  }
+
+  public void setValue(DimensionalItemObject value) {
+    this.value = value;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public boolean isLegacy() {
+    return legacy;
+  }
+
+  public void setLegacy(final boolean legacy) {
+    this.legacy = legacy;
+  }
 }

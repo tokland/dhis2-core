@@ -1,7 +1,5 @@
-package org.hisp.dhis.user;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,173 +25,157 @@ package org.hisp.dhis.user;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.user;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 import org.hisp.dhis.common.BaseIdentifiableObject;
 import org.hisp.dhis.common.DxfNamespaces;
 import org.hisp.dhis.common.MetadataObject;
-
-import java.util.HashSet;
-import java.util.Set;
+import org.hisp.dhis.common.OpenApi;
+import org.hisp.dhis.schema.annotation.PropertyTransformer;
+import org.hisp.dhis.schema.transformer.UserPropertyTransformer;
 
 /**
  * @author Lars Helge Overland
  */
-@JacksonXmlRootElement( localName = "userGroup", namespace = DxfNamespaces.DXF_2_0 )
-public class UserGroup
-    extends BaseIdentifiableObject implements MetadataObject
-{
-    public static final String AUTH_USER_ADD = "F_USER_ADD";
-    public static final String AUTH_USER_DELETE = "F_USER_DELETE";
-    public static final String AUTH_USER_VIEW = "F_USER_VIEW";
-    public static final String AUTH_USER_ADD_IN_GROUP = "F_USER_ADD_WITHIN_MANAGED_GROUP";
-    public static final String AUTH_ADD_MEMBERS_TO_READ_ONLY_USER_GROUPS = "F_USER_GROUPS_READ_ONLY_ADD_MEMBERS";
+@JacksonXmlRootElement(localName = "userGroup", namespace = DxfNamespaces.DXF_2_0)
+public class UserGroup extends BaseIdentifiableObject implements MetadataObject {
+  public static final String AUTH_USER_ADD = "F_USER_ADD";
+  public static final String AUTH_USER_ADD_IN_GROUP = "F_USER_ADD_WITHIN_MANAGED_GROUP";
 
-    /**
-     * Set of related users
-     */
-    private Set<User> members = new HashSet<>();
+  /** Global unique identifier for UserGroup (to be used for sharing etc) */
+  private UUID uuid;
 
-    /**
-     * User groups (if any) that members of this user group can manage
-     * the members within.
-     */
-    private Set<UserGroup> managedGroups = new HashSet<>();
+  /** Set of related users */
+  private Set<User> members = new HashSet<>();
 
-    /**
-     * User groups (if any) whose members can manage the members of this
-     * user group.
-     */
-    private Set<UserGroup> managedByGroups = new HashSet<>();
+  /** User groups (if any) that members of this user group can manage the members within. */
+  private Set<UserGroup> managedGroups = new HashSet<>();
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------     
+  /** User groups (if any) whose members can manage the members of this user group. */
+  private Set<UserGroup> managedByGroups = new HashSet<>();
 
-    public UserGroup()
-    {
+  // -------------------------------------------------------------------------
+  // Constructors
+  // -------------------------------------------------------------------------
 
+  public UserGroup() {
+    this.setAutoFields();
+  }
+
+  public UserGroup(String name) {
+    this();
+    this.name = name;
+  }
+
+  public UserGroup(String name, Set<User> members) {
+    this(name);
+    this.members = members;
+  }
+
+  @Override
+  public void setAutoFields() {
+    if (uuid == null) {
+      uuid = UUID.randomUUID();
     }
 
-    public UserGroup( String name )
-    {
-        this.name = name;
-    }
+    super.setAutoFields();
+  }
 
-    public UserGroup( String name, Set<User> members )
-    {
-        this( name );
-        this.members = members;
-    }
+  // -------------------------------------------------------------------------
+  // Logic
+  // -------------------------------------------------------------------------
 
-    // -------------------------------------------------------------------------
-    // Logic
-    // -------------------------------------------------------------------------
+  public void addUser(User user) {
+    members.add(user);
+    user.getGroups().add(this);
+  }
 
-    public void addUser( User user )
-    {
-        members.add( user );
-        user.getGroups().add( this );
-    }
+  public void removeUser(User user) {
+    members.remove(user);
+    user.getGroups().remove(this);
+  }
 
-    public void removeUser( User user )
-    {
-        members.remove( user );
-        user.getGroups().remove( this );
-    }
+  public void updateUsers(Set<User> updates) {
+    new HashSet<>(members)
+        .stream().filter(user -> !updates.contains(user)).forEach(this::removeUser);
 
-    public void updateUsers( Set<User> updates )
-    {
-        new HashSet<>( members ).stream()
-            .filter( user -> !updates.contains( user ) )
-            .forEach( this::removeUser );
+    updates.forEach(this::addUser);
+  }
 
-        updates.forEach( this::addUser );
-    }
+  public void addManagedGroup(UserGroup group) {
+    managedGroups.add(group);
+    group.getManagedByGroups().add(this);
+  }
 
-    public void addManagedGroup( UserGroup group )
-    {
-        managedGroups.add( group );
-        group.getManagedByGroups().add( this );
-    }
+  public void removeManagedGroup(UserGroup group) {
+    managedGroups.remove(group);
+    group.getManagedByGroups().remove(this);
+  }
 
-    public void removeManagedGroup( UserGroup group )
-    {
-        managedGroups.remove( group );
-        group.getManagedByGroups().remove( this );
-    }
+  public void updateManagedGroups(Set<UserGroup> updates) {
+    new HashSet<>(managedGroups)
+        .stream().filter(group -> !updates.contains(group)).forEach(this::removeManagedGroup);
 
-    public void updateManagedGroups( Set<UserGroup> updates )
-    {
-        new HashSet<>( managedGroups ).stream()
-            .filter( group -> !updates.contains( group ) )
-            .forEach( this::removeManagedGroup );
+    updates.forEach(this::addManagedGroup);
+  }
 
-        updates.forEach( this::addManagedGroup );
-    }
+  // -------------------------------------------------------------------------
+  // Getters and setters
+  // -------------------------------------------------------------------------
 
-    // -------------------------------------------------------------------------
-    // Getters and setters
-    // -------------------------------------------------------------------------
+  public UUID getUuid() {
+    return uuid;
+  }
 
-    @Override
-    @JsonIgnore
-    public User getUser()
-    {
-        return user;
-    }
+  public void setUuid(UUID uuid) {
+    this.uuid = uuid;
+  }
 
-    @Override
-    @JsonIgnore
-    public void setUser( User user )
-    {
-        this.user = user;
-    }
+  @OpenApi.Property(UserPropertyTransformer.UserDto[].class)
+  @JsonProperty("users")
+  @JsonSerialize(contentUsing = UserPropertyTransformer.JacksonSerialize.class)
+  @JsonDeserialize(contentUsing = UserPropertyTransformer.JacksonDeserialize.class)
+  @PropertyTransformer(UserPropertyTransformer.class)
+  @JacksonXmlElementWrapper(localName = "users", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "user", namespace = DxfNamespaces.DXF_2_0)
+  public Set<User> getMembers() {
+    return members;
+  }
 
-    @JsonProperty( "users" )
-    @JsonSerialize( contentAs = BaseIdentifiableObject.class )
-    @JacksonXmlElementWrapper( localName = "users", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "user", namespace = DxfNamespaces.DXF_2_0 )
-    public Set<User> getMembers()
-    {
-        return members;
-    }
+  public void setMembers(Set<User> members) {
+    this.members = members;
+  }
 
-    public void setMembers( Set<User> members )
-    {
-        this.members = members;
-    }
+  @JsonProperty("managedGroups")
+  @JsonSerialize(contentAs = BaseIdentifiableObject.class)
+  @JacksonXmlElementWrapper(localName = "managedGroups", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "managedGroup", namespace = DxfNamespaces.DXF_2_0)
+  public Set<UserGroup> getManagedGroups() {
+    return managedGroups;
+  }
 
-    @JsonProperty( "managedGroups" )
-    @JsonSerialize( contentAs = BaseIdentifiableObject.class )
-    @JacksonXmlElementWrapper( localName = "managedGroups", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "managedGroup", namespace = DxfNamespaces.DXF_2_0 )
-    public Set<UserGroup> getManagedGroups()
-    {
-        return managedGroups;
-    }
+  public void setManagedGroups(Set<UserGroup> managedGroups) {
+    this.managedGroups = managedGroups;
+  }
 
-    public void setManagedGroups( Set<UserGroup> managedGroups )
-    {
-        this.managedGroups = managedGroups;
-    }
+  @JsonProperty("managedByGroups")
+  @JsonSerialize(contentAs = BaseIdentifiableObject.class)
+  @JacksonXmlElementWrapper(localName = "managedByGroups", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "managedByGroup", namespace = DxfNamespaces.DXF_2_0)
+  public Set<UserGroup> getManagedByGroups() {
+    return managedByGroups;
+  }
 
-    @JsonProperty( "managedByGroups" )
-    @JsonSerialize( contentAs = BaseIdentifiableObject.class )
-    @JacksonXmlElementWrapper( localName = "managedByGroups", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "managedByGroup", namespace = DxfNamespaces.DXF_2_0 )
-    public Set<UserGroup> getManagedByGroups()
-    {
-        return managedByGroups;
-    }
-
-    public void setManagedByGroups( Set<UserGroup> managedByGroups )
-    {
-        this.managedByGroups = managedByGroups;
-    }
+  public void setManagedByGroups(Set<UserGroup> managedByGroups) {
+    this.managedByGroups = managedByGroups;
+  }
 }

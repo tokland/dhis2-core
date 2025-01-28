@@ -1,7 +1,5 @@
-package org.hisp.dhis.user.comparator;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,39 +25,33 @@ package org.hisp.dhis.user.comparator;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.user.comparator;
 
 import java.util.Comparator;
-
 import org.hisp.dhis.user.User;
 
 /**
  * @author mortenoh
  */
-public class UserComparator
-    implements Comparator<User>
-{
-    public static final UserComparator INSTANCE = new UserComparator(); 
-    
-    @Override
-    public int compare( User u0, User u1 )
-    {
-        if ( u0 == null )
-        {
-            return 1;
-        }
+public class UserComparator implements Comparator<User> {
+  public static final UserComparator INSTANCE = new UserComparator();
 
-        if ( u1 == null )
-        {
-            return -1;
-        }
-
-        int compare = u0.getSurname().compareTo( u1.getSurname() );
-        
-        if ( compare != 0 )
-        {
-            return compare;
-        }
-        
-        return u0.getFirstName().compareTo( u1.getFirstName() );
+  @Override
+  public int compare(User u0, User u1) {
+    if (u0 == null) {
+      return 1;
     }
+
+    if (u1 == null) {
+      return -1;
+    }
+
+    int compare = u0.getSurname().compareTo(u1.getSurname());
+
+    if (compare != 0) {
+      return compare;
+    }
+
+    return u0.getFirstName().compareTo(u1.getFirstName());
+  }
 }

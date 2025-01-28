@@ -1,7 +1,5 @@
-package org.hisp.dhis.relationship.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,24 +25,40 @@ package org.hisp.dhis.relationship.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.relationship.hibernate;
 
-import org.hibernate.criterion.Restrictions;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.relationship.RelationshipType;
 import org.hisp.dhis.relationship.RelationshipTypeStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Abyot Asalefew Gizaw
  */
+@Repository("org.hisp.dhis.relationship.RelationshipTypeStore")
 public class HibernateRelationshipTypeStore
-    extends HibernateIdentifiableObjectStore<RelationshipType>
-    implements RelationshipTypeStore
-{
-    @Override
-    public RelationshipType getRelationshipType( String aIsToB, String bIsToA )
-    {
-        return (RelationshipType) getCriteria( 
-            Restrictions.eq( "aIsToB", aIsToB ), 
-            Restrictions.eq( "bIsToA", bIsToA ) ).uniqueResult();
-    }
+    extends HibernateIdentifiableObjectStore<RelationshipType> implements RelationshipTypeStore {
+  public HibernateRelationshipTypeStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, RelationshipType.class, aclService, true);
+  }
+
+  @Override
+  public RelationshipType getRelationshipType(String aIsToB, String bIsToA) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getSingleResult(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("aIsToB"), aIsToB))
+            .addPredicate(root -> builder.equal(root.get("bIsToA"), bIsToA)));
+  }
 }

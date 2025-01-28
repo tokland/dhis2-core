@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,78 +25,103 @@ package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
 
 import com.google.common.collect.ImmutableMap;
-import org.hisp.dhis.common.IdentifiableObject;
+import java.util.function.Consumer;
+import lombok.AllArgsConstructor;
+import org.hisp.dhis.category.CategoryOptionCombo;
+import org.hisp.dhis.category.CategoryService;
 import org.hisp.dhis.dataelement.DataElementService;
 import org.hisp.dhis.dxf2.metadata.objectbundle.ObjectBundle;
 import org.hisp.dhis.sms.command.SMSCommand;
+import org.hisp.dhis.sms.command.code.SMSCode;
 import org.hisp.dhis.sms.parse.ParserType;
 import org.hisp.dhis.trackedentity.TrackedEntityAttributeService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
-import java.util.function.Consumer;
+/** Created by zubair@dhis2.org on 18.08.17. */
+@AllArgsConstructor
+@Component
+public class SmsCommandObjectBundleHook extends AbstractObjectBundleHook<SMSCommand> {
+  private static final ImmutableMap<ParserType, Consumer<SMSCommand>> VALUE_POPULATOR =
+      new ImmutableMap.Builder<ParserType, Consumer<SMSCommand>>()
+          .put(
+              ParserType.TRACKED_ENTITY_REGISTRATION_PARSER,
+              sc -> {
+                sc.setProgramStage(null);
+                sc.setUserGroup(null);
+                sc.setDataset(null);
+              })
+          .put(
+              ParserType.PROGRAM_STAGE_DATAENTRY_PARSER,
+              sc -> {
+                sc.setDataset(null);
+                sc.setUserGroup(null);
+              })
+          .put(
+              ParserType.KEY_VALUE_PARSER,
+              sc -> {
+                sc.setProgram(null);
+                sc.setProgramStage(null);
+              })
+          .put(
+              ParserType.ALERT_PARSER,
+              sc -> {
+                sc.setProgram(null);
+                sc.setProgramStage(null);
+              })
+          .build();
 
-/**
- * Created by zubair@dhis2.org on 18.08.17.
- */
-public class SmsCommandObjectBundleHook extends AbstractObjectBundleHook
-{
-    private ImmutableMap<ParserType, Consumer<SMSCommand>> VALUE_POPULATOR = new ImmutableMap.Builder<ParserType, Consumer<SMSCommand>>()
-        .put( ParserType.TRACKED_ENTITY_REGISTRATION_PARSER, sc -> { sc.setProgramStage( null ); sc.setUserGroup( null ); sc.setDataset( null ); } )
-        .put( ParserType.PROGRAM_STAGE_DATAENTRY_PARSER, sc -> { sc.setDataset( null ); sc.setUserGroup( null ); } )
-        .put( ParserType.KEY_VALUE_PARSER, sc -> { sc.setProgram( null ); sc.setProgramStage( null ); } )
-        .put( ParserType.ALERT_PARSER, sc -> { sc.setProgram( null ); sc.setProgramStage( null ); } )
-        .build();
+  private final DataElementService dataElementService;
 
-    @Autowired
-    private DataElementService dataElementService;
+  private final TrackedEntityAttributeService trackedEntityAttributeService;
 
-    @Autowired
-    private TrackedEntityAttributeService trackedEntityAttributeService;
+  private final CategoryService categoryService;
 
+  @Override
+  public void preCreate(SMSCommand command, ObjectBundle bundle) {
+    process(command);
+    getReferences(command);
+  }
 
-    @Override
-    public <T extends IdentifiableObject> void preCreate( T object, ObjectBundle bundle )
-    {
-        if ( !SMSCommand.class.isInstance( object ) )
-        {
-            return;
-        }
+  @Override
+  public void preUpdate(SMSCommand command, SMSCommand persistedObject, ObjectBundle bundle) {
+    getReferences(command);
+  }
 
-        SMSCommand command = (SMSCommand) object;
-
-        process( command );
-
-        getReferences( command );
+  private void process(SMSCommand command) {
+    Consumer<SMSCommand> mod = VALUE_POPULATOR.get(command.getParserType());
+    if (mod != null) {
+      mod.accept(command);
     }
+  }
 
-    @Override
-    public <T extends IdentifiableObject> void preUpdate( T object, T persistedObject, ObjectBundle bundle )
-    {
-        if ( !SMSCommand.class.isInstance( object ) )
-        {
-            return;
-        }
+  private void getReferences(SMSCommand command) {
+    CategoryOptionCombo defaultCoc = categoryService.getDefaultCategoryOptionCombo();
 
-        SMSCommand command = (SMSCommand) object;
+    command.getCodes().stream()
+        .filter(SMSCode::hasDataElement)
+        .forEach(
+            c -> {
+              c.setOptionId(
+                  c.getOptionId() == null
+                      ? defaultCoc
+                      : categoryService.getCategoryOptionCombo(c.getOptionId().getUid()));
+              c.setDataElement(dataElementService.getDataElement(c.getDataElement().getUid()));
+            });
 
-        getReferences( command );
-    }
-
-    private void process(SMSCommand command )
-    {
-        VALUE_POPULATOR.getOrDefault( command.getParserType(), sc -> {} ).accept( command );
-    }
-
-    private void getReferences( SMSCommand command )
-    {
-        command.getCodes().stream()
-            .filter( c -> c.hasDataElement() )
-            .forEach( c -> c.setDataElement( dataElementService.getDataElement( c.getDataElement().getUid() ) ) );
-
-        command.getCodes().stream()
-            .filter( c -> c.hasTrackedEntityAttribute() )
-            .forEach( c -> c.setTrackedEntityAttribute( trackedEntityAttributeService.getTrackedEntityAttribute( c.getTrackedEntityAttribute().getUid() ) ) );
-    }
+    command.getCodes().stream()
+        .filter(SMSCode::hasTrackedEntityAttribute)
+        .forEach(
+            c -> {
+              c.setOptionId(
+                  c.getOptionId() == null
+                      ? defaultCoc
+                      : categoryService.getCategoryOptionCombo(c.getOptionId().getUid()));
+              c.setTrackedEntityAttribute(
+                  trackedEntityAttributeService.getTrackedEntityAttribute(
+                      c.getTrackedEntityAttribute().getUid()));
+            });
+  }
 }

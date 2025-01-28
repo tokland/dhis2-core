@@ -1,7 +1,5 @@
-package org.hisp.dhis.validation;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,321 +25,196 @@ package org.hisp.dhis.validation;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.validation;
 
-import org.apache.commons.lang3.Validate;
-import org.hisp.dhis.common.MapMapMap;
-import org.hisp.dhis.category.CategoryOptionGroup;
+import static java.util.Objects.requireNonNull;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 import org.hisp.dhis.category.CategoryOption;
 import org.hisp.dhis.category.CategoryOptionCombo;
+import org.hisp.dhis.category.CategoryOptionGroup;
+import org.hisp.dhis.common.DimensionalItemId;
+import org.hisp.dhis.common.DimensionalItemObject;
+import org.hisp.dhis.common.MapMapMap;
+import org.hisp.dhis.dataanalysis.ValidationRuleExpressionDetails;
+import org.hisp.dhis.expression.ExpressionParams;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.period.Period;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
 /**
- * This class keeps track of a validation analysis. It contains information about the initial params of the analysis,
- * The current state of the analysis and the final results of the analysis.
+ * This class keeps track of a validation analysis. It contains information about the initial params
+ * of the analysis, the current state of the analysis and the final results of the analysis.
  *
- * @author Stian Sandvold
+ * @author Jim Grace (original)
+ * @author Stian Sandvold (persistence)
  */
-public class ValidationRunContext
-{
-    public static final int ORG_UNITS_PER_TASK = 500;
+@Getter
+@Builder(setterPrefix = "with", builderClassName = "Builder", builderMethodName = "newBuilder")
+public class ValidationRunContext {
+  public static final int ORG_UNITS_PER_TASK = 500;
 
-    private Queue<ValidationResult> validationResults;
+  private final Queue<ValidationResult> validationResults = new ConcurrentLinkedQueue<>();
 
-    private List<OrganisationUnit> orgUnits;
+  private final List<OrganisationUnit> orgUnits;
 
-    private List<PeriodTypeExtended> periodTypeXs;
+  private final List<PeriodTypeExtended> periodTypeXs;
 
-    private Map<String, Double> constantMap;
+  private final Set<CategoryOptionGroup> cogDimensionConstraints;
 
-    private Set<CategoryOptionGroup> cogDimensionConstraints;
+  private final Set<CategoryOption> coDimensionConstraints;
 
-    private Set<CategoryOption> coDimensionConstraints;
+  private final Map<DimensionalItemId, DimensionalItemObject> itemMap;
 
-    // -------------------------------------------------------------------------
-    // Properties to configure analysis
-    // -------------------------------------------------------------------------
+  private final ExpressionParams baseExParams;
 
-    private CategoryOptionCombo attributeCombo;
+  // -------------------------------------------------------------------------
+  // Properties to configure analysis
+  // -------------------------------------------------------------------------
 
-    private CategoryOptionCombo defaultAttributeCombo;
+  private final CategoryOptionCombo attributeCombo;
 
-    private int maxResults = 0;
+  private final CategoryOptionCombo defaultAttributeCombo;
 
-    private boolean sendNotifications = false;
+  @lombok.Builder.Default private int maxResults = 0;
 
-    private boolean persistResults = false;
+  @lombok.Builder.Default private boolean sendNotifications = false;
 
-    private MapMapMap<OrganisationUnit, ValidationRule, Period, List<ValidationResult>> initialValidationResults = new MapMapMap<>();
+  @lombok.Builder.Default private boolean persistResults = false;
 
-    public ValidationRunContext()
-    {
-        validationResults = new ConcurrentLinkedQueue<>();
+  private final MapMapMap<OrganisationUnit, ValidationRule, Period, List<ValidationResult>>
+      initialValidationResults = new MapMapMap<>();
+
+  // -------------------------------------------------------------------------
+  // Return expression details if requested
+  // -------------------------------------------------------------------------
+
+  @Setter private ValidationRuleExpressionDetails validationRuleExpressionDetails;
+
+  // -------------------------------------------------------------------------
+  // Id-to-Object Caches
+  // -------------------------------------------------------------------------
+
+  private final Map<Long, Period> periodIdMap = new ConcurrentHashMap<>();
+
+  private final Map<Long, CategoryOptionCombo> aocIdMap = new ConcurrentHashMap<>();
+
+  private final Map<String, CategoryOptionCombo> aocUidMap = new ConcurrentHashMap<>();
+
+  private ValidationRunContext(
+      List<OrganisationUnit> orgUnits,
+      List<PeriodTypeExtended> periodTypeXs,
+      Set<CategoryOptionGroup> cogDimensionConstraints,
+      Set<CategoryOption> coDimensionConstraints,
+      Map<DimensionalItemId, DimensionalItemObject> itemMap,
+      ExpressionParams baseExParams,
+      CategoryOptionCombo attributeCombo,
+      CategoryOptionCombo defaultAttributeCombo,
+      int maxResults,
+      boolean sendNotifications,
+      boolean persistResults,
+      ValidationRuleExpressionDetails validationRuleExpressionDetails) {
+    this.orgUnits = orgUnits;
+    this.periodTypeXs = periodTypeXs;
+    this.cogDimensionConstraints = cogDimensionConstraints;
+    this.coDimensionConstraints = coDimensionConstraints;
+    this.itemMap = itemMap;
+    this.baseExParams = baseExParams;
+    this.attributeCombo = attributeCombo;
+    this.defaultAttributeCombo = defaultAttributeCombo;
+    this.maxResults = maxResults;
+    this.sendNotifications = sendNotifications;
+    this.persistResults = persistResults;
+    this.validationRuleExpressionDetails = validationRuleExpressionDetails;
+
+    requireNonNull(periodTypeXs, "Missing required property 'periodTypeXs'");
+    requireNonNull(orgUnits, "Missing required property 'orgUnits'");
+    requireNonNull(defaultAttributeCombo, "Missing required property 'defaultAttributeCombo'");
+
+    preloadCaches();
+  }
+
+  private void preloadCaches() {
+    aocIdMap.put(defaultAttributeCombo.getId(), defaultAttributeCombo);
+    aocUidMap.put(defaultAttributeCombo.getUid(), defaultAttributeCombo);
+
+    for (PeriodTypeExtended periodTypeX : periodTypeXs) {
+      for (Period p : periodTypeX.getPeriods()) {
+        periodIdMap.putIfAbsent(p.getId(), p);
+      }
     }
+  }
 
-    // -------------------------------------------------------------------------
-    // Id-to-Object Caches
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Logic
+  // -------------------------------------------------------------------------
 
-    private Map<Integer, Period> periodIdMap = new ConcurrentHashMap<>();
+  public boolean skipValidationOfTuple(
+      OrganisationUnit organisationUnit,
+      ValidationRule validationRule,
+      Period period,
+      String attributeOptionCombo,
+      int dayInPeriod) {
+    List<ValidationResult> validationResultList =
+        initialValidationResults.getValue(organisationUnit, validationRule, period);
 
-    private Map<Integer, CategoryOptionCombo> aocIdMap = new ConcurrentHashMap<>();
-
-    private Map<String, CategoryOptionCombo> aocUidMap = new ConcurrentHashMap<>();
-
-    // -------------------------------------------------------------------------
-    // Getter methods
-    // -------------------------------------------------------------------------
-
-    public CategoryOptionCombo getAttributeCombo()
-    {
-        return attributeCombo;
-    }
-
-    public CategoryOptionCombo getDefaultAttributeCombo()
-    {
-        return defaultAttributeCombo;
-    }
-
-    public int getMaxResults()
-    {
-        return maxResults;
-    }
-
-    public List<OrganisationUnit> getOrgUnits()
-    {
-        return orgUnits;
-    }
-
-    public List<PeriodTypeExtended> getPeriodTypeXs()
-    {
-        return periodTypeXs;
-    }
-
-    public Map<String, Double> getConstantMap()
-    {
-        return constantMap;
-    }
-
-    public Set<CategoryOptionGroup> getCogDimensionConstraints()
-    {
-        return cogDimensionConstraints;
-    }
-
-    public Set<CategoryOption> getCoDimensionConstraints()
-    {
-        return coDimensionConstraints;
-    }
-
-    public boolean isSendNotifications()
-    {
-        return sendNotifications;
-    }
-
-    public boolean isPersistResults()
-    {
-        return persistResults;
-    }
-
-    public Queue<ValidationResult> getValidationResults()
-    {
-        return validationResults;
-    }
-
-    public Map<Integer, Period> getPeriodIdMap()
-    {
-        return periodIdMap;
-    }
-
-    public Map<Integer, CategoryOptionCombo> getAocIdMap()
-    {
-        return aocIdMap;
-    }
-
-    public Map<String, CategoryOptionCombo> getAocUidMap()
-    {
-        return aocUidMap;
-    }
-
-    // -------------------------------------------------------------------------
-    // Logic
-    // -------------------------------------------------------------------------
-
-    public boolean skipValidationOfTuple( OrganisationUnit organisationUnit, ValidationRule validationRule,
-        Period period, String attributeOptionCombo, int dayInPeriod )
-    {
-        List<ValidationResult> validationResultList = initialValidationResults
-            .getValue( organisationUnit, validationRule, period );
-
-        if ( validationResultList != null )
-        {
-            for ( ValidationResult vr : validationResultList )
-            {
-                if ( vr.getAttributeOptionCombo().getUid().equals( attributeOptionCombo ) &&
-                    vr.getDayInPeriod() == dayInPeriod )
-                {
-                    return true;
-                }
-            }
+    if (validationResultList != null) {
+      for (ValidationResult vr : validationResultList) {
+        if (vr.getAttributeOptionCombo().getUid().equals(attributeOptionCombo)
+            && vr.getDayInPeriod() == dayInPeriod) {
+          return true;
         }
-
-        return false;
-
+      }
     }
 
-    public int getNumberOfTasks()
-    {
-        return ( orgUnits.size() + ORG_UNITS_PER_TASK - 1 ) / ORG_UNITS_PER_TASK;
-    }
+    return false;
+  }
 
-    public boolean isAnalysisComplete()
-    {
-        return validationResults.size() >= maxResults;
-    }
+  public int getNumberOfTasks() {
+    return (orgUnits.size() + ORG_UNITS_PER_TASK - 1) / ORG_UNITS_PER_TASK;
+  }
 
-    // -------------------------------------------------------------------------
-    // Builder
-    // -------------------------------------------------------------------------
+  public boolean isAnalysisComplete() {
+    return validationResults.size() >= maxResults;
+  }
 
-    public static Builder newBuilder()
-    {
-        return new Builder();
-    }
+  public boolean processExpressionDetails() {
+    return validationRuleExpressionDetails != null;
+  }
 
-    public static class Builder
-    {
-        private final ValidationRunContext context;
+  public ValidationRunContext addInitialResults(Collection<ValidationResult> results) {
+    validationResults.addAll(results);
 
-        public Builder()
-        {
-            this.context = new ValidationRunContext();
-        }
+    results.forEach(
+        validationResult -> {
+          List<ValidationResult> res =
+              initialValidationResults.getValue(
+                  validationResult.getOrganisationUnit(),
+                  validationResult.getValidationRule(),
+                  validationResult.getPeriod());
 
-        /**
-         * Builds the actual ValidationRunContext object configured with the builder
-         *
-         * @return a new ValidationParam based on the builders configuration
-         */
-        public ValidationRunContext build()
-        {
-            Validate
-                .notNull( this.context.periodTypeXs, "Missing required property 'periodTypeXs'" );
-            Validate.notNull( this.context.constantMap, "Missing required property 'constantMap'" );
-            Validate.notNull( this.context.orgUnits, "Missing required property 'orgUnits'" );
-            Validate.notNull( this.context.defaultAttributeCombo, "Missing required property 'defaultAttributeCombo'" );
+          if (res == null) {
+            res = new ArrayList<>();
+          }
 
-            return this.context;
-        }
+          res.add(validationResult);
 
-        // -------------------------------------------------------------------------
-        // Setter methods
-        // -------------------------------------------------------------------------
+          initialValidationResults.putEntry(
+              validationResult.getOrganisationUnit(),
+              validationResult.getValidationRule(),
+              validationResult.getPeriod(),
+              res);
+        });
 
-        public Builder withOrgUnits( List<OrganisationUnit> orgUnits )
-        {
-            this.context.orgUnits = orgUnits;
-            return this;
-        }
-
-        public Builder withPeriodTypeXs(
-            List<PeriodTypeExtended> periodTypeXs )
-        {
-            this.context.periodTypeXs = periodTypeXs;
-            return this;
-        }
-
-        public Builder withConstantMap( Map<String, Double> constantMap )
-        {
-            this.context.constantMap = constantMap;
-            return this;
-        }
-
-        /**
-         * This is an optional constraint to which attributeCombo we should check
-         *
-         * @param attributeCombo
-         */
-        public Builder withAttributeCombo( CategoryOptionCombo attributeCombo )
-        {
-            this.context.attributeCombo = attributeCombo;
-            return this;
-        }
-
-        /**
-         * This is the default attributeOptionCombo which should always be present
-         *
-         * @param defaultAttributeCombo
-         */
-        public Builder withDefaultAttributeCombo( CategoryOptionCombo defaultAttributeCombo )
-        {
-            this.context.defaultAttributeCombo = defaultAttributeCombo;
-            return this;
-        }
-
-        /**
-         * Sets the max results to look for before concluding analysis.
-         *
-         * @param maxResults 0 means unlimited
-         */
-        public Builder withMaxResults( int maxResults )
-        {
-            this.context.maxResults = maxResults;
-            return this;
-        }
-
-        public Builder withSendNotifications( boolean sendNotifications )
-        {
-            this.context.sendNotifications = sendNotifications;
-            return this;
-        }
-
-        public Builder withCogDimensionConstraints(
-            Set<CategoryOptionGroup> cogDimensionConstraints )
-        {
-            this.context.cogDimensionConstraints = cogDimensionConstraints;
-            return this;
-
-        }
-
-        public Builder withCoDimensionConstraints(
-            Set<CategoryOption> coDimensionConstraints )
-        {
-            this.context.coDimensionConstraints = coDimensionConstraints;
-            return this;
-        }
-
-        public Builder withPersistResults( boolean persistResults )
-        {
-            this.context.persistResults = persistResults;
-            return this;
-        }
-
-        public Builder withInitialResults( Collection<ValidationResult> results )
-        {
-            this.context.validationResults.addAll( results );
-
-            results.forEach( validationResult -> {
-                List<ValidationResult> res = context.initialValidationResults
-                    .getValue( validationResult.getOrganisationUnit(), validationResult.getValidationRule(),
-                        validationResult.getPeriod() );
-                
-                if ( res == null )
-                {
-                    res = new ArrayList<>();
-                }
-
-                res.add( validationResult );
-
-                context.initialValidationResults
-                    .putEntry( validationResult.getOrganisationUnit(), validationResult.getValidationRule(),
-                        validationResult.getPeriod(), res );
-            } );
-
-            return this;
-        }
-    }
+    return this;
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.validation;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,37 +25,30 @@ package org.hisp.dhis.validation;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.validation;
 
+import lombok.RequiredArgsConstructor;
 import org.hisp.dhis.common.IdentifiableObjectManager;
 import org.hisp.dhis.system.deletion.DeletionHandler;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
  */
-public class ValidationRuleGroupDeletionHandler
-    extends DeletionHandler
-{
-    @Autowired
-    private IdentifiableObjectManager idObjectManager;
-    
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
+@Component
+@RequiredArgsConstructor
+public class ValidationRuleGroupDeletionHandler extends DeletionHandler {
+  private final IdentifiableObjectManager idObjectManager;
 
-    @Override
-    public String getClassName()
-    {
-        return ValidationRuleGroup.class.getSimpleName();
+  @Override
+  protected void register() {
+    whenDeleting(ValidationRule.class, this::deleteValidationRule);
+  }
+
+  private void deleteValidationRule(ValidationRule validationRule) {
+    for (ValidationRuleGroup group : validationRule.getGroups()) {
+      group.getMembers().remove(validationRule);
+      idObjectManager.updateNoAcl(group);
     }
-    
-    @Override
-    public void deleteValidationRule( ValidationRule validationRule )
-    {
-        for ( ValidationRuleGroup group : validationRule.getGroups() )
-        {
-            group.getMembers().remove( validationRule );
-            idObjectManager.updateNoAcl( group );
-        }
-    }
+  }
 }

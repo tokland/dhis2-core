@@ -1,7 +1,5 @@
-package org.hisp.dhis.organisationunit;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,16 +25,20 @@ package org.hisp.dhis.organisationunit;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.organisationunit;
 
 import java.util.List;
-
+import java.util.Set;
 import org.hisp.dhis.common.IdentifiableObjectStore;
 
 /**
  * @author Lars Helge Overland
  */
 public interface OrganisationUnitGroupStore
-    extends IdentifiableObjectStore<OrganisationUnitGroup>
-{
-    List<OrganisationUnitGroup> getOrganisationUnitGroupsWithGroupSets();
+    extends IdentifiableObjectStore<OrganisationUnitGroup>,
+        OrganisationUnitGroupDataIntegrityProvider {
+  List<OrganisationUnitGroup> getOrganisationUnitGroupsWithGroupSets();
+
+  OrganisationUnitGroup getOrgUnitGroupInGroupSet(
+      Set<OrganisationUnitGroup> groups, OrganisationUnitGroupSet groupSet);
 }

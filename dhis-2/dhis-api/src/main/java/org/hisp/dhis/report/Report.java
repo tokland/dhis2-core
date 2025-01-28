@@ -1,7 +1,5 @@
-package org.hisp.dhis.report;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,182 +25,206 @@ package org.hisp.dhis.report;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.report;
+
+import static org.hisp.dhis.common.DxfNamespaces.DXF_2_0;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import java.util.ArrayList;
+import java.util.List;
 import org.hisp.dhis.common.BaseIdentifiableObject;
-import org.hisp.dhis.common.DxfNamespaces;
 import org.hisp.dhis.common.MetadataObject;
 import org.hisp.dhis.common.cache.CacheStrategy;
 import org.hisp.dhis.common.cache.Cacheable;
+import org.hisp.dhis.period.RelativePeriodEnum;
 import org.hisp.dhis.period.RelativePeriods;
-import org.hisp.dhis.reporttable.ReportParams;
-import org.hisp.dhis.reporttable.ReportTable;
+import org.hisp.dhis.schema.annotation.Gist;
+import org.hisp.dhis.schema.annotation.Gist.Include;
+import org.hisp.dhis.visualization.ReportingParams;
+import org.hisp.dhis.visualization.Visualization;
 
 /**
  * @author Lars Helge Overland
  */
-@JacksonXmlRootElement( localName = "report", namespace = DxfNamespaces.DXF_2_0 )
-public class Report
-    extends BaseIdentifiableObject
-    implements Cacheable, MetadataObject
-{
-    public static final String TEMPLATE_DIR = "templates";
+@JacksonXmlRootElement(localName = "report", namespace = DXF_2_0)
+public class Report extends BaseIdentifiableObject implements Cacheable, MetadataObject {
+  private ReportType type;
 
-    private ReportType type;
+  private String designContent;
 
-    private String designContent;
+  private Visualization visualization;
 
-    private ReportTable reportTable;
+  private RelativePeriods relatives;
 
-    private RelativePeriods relatives;
+  private List<String> rawRelativePeriods = new ArrayList<>();
 
-    private ReportParams reportParams;
+  private ReportingParams reportingParams;
 
-    private CacheStrategy cacheStrategy = CacheStrategy.RESPECT_SYSTEM_SETTING;
+  private CacheStrategy cacheStrategy = CacheStrategy.RESPECT_SYSTEM_SETTING;
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Constructors
+  // -------------------------------------------------------------------------
 
-    public Report()
-    {
+  public Report() {}
+
+  public Report(String name, ReportType type, String designContent, Visualization visualization) {
+    this.name = name;
+    this.type = type;
+    this.designContent = designContent;
+    this.visualization = visualization;
+  }
+
+  public Report(
+      String name,
+      ReportType type,
+      String designContent,
+      RelativePeriods relatives,
+      ReportingParams reportingParams) {
+    this.name = name;
+    this.type = type;
+    this.designContent = designContent;
+    this.relatives = relatives;
+    this.reportingParams = reportingParams;
+  }
+
+  // -------------------------------------------------------------------------
+  // Logic
+  // -------------------------------------------------------------------------
+
+  public boolean isTypeReportTable() {
+    return type != null && ReportType.JASPER_REPORT_TABLE.equals(type);
+  }
+
+  public boolean isTypeJdbc() {
+    return type != null && ReportType.JASPER_JDBC.equals(type);
+  }
+
+  public boolean isTypeHtml() {
+    return type != null && ReportType.HTML.equals(type);
+  }
+
+  public boolean hasVisualization() {
+    return visualization != null;
+  }
+
+  /** Indicates whether this report has relative periods. */
+  public boolean hasRelativePeriods() {
+    return relatives != null && !relatives.isEmpty();
+  }
+
+  /** Indicates whether this report has specific report parameters set. */
+  public boolean hasReportParams() {
+    return reportingParams != null && reportingParams.isSet();
+  }
+
+  // -------------------------------------------------------------------------
+  // Getters and setters
+  // -------------------------------------------------------------------------
+
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DXF_2_0)
+  public ReportType getType() {
+    return type;
+  }
+
+  public void setType(ReportType type) {
+    this.type = type;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DXF_2_0)
+  public String getDesignContent() {
+    return designContent;
+  }
+
+  public void setDesignContent(String designContent) {
+    this.designContent = designContent;
+  }
+
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DXF_2_0)
+  public Visualization getVisualization() {
+    return visualization;
+  }
+
+  public void setVisualization(Visualization visualization) {
+    this.visualization = visualization;
+  }
+
+  @Gist(included = Include.FALSE)
+  @JsonProperty("relativePeriods")
+  @JacksonXmlProperty(namespace = DXF_2_0)
+  public RelativePeriods getRelatives() {
+    if (relatives == null) {
+      List<RelativePeriodEnum> enums = new ArrayList<>();
+
+      if (rawRelativePeriods != null) {
+        for (String relativePeriod : rawRelativePeriods) {
+          if (RelativePeriodEnum.contains(relativePeriod)) {
+            enums.add(RelativePeriodEnum.valueOf(relativePeriod));
+          }
+        }
+      }
+
+      return new RelativePeriods().setRelativePeriodsFromEnums(enums);
     }
 
-    public Report( String name, ReportType type, String designContent, ReportTable reportTable )
-    {
-        this.name = name;
-        this.type = type;
-        this.designContent = designContent;
-        this.reportTable = reportTable;
+    return relatives;
+  }
+
+  /**
+   * It overrides the rawRelativePeriods with the relative periods provided. This is done for
+   * backward compatibility reasons.
+   *
+   * @param relatives the {@link RelativePeriods}.
+   */
+  public void setRelatives(RelativePeriods relatives) {
+    if (relatives != null) {
+      List<RelativePeriodEnum> enums = relatives.getRelativePeriodEnums();
+
+      for (RelativePeriodEnum periodEnum : enums) {
+        String relativePeriod = periodEnum.name();
+
+        if (RelativePeriodEnum.contains(relativePeriod)) {
+          this.rawRelativePeriods.add(relativePeriod);
+        }
+      }
+
+      this.relatives = relatives;
     }
+  }
 
-    public Report( String name, ReportType type, String designContent, RelativePeriods relatives, ReportParams reportParams )
-    {
-        this.name = name;
-        this.type = type;
-        this.designContent = designContent;
-        this.relatives = relatives;
-        this.reportParams = reportParams;
-    }
+  public List<String> getRawRelativePeriods() {
+    return rawRelativePeriods;
+  }
 
-    // -------------------------------------------------------------------------
-    // Logic
-    // -------------------------------------------------------------------------
+  public void setRawRelativePeriods(List<String> rawRelativePeriods) {
+    this.rawRelativePeriods = rawRelativePeriods;
+  }
 
-    public boolean isTypeReportTable()
-    {
-        return type != null && ReportType.JASPER_REPORT_TABLE.equals( type );
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DXF_2_0)
+  public ReportingParams getReportParams() {
+    return reportingParams;
+  }
 
-    public boolean isTypeJdbc()
-    {
-        return type != null && ReportType.JASPER_JDBC.equals( type );
-    }
+  public void setReportParams(ReportingParams reportingParams) {
+    this.reportingParams = reportingParams;
+  }
 
-    public boolean isTypeHtml()
-    {
-        return type != null && ReportType.HTML.equals( type );
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DXF_2_0)
+  @Override
+  public CacheStrategy getCacheStrategy() {
+    return cacheStrategy;
+  }
 
-    public boolean hasReportTable()
-    {
-        return reportTable != null;
-    }
-
-    /**
-     * Indicates whether this report has relative periods.
-     */
-    public boolean hasRelativePeriods()
-    {
-        return relatives != null && !relatives.isEmpty();
-    }
-
-    /**
-     * Indicates whether this report has report parameters set.
-     */
-    public boolean hasReportParams()
-    {
-        return reportParams != null && reportParams.isSet();
-    }
-
-    // -------------------------------------------------------------------------
-    // Getters and setters
-    // -------------------------------------------------------------------------
-
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public ReportType getType()
-    {
-        return type;
-    }
-
-    public void setType( ReportType type )
-    {
-        this.type = type;
-    }
-
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public String getDesignContent()
-    {
-        return designContent;
-    }
-
-    public void setDesignContent( String designContent )
-    {
-        this.designContent = designContent;
-    }
-
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public ReportTable getReportTable()
-    {
-        return reportTable;
-    }
-
-    public void setReportTable( ReportTable reportTable )
-    {
-        this.reportTable = reportTable;
-    }
-
-    @JsonProperty( "relativePeriods" )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public RelativePeriods getRelatives()
-    {
-        return relatives;
-    }
-
-    public void setRelatives( RelativePeriods relatives )
-    {
-        this.relatives = relatives;
-    }
-
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public ReportParams getReportParams()
-    {
-        return reportParams;
-    }
-
-    public void setReportParams( ReportParams reportParams )
-    {
-        this.reportParams = reportParams;
-    }
-
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    @Override
-    public CacheStrategy getCacheStrategy()
-    {
-        return cacheStrategy;
-    }
-
-    public void setCacheStrategy( CacheStrategy cacheStrategy )
-    {
-        this.cacheStrategy = cacheStrategy;
-    }
+  public void setCacheStrategy(CacheStrategy cacheStrategy) {
+    this.cacheStrategy = cacheStrategy;
+  }
 }

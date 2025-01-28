@@ -1,7 +1,5 @@
-package org.hisp.dhis.schema.descriptors;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,20 +25,20 @@ package org.hisp.dhis.schema.descriptors;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.schema.descriptors;
 
 import org.hisp.dhis.program.ProgramTrackedEntityAttributeDimensionItem;
 import org.hisp.dhis.schema.Schema;
 import org.hisp.dhis.schema.SchemaDescriptor;
 
-public class ProgramTrackedEntityAttributeDimensionItemSchemaDescriptor implements SchemaDescriptor
-{
-    public static final String SINGULAR = "ProgramTrackedEntityAttributeDimensionItem";
+public class ProgramTrackedEntityAttributeDimensionItemSchemaDescriptor
+    implements SchemaDescriptor {
+  public static final String SINGULAR = "programTrackedEntityAttributeDimensionItem";
 
-    public static final String PLURAL = "ProgramTrackedEntityAttributeDimensionItems";
+  public static final String PLURAL = "programTrackedEntityAttributeDimensionItems";
 
-    @Override
-    public Schema getSchema()
-    {
-        return new Schema( ProgramTrackedEntityAttributeDimensionItem.class, SINGULAR, PLURAL );
-    }
+  @Override
+  public Schema getSchema() {
+    return new Schema(ProgramTrackedEntityAttributeDimensionItem.class, SINGULAR, PLURAL);
+  }
 }

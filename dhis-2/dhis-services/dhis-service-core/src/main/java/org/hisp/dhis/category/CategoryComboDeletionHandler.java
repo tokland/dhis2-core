@@ -1,80 +1,69 @@
+/*
+ * Copyright (c) 2004-2022, University of Oslo
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * Neither the name of the HISP project nor the names of its contributors may
+ * be used to endorse or promote products derived from this software without
+ * specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 package org.hisp.dhis.category;
 
-/*
- *
- *  Copyright (c) 2004-2018, University of Oslo
- *  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions are met:
- *  Redistributions of source code must retain the above copyright notice, this
- *  list of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice,
- *  this list of conditions and the following disclaimer in the documentation
- *  and/or other materials provided with the distribution.
- *  Neither the name of the HISP project nor the names of its contributors may
- *  be used to endorse or promote products derived from this software without
- *  specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- */
+import static org.hisp.dhis.system.deletion.DeletionVeto.ACCEPT;
 
-import org.hisp.dhis.category.Category;
-import org.hisp.dhis.category.CategoryCombo;
-import org.hisp.dhis.category.CategoryOptionCombo;
-import org.hisp.dhis.category.CategoryService;
-import org.hisp.dhis.system.deletion.DeletionHandler;
+import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.system.deletion.DeletionVeto;
+import org.hisp.dhis.system.deletion.IdObjectDeletionHandler;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
- * @version $Id$
  */
-public class CategoryComboDeletionHandler
-    extends DeletionHandler
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Component
+@RequiredArgsConstructor
+public class CategoryComboDeletionHandler extends IdObjectDeletionHandler<CategoryCombo> {
+  private final CategoryService categoryService;
 
-    private CategoryService categoryService;
+  @Override
+  protected void registerHandler() {
+    whenVetoing(Category.class, this::allowDeleteCategory);
+    whenDeleting(CategoryOptionCombo.class, this::deleteCategoryOptionCombo);
+  }
 
-    public void setCategoryService( CategoryService categoryService )
-    {
-        this.categoryService = categoryService;
+  private DeletionVeto allowDeleteCategory(Category category) {
+    for (CategoryCombo categoryCombo : categoryService.getAllCategoryCombos()) {
+      if (categoryCombo.getCategories().contains(category)) {
+        return new DeletionVeto(CategoryCombo.class, categoryCombo.getName());
+      }
     }
+    return ACCEPT;
+  }
 
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
-
-    @Override
-    public String getClassName()
-    {
-        return CategoryCombo.class.getSimpleName();
+  private void deleteCategoryOptionCombo(CategoryOptionCombo categoryOptionCombo) {
+    CategoryCombo categoryCombo = categoryOptionCombo.getCategoryCombo();
+    Set<CategoryOptionCombo> optionCombos = categoryCombo.getOptionCombos();
+    if (optionCombos.contains(categoryOptionCombo)) {
+      optionCombos.remove(categoryOptionCombo);
+      idObjectManager.updateNoAcl(categoryCombo);
     }
-    
-    @Override
-    public String allowDeleteCategory( Category category )
-    {
-        for ( CategoryOptionCombo categoryOptionCombo : categoryService.getAllCategoryOptionCombos() )
-        {
-            if ( categoryOptionCombo.getCategoryCombo().getCategories().contains( category ) )
-            {
-                return categoryOptionCombo.getCategoryCombo().getName();
-            }
-        }
-        
-        return null;
-    }
+  }
 }

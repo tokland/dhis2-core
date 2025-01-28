@@ -1,7 +1,5 @@
-package org.hisp.dhis.util;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,64 +25,37 @@ package org.hisp.dhis.util;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.util;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.common.collect.Lists;
-import org.hisp.dhis.common.DataDimensionType;
-import org.hisp.dhis.category.Category;
-import org.hisp.dhis.category.CategoryCombo;
-import org.hisp.dhis.dataelement.DataElement;
-import org.junit.Test;
-
 import java.util.List;
-import java.util.Set;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.hisp.dhis.dataelement.DataElement;
+import org.hisp.dhis.importexport.ImportStrategy;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Lars Helge Overland
  */
-public class ObjectUtilsTest
-{
-    @Test
-    public void testJoin()
-    {
-        DataElement deA = new DataElement( "DataElementA" );
-        DataElement deB = new DataElement( "DataElementB" );
-        DataElement deC = new DataElement( "DataElementC" );
-        
-        List<DataElement> elements = Lists.newArrayList( deA, deB, deC );
-        
-        String actual = ObjectUtils.join( elements, ", ", de -> de.getName() );
-                
-        assertEquals( "DataElementA, DataElementB, DataElementC", actual );
-        assertEquals( null, ObjectUtils.join( null, ", ", null ) );
-    }
-    
-    @Test
-    public void testGetAll()
-    {
-        Category ctA = new Category( "CategoryA", DataDimensionType.DISAGGREGATION );
-        Category ctB = new Category( "CategoryB", DataDimensionType.DISAGGREGATION );
-        Category ctC = new Category( "CategoryC", DataDimensionType.DISAGGREGATION );
-        Category ctD = new Category( "CategoryD", DataDimensionType.DISAGGREGATION );
+class ObjectUtilsTest {
 
-        CategoryCombo ccA = new CategoryCombo( "CategoryComboA", DataDimensionType.DISAGGREGATION );
-        CategoryCombo ccB = new CategoryCombo( "CategoryComboB", DataDimensionType.DISAGGREGATION );
-        
-        ccA.addCategory( ctA );
-        ccA.addCategory( ctB );
-        ccB.addCategory( ctC );
-        ccB.addCategory( ctD );
-        
-        List<CategoryCombo> ccs = Lists.newArrayList( ccA, ccB );
-        
-        Set<Category> cts = ObjectUtils.getAll( ccs, cc -> cc.getCategories() );
-        
-        assertEquals( 4, cts.size() );
-        assertTrue( cts.contains( ctA ) );
-        assertTrue( cts.contains( ctB ) );
-        assertTrue( cts.contains( ctC ) );
-        assertTrue( cts.contains( ctD ) );        
-    }
+  @Test
+  void testJoin() {
+    DataElement deA = new DataElement("DataElementA");
+    DataElement deB = new DataElement("DataElementB");
+    DataElement deC = new DataElement("DataElementC");
+    List<DataElement> elements = Lists.newArrayList(deA, deB, deC);
+    String actual = ObjectUtils.join(elements, ", ", de -> de.getName());
+    assertEquals("DataElementA, DataElementB, DataElementC", actual);
+    assertEquals(null, ObjectUtils.join(null, ", ", null));
+  }
+
+  @Test
+  void testNotNull() {
+    assertTrue(ObjectUtils.notNull(ImportStrategy.CREATE_AND_UPDATE));
+    assertFalse(ObjectUtils.notNull(null));
+  }
 }

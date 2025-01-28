@@ -1,7 +1,5 @@
-package org.hisp.dhis.outboundmessage;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,68 +25,75 @@ package org.hisp.dhis.outboundmessage;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
-import org.hisp.dhis.common.DxfNamespaces;
+package org.hisp.dhis.outboundmessage;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import org.hisp.dhis.common.DxfNamespaces;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
  */
+@JacksonXmlRootElement(localName = "messageResponseStatus", namespace = DxfNamespaces.DXF_2_0)
+public class OutboundMessageResponse {
+  private String description;
 
-@JacksonXmlRootElement( localName = "messageResponseStatus", namespace = DxfNamespaces.DXF_2_0 )
-public class OutboundMessageResponse
-{
-    private String description;
-    
-    private boolean ok;
+  private boolean ok;
 
-    private Enum<?> responseObject;
+  private boolean async;
 
-    public OutboundMessageResponse()
-    {
-    }
+  private Enum<?> responseObject;
 
-    public OutboundMessageResponse( String description, Enum<?> response, boolean ok )
-    {
-        this.ok = ok;
-        this.responseObject = response;
-        this.description = description;
-    }
+  public OutboundMessageResponse() {}
 
-    @JsonProperty( value = "status" )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public Enum<?> getResponseObject()
-    {
-        return responseObject;
-    }
+  public OutboundMessageResponse(boolean async) {
+    this.async = async;
+  }
 
-    public void setResponseObject( Enum<?> response )
-    {
-        this.responseObject = response;
-    }
+  public OutboundMessageResponse(String description, Enum<?> response, boolean ok) {
+    this.ok = ok;
+    this.responseObject = response;
+    this.description = description;
+  }
 
-    @JsonProperty( value = "description" )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public String getDescription()
-    {
-        return description;
-    }
+  @JsonProperty(value = "status")
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public Enum<?> getResponseObject() {
+    return responseObject;
+  }
 
-    public void setDescription( String description )
-    {
-        this.description = description;
-    }
+  public void setResponseObject(Enum<?> response) {
+    this.responseObject = response;
+  }
 
-    public boolean isOk()
-    {
-        return ok;
-    }
+  @JsonProperty(value = "description")
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public String getDescription() {
+    return description;
+  }
 
-    public void setOk( boolean ok )
-    {
-        this.ok = ok;
-    }
+  public void setDescription(String description) {
+    this.description = description;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty
+  public boolean isOk() {
+    return ok;
+  }
+
+  public void setOk(boolean ok) {
+    this.ok = ok;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty
+  public boolean isAsync() {
+    return async;
+  }
+
+  public void setAsync(boolean async) {
+    this.async = async;
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.commons.filter;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,73 +25,52 @@ package org.hisp.dhis.commons.filter;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.commons.filter;
 
 import java.util.Collection;
-import java.util.Iterator;
 
 /**
  * Utility class for collection filtering.
- * 
+ *
  * @author Lars Helge Overland
  */
-public class FilterUtils
-{
-    /**
-     * Filters the given collection using the given {@link Filter}.
-     *
-     * @param <T> type.
-     * @param collection the {@link Collection}.
-     * @param filter the filter.
-     * @param <V> the type of the collection members.
-     * @return the filtered collection, null if any input parameter is null.
-     */
-    public static <T extends Collection<V>, V> T filter( T collection, Filter<V> filter )
-    {
-        if ( collection == null || filter == null )
-        {
-            return null;
-        }
-        
-        final Iterator<V> iterator = collection.iterator();
-        
-        while ( iterator.hasNext() )
-        {
-            if ( !filter.retain( iterator.next() ) )
-            {
-                iterator.remove();
-            }
-        }
-        
-        return collection;
+public class FilterUtils {
+  /**
+   * Filters the given collection using the given {@link Filter}.
+   *
+   * @param <T> type.
+   * @param collection the {@link Collection}.
+   * @param filter the filter.
+   * @param <V> the type of the collection members.
+   * @return the filtered collection, null if any input parameter is null.
+   */
+  public static <T extends Collection<V>, V> T filter(T collection, Filter<V> filter) {
+    if (collection == null || filter == null) {
+      return null;
     }
-    
-    /**
-     * Filters the given collection using the given {@link Filter} retaining only
-     * items which does NOT pass the filter evaluation.
-     *
-     * @param <T> type.
-     * @param collection the {@link Collection}.
-     * @param filter the filter.
-     * @param <V> the type of the collection members.
-     * @return the inverse filtered collection, null if any input parameter is null.
-     */
-    public static <T extends Collection<V>, V> T inverseFilter( T collection, Filter<V> filter )
-    {
-        if ( collection == null || filter == null )
-        {
-            return null;
-        }
-        
-        final Iterator<V> iterator = collection.iterator();
-        
-        while ( iterator.hasNext() )
-        {
-            if ( filter.retain( iterator.next() ) )
-            {
-                iterator.remove();
-            }
-        }
-        
-        return collection;
-    }    
+
+    collection.removeIf(v -> !filter.retain(v));
+
+    return collection;
+  }
+
+  /**
+   * Filters the given collection using the given {@link Filter} retaining only items which do not
+   * pass the filter evaluation.
+   *
+   * @param <T> type.
+   * @param collection the {@link Collection}.
+   * @param filter the filter.
+   * @param <V> the type of the collection members.
+   * @return the inverse filtered collection, null if any input parameter is null.
+   */
+  public static <T extends Collection<V>, V> T inverseFilter(T collection, Filter<V> filter) {
+    if (collection == null || filter == null) {
+      return null;
+    }
+
+    collection.removeIf(filter::retain);
+
+    return collection;
+  }
 }

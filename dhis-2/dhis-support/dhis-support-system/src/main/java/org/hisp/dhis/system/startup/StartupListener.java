@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.startup;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,74 +25,60 @@ package org.hisp.dhis.system.startup;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.startup;
 
+import jakarta.servlet.ServletContextEvent;
+import jakarta.servlet.ServletContextListener;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Enumeration;
-import javax.servlet.ServletContextEvent;
-import javax.servlet.ServletContextListener;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.hisp.dhis.commons.util.DebugUtils;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.support.WebApplicationContextUtils;
 
 /**
- * Implementation of {@link javax.servlet.ServletContextListener} which hooks
- * into the context initialization and executes the configured
- * {@link StartupRoutineExecutor}.
+ * Implementation of {@link javax.servlet.ServletContextListener} which hooks into the context
+ * initialization and executes the configured {@link StartupRoutineExecutor}.
  *
  * @author <a href="mailto:torgeilo@gmail.com">Torgeir Lorange Ostby</a>
  */
-public class StartupListener
-    implements ServletContextListener
-{
-    private static final Log log = LogFactory.getLog( StartupListener.class );
+@Slf4j
+public class StartupListener implements ServletContextListener {
+  // -------------------------------------------------------------------------
+  // ServletContextListener implementation
+  // -------------------------------------------------------------------------
 
-    // -------------------------------------------------------------------------
-    // ServletContextListener implementation
-    // -------------------------------------------------------------------------
+  @Override
+  public void contextInitialized(ServletContextEvent event) {
+    WebApplicationContext applicationContext =
+        WebApplicationContextUtils.getWebApplicationContext(event.getServletContext());
 
-    @Override
-    public void contextInitialized( ServletContextEvent event )
-    {
-        WebApplicationContext applicationContext = WebApplicationContextUtils.getWebApplicationContext( event
-            .getServletContext() );
+    StartupRoutineExecutor startupRoutineExecutor =
+        applicationContext.getBean(StartupRoutineExecutor.class);
 
-        StartupRoutineExecutor startupRoutineExecutor = (StartupRoutineExecutor) applicationContext
-            .getBean( StartupRoutineExecutor.ID );
+    try {
+      startupRoutineExecutor.execute();
+    } catch (Exception ex) {
+      log.error(DebugUtils.getStackTrace(ex));
 
-        try
-        {
-            startupRoutineExecutor.execute();            
-        }
-        catch ( Exception ex )
-        {
-            log.error( DebugUtils.getStackTrace( ex ) );
-            
-            throw new RuntimeException( "Failed to run startup routines: " + ex.getMessage(), ex );
-        }
+      throw new RuntimeException("Failed to run startup routines: " + ex.getMessage(), ex);
     }
+  }
 
-    @Override
-    public void contextDestroyed( ServletContextEvent event )
-    {
-        Enumeration<Driver> drivers = DriverManager.getDrivers();
-        
-        while ( drivers.hasMoreElements() )
-        {
-            Driver driver = drivers.nextElement();
-            try
-            {
-                DriverManager.deregisterDriver( driver );
-                log.info( "De-registering jdbc driver: " + driver );
-            }
-            catch ( SQLException e )
-            {
-                log.info( "Error de-registering driver " + driver + " :" + e.getMessage() );
-            }
-        }
+  @Override
+  public void contextDestroyed(ServletContextEvent event) {
+    Enumeration<Driver> drivers = DriverManager.getDrivers();
+
+    while (drivers.hasMoreElements()) {
+      Driver driver = drivers.nextElement();
+      try {
+        DriverManager.deregisterDriver(driver);
+        log.info("De-registering jdbc driver: " + driver);
+      } catch (SQLException e) {
+        log.info("Error de-registering driver " + driver + " :" + e.getMessage());
+      }
     }
+  }
 }

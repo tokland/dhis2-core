@@ -1,171 +1,168 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC
-  "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-  "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd"
-  [<!ENTITY identifiableProperties SYSTEM "classpath://org/hisp/dhis/common/identifiableProperties.hbm">]
-  >
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd"
+        [<!ENTITY identifiableProperties SYSTEM "classpath://org/hisp/dhis/common/identifiableProperties.hbm">]
+        >
 
 <hibernate-mapping>
-  <class name="org.hisp.dhis.program.Program" table="program">
+    <class name="org.hisp.dhis.program.Program" table="program">
 
-    <cache usage="read-write" />
+        <cache usage="read-write"/>
 
-    <id name="id" column="programid">
-      <generator class="native" />
-    </id>
-    &identifiableProperties;
+        <id name="id" column="programid">
+            <generator class="native"/>
+        </id>
+        &identifiableProperties;
 
-    <property name="name" column="name" not-null="true" length="230" />
+        <property name="name" column="name" not-null="true" unique="false" length="230"/>
 
-    <property name="shortName" column="shortname" not-null="true" unique="true" length="50" />
+        <property name="shortName" column="shortname" not-null="true" unique="false" length="50"/>
 
-    <property name="description" type="text" />
+        <property name="description" type="text"/>
 
-    <property name="formName" type="text" />
+        <property name="formName" type="text"/>
 
-    <property name="version" />
+        <property name="version"/>
 
-    <property name="enrollmentDateLabel" column="enrollmentdatelabel" type="text" />
+        <property name="enrollmentDateLabel" column="enrollmentdatelabel" type="text"/>
 
-    <property name="incidentDateLabel" column="incidentdatelabel" type="text" />
+        <property name="incidentDateLabel" column="incidentdatelabel" type="text"/>
 
-    <set name="programStages" order-by="sortOrder">
-      <key column="programid" />
-      <one-to-many class="org.hisp.dhis.program.ProgramStage" />
-    </set>
+        <property name="enrollmentLabel" column="enrollmentlabel" type="text"/>
 
-    <set name="programSections" order-by="sortOrder">
-      <key column="programid" />
-      <one-to-many class="org.hisp.dhis.program.ProgramSection" />
-    </set>
+        <property name="followUpLabel" column="followuplabel" type="text"/>
 
-    <set name="organisationUnits" table="program_organisationunits">
-      <cache usage="read-write" />
-      <key column="programid" foreign-key="fk_program_organisationunits_programid" />
-      <many-to-many column="organisationunitid"
-        class="org.hisp.dhis.organisationunit.OrganisationUnit" foreign-key="fk_program_organisationunits_organisationunitid" />
-    </set>
+        <property name="orgUnitLabel" column="orgunitlabel" type="text"/>
 
-    <property name="programType" column="type" type="org.hisp.dhis.program.ProgramTypeUserType" not-null="true" />
+        <property name="relationshipLabel" column="relationshiplabel" type="text"/>
 
-    <property name="displayIncidentDate" />
+        <property name="noteLabel" column="notelabel" type="text"/>
 
-    <property name="onlyEnrollOnce" />
+        <property name="trackedEntityAttributeLabel" column="trackedentityattributelabel" type="text"/>
 
-    <property name="skipOffline" not-null="true" />
+        <property name="programStageLabel" column="programstagelabel" type="text"/>
 
-    <property name="displayFrontPageList" column="displayfrontpagelist" />
+        <property name="eventLabel" column="eventlabel" type="text"/>
 
-    <property name="useFirstStageDuringRegistration" />
+        <set name="programStages" order-by="sortOrder">
+            <key column="programid"/>
+            <one-to-many class="org.hisp.dhis.program.ProgramStage"/>
+        </set>
 
-    <property name="captureCoordinates" />
+        <set name="programSections" order-by="sortOrder">
+            <key column="programid"/>
+            <one-to-many class="org.hisp.dhis.program.ProgramSection"/>
+        </set>
 
-    <property name="expiryDays" />
+        <set name="organisationUnits" table="program_organisationunits">
+            <cache usage="read-write"/>
+            <key column="programid" foreign-key="fk_program_organisationunits_programid"/>
+            <many-to-many column="organisationunitid"
+                          class="org.hisp.dhis.organisationunit.OrganisationUnit"
+                          foreign-key="fk_program_organisationunits_organisationunitid"/>
+        </set>
 
-    <property name="completeEventsExpiryDays" />
-    
-    <property name="minAttributesRequiredToSearch" />
-    
-    <property name="maxTeiCountToReturn" />
+        <property name="programType" column="type" type="org.hisp.dhis.program.ProgramTypeUserType" not-null="true"/>
 
-    <property name="style" type="jbObjectStyle" column="style" />
+        <property name="displayIncidentDate"/>
 
-    <many-to-one name="expiryPeriodType" lazy="false" class="org.hisp.dhis.period.PeriodType" column="expiryperiodtypeid"
-      foreign-key="fk_program_expiryperiodtypeid" />
+        <property name="onlyEnrollOnce"/>
 
-    <list name="programAttributes" cascade="all-delete-orphan">
-      <key column="programid" />
-      <list-index column="sort_order" base="1" />
-      <one-to-many class="org.hisp.dhis.program.ProgramTrackedEntityAttribute" />
-    </list>
+        <property name="skipOffline" not-null="true"/>
 
-    <property name="ignoreOverdueEvents" />
+        <property name="displayFrontPageList" column="displayfrontpagelist"/>
 
-    <set name="userRoles" table="program_userroles" inverse="true">
-      <key column="programid" />
-      <many-to-many class="org.hisp.dhis.user.UserAuthorityGroup"
-        column="userroleid" foreign-key="fk_program_userroles" />
-    </set>
+        <property name="useFirstStageDuringRegistration"/>
 
-    <set name="programIndicators" inverse="true">
-      <key column="programid" />
-      <one-to-many class="org.hisp.dhis.program.ProgramIndicator" />
-    </set>
+        <property name="expiryDays"/>
 
-    <set name="programRules" inverse="true">
-      <key column="programid" />
-      <one-to-many class="org.hisp.dhis.programrule.ProgramRule" />
-    </set>
+        <property name="completeEventsExpiryDays"/>
 
-    <set name="programRuleVariables" inverse="true">
-      <key column="programid" />
-      <one-to-many class="org.hisp.dhis.programrule.ProgramRuleVariable" />
-    </set>
+        <property name="openDaysAfterCoEndDate"/>
 
-    <set name="notificationTemplates">
-      <key column="programid" />
-      <one-to-many class="org.hisp.dhis.program.notification.ProgramNotificationTemplate" />
-    </set>
+        <property name="minAttributesRequiredToSearch"/>
 
-    <property name="selectEnrollmentDatesInFuture" />
+        <property name="maxTeiCountToReturn"/>
 
-    <property name="selectIncidentDatesInFuture" />
+        <property name="style" type="jbObjectStyle" column="style"/>
 
-    <property name="relationshipText" />
+        <property name="translations" type="jblTranslations"/>
 
-    <many-to-one name="relationshipType" class="org.hisp.dhis.relationship.RelationshipType"
-      column="relationshiptypeid" foreign-key="fk_program_relationshipid" />
+        <property name="featureType" column="featuretype">
+            <type name="org.hibernate.type.EnumType">
+                <param name="enumClass">org.hisp.dhis.organisationunit.FeatureType</param>
+                <param name="useNamed">true</param>
+                <param name="type">12</param>
+            </type>
+        </property>
 
-    <property name="relationshipFromA" />
+        <property name="accessLevel" length="100">
+            <type name="org.hibernate.type.EnumType">
+                <param name="enumClass">org.hisp.dhis.common.AccessLevel</param>
+                <param name="useNamed">true</param>
+                <param name="type">12</param>
+            </type>
+        </property>
 
-    <many-to-one name="relatedProgram" class="org.hisp.dhis.program.Program"
-      column="relatedprogramid" foreign-key="fk_program_relatedprogram" />
+        <many-to-one name="expiryPeriodType" lazy="false" class="org.hisp.dhis.period.PeriodType"
+                     column="expiryperiodtypeid"
+                     foreign-key="fk_program_expiryperiodtypeid"/>
 
-    <many-to-one name="categoryCombo" class="org.hisp.dhis.category.CategoryCombo"
-      column="categorycomboid" not-null="true" foreign-key="fk_program_categorycomboid" />
+        <list name="programAttributes" cascade="all-delete-orphan">
+            <key column="programid"/>
+            <list-index column="sort_order" base="1"/>
+            <one-to-many class="org.hisp.dhis.program.ProgramTrackedEntityAttribute"/>
+        </list>
 
-    <many-to-one name="trackedEntityType" class="org.hisp.dhis.trackedentity.TrackedEntityType"
-      column="trackedentitytypeid" foreign-key="fk_program_trackedentitytypeid" />
+        <property name="ignoreOverdueEvents"/>
 
-    <many-to-one name="dataEntryForm" class="org.hisp.dhis.dataentryform.DataEntryForm"
-      column="dataentryformid" foreign-key="fk_program_dataentryformid" cascade="all" />
+        <set name="userRoles" table="program_userroles" inverse="true">
+            <key column="programid"/>
+            <many-to-many class="org.hisp.dhis.user.UserRole"
+                          column="userroleid" foreign-key="fk_program_userroles"/>
+        </set>
 
-    <many-to-one name="workflow" lazy="false" class="org.hisp.dhis.dataapproval.DataApprovalWorkflow" column="workflowid"
-      foreign-key="fk_program_workflowid" />
+        <set name="programIndicators" inverse="true">
+            <key column="programid"/>
+            <one-to-many class="org.hisp.dhis.program.ProgramIndicator"/>
+        </set>
 
-    <!-- Dynamic attribute values -->
+        <set name="programRuleVariables" inverse="true">
+            <key column="programid"/>
+            <one-to-many class="org.hisp.dhis.programrule.ProgramRuleVariable"/>
+        </set>
 
-    <set name="attributeValues" table="programattributevalues" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="programid" />
-      <many-to-many class="org.hisp.dhis.attribute.AttributeValue" column="attributevalueid" unique="true" />
-    </set>
+        <set name="notificationTemplates" cascade="all-delete-orphan">
+            <key column="programid"/>
+            <one-to-many class="org.hisp.dhis.program.notification.ProgramNotificationTemplate"/>
+        </set>
 
-    <!-- Object Translation -->
-    <set name="translations" table="programtranslations" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="programid" foreign-key="fk_objecttranslation_programid" />
-      <many-to-many class="org.hisp.dhis.translation.ObjectTranslation" column="objecttranslationid" unique="true" />
-    </set>
+        <property name="selectEnrollmentDatesInFuture"/>
 
-    <!-- Access properties -->
+        <property name="selectIncidentDatesInFuture"/>
 
-    <many-to-one name="user" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_program_userid" />
+        <many-to-one name="relatedProgram" class="org.hisp.dhis.program.Program"
+                     column="relatedprogramid" foreign-key="fk_program_relatedprogram"/>
 
-    <property name="publicAccess" length="8" />
+        <many-to-one name="categoryCombo" class="org.hisp.dhis.category.CategoryCombo"
+                     column="categorycomboid" not-null="true" foreign-key="fk_program_categorycomboid"/>
 
-    <set name="userGroupAccesses" table="programusergroupaccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="programid" />
-      <many-to-many class="org.hisp.dhis.user.UserGroupAccess" column="usergroupaccessid" unique="true" />
-    </set>
+        <many-to-one name="trackedEntityType" class="org.hisp.dhis.trackedentity.TrackedEntityType"
+                     column="trackedentitytypeid" foreign-key="fk_program_trackedentitytypeid"/>
 
-    <set name="userAccesses" table="programuseraccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="programid" />
-      <many-to-many class="org.hisp.dhis.user.UserAccess" column="useraccessid" unique="true" />
-    </set>
+        <many-to-one name="dataEntryForm" class="org.hisp.dhis.dataentryform.DataEntryForm"
+                     column="dataentryformid" foreign-key="fk_program_dataentryformid" cascade="all"/>
 
-  </class>
+        <!-- Dynamic attribute values -->
+
+        <property name="attributeValues" type="jsbAttributeValues"/>
+
+        <many-to-one name="createdBy" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_program_userid"/>
+
+        <!-- Sharing -->
+        <property name="sharing" type="jsbObjectSharing"/>
+
+    </class>
 
 </hibernate-mapping>

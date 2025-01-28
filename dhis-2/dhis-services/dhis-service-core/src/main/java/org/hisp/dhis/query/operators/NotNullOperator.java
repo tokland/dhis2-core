@@ -1,7 +1,5 @@
-package org.hisp.dhis.query.operators;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,33 +25,37 @@ package org.hisp.dhis.query.operators;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.query.operators;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import java.util.Date;
 import org.hibernate.criterion.Criterion;
 import org.hibernate.criterion.Restrictions;
 import org.hisp.dhis.query.Typed;
 import org.hisp.dhis.query.planner.QueryPath;
 
-import java.util.Date;
-
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class NotNullOperator extends Operator
-{
-    public NotNullOperator()
-    {
-        super( "!null", Typed.from( String.class, Boolean.class, Number.class, Date.class, Enum.class ) );
-    }
+public class NotNullOperator<T extends Comparable<? super T>> extends Operator<T> {
+  public NotNullOperator() {
+    super("!null", Typed.from(String.class, Boolean.class, Number.class, Date.class, Enum.class));
+  }
 
-    @Override
-    public Criterion getHibernateCriterion( QueryPath queryPath )
-    {
-        return Restrictions.isNotNull( queryPath.getPath() );
-    }
+  @Override
+  public Criterion getHibernateCriterion(QueryPath queryPath) {
+    return Restrictions.isNotNull(queryPath.getPath());
+  }
 
-    @Override
-    public boolean test( Object value )
-    {
-        return value != null;
-    }
+  @Override
+  public <Y> Predicate getPredicate(CriteriaBuilder builder, Root<Y> root, QueryPath queryPath) {
+    return builder.isNotNull(root.get(queryPath.getPath()));
+  }
+
+  @Override
+  public boolean test(Object value) {
+    return value != null;
+  }
 }

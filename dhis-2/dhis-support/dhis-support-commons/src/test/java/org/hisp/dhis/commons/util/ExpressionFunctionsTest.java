@@ -1,7 +1,5 @@
-package org.hisp.dhis.commons.util;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,20 +25,20 @@ package org.hisp.dhis.commons.util;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.commons.util;
 
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import static org.junit.Assert.*;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Lars Helge Overland
  */
-public class ExpressionFunctionsTest
-{    
-    @Test
-    public void testDaysBetween()
-    {
-        assertEquals( new Long( 1 ), ExpressionFunctions.daysBetween( "2014-03-04", "2014-03-05" ) );
-        assertEquals( new Long( 32 ), ExpressionFunctions.daysBetween( "2015-04-04", "2015-05-06" ) );
-    }
+class ExpressionFunctionsTest {
+
+  @Test
+  void testDaysBetween() {
+    assertEquals(1, ExpressionFunctions.daysBetween("2014-03-04", "2014-03-05"));
+    assertEquals(32, ExpressionFunctions.daysBetween("2015-04-04", "2015-05-06"));
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.outboundmessage;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,54 +25,41 @@ package org.hisp.dhis.outboundmessage;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.outboundmessage;
 
 import java.util.Set;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
 /**
-* @author Zubair <rajazubair.asghar@gmail.com>
-*/
-public class OutboundMessage
-{
-    private String subject;
+ * @author Zubair <rajazubair.asghar@gmail.com>
+ */
+@Getter
+@ToString
+@EqualsAndHashCode
+public class OutboundMessage {
+  private String subject;
 
-    private String text;
-    
-    private Set<String> recipients;
-   
-    public OutboundMessage( String subject, String text, Set<String> recipients )
-    {
-        this.subject = subject;
-        this.text = text;
-        this.recipients = recipients;
-    }
+  private String text;
 
-    public String getText()
-    {
-        return text;
-    }
+  private Set<String> recipients;
 
-    public void setText( String text )
-    {
-        this.text = text;
-    }
+  public OutboundMessage(String subject, String text, Set<String> recipients) {
+    this.subject = subject;
+    this.text = text;
+    this.recipients = recipients;
+  }
 
-    public Set<String> getRecipients()
-    {
-        return recipients;
-    }
+  public void setText(String text) {
+    this.text = text;
+  }
 
-    public void setRecipients( Set<String> recipients )
-    {
-        this.recipients = recipients;
-    }
+  public void setRecipients(Set<String> recipients) {
+    this.recipients = recipients;
+  }
 
-    public String getSubject()
-    {
-        return subject;
-    }
-
-    public void setSubject( String subject )
-    {
-        this.subject = subject;
-    }
+  public void setSubject(String subject) {
+    this.subject = subject;
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.startup;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,27 +25,23 @@ package org.hisp.dhis.startup;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.startup;
 
-import org.hisp.dhis.setting.SettingKey;
-import org.hisp.dhis.setting.SystemSettingManager;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.setting.SystemSettingsService;
 import org.hisp.dhis.system.startup.AbstractStartupRoutine;
-import org.springframework.beans.factory.annotation.Autowired;
 
-public class SettingUpgrader
-    extends AbstractStartupRoutine
-{
-    @Autowired
-    private SystemSettingManager manager;
+@RequiredArgsConstructor
+public class SettingUpgrader extends AbstractStartupRoutine {
 
-    @Override
-    public void execute()
-        throws Exception
-    {
-        String startModule = (String) manager.getSystemSetting( SettingKey.START_MODULE );
-        
-        if ( "dhis-web-dashboard-integration".equals( startModule ) )
-        {
-            manager.saveSystemSetting( SettingKey.START_MODULE, SettingKey.START_MODULE.getDefaultValue() );
-        }
+  private final SystemSettingsService settingsService;
+
+  @Override
+  public void execute() throws Exception {
+    String startModule = settingsService.getCurrentSettings().getStartModule();
+
+    if ("dhis-web-dashboard-integration".equals(startModule)) {
+      settingsService.put("startModule", "dhis-web-dashboard");
     }
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.external.location;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,21 +25,17 @@ package org.hisp.dhis.external.location;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.external.location;
 
 /**
  * @author Lars Helge Overland
- * @version $Id$
  */
-public class LocationManagerException
-    extends RuntimeException
-{
-    public LocationManagerException( String message )
-    {
-        super( message );
-    }
-    
-    public LocationManagerException( String message, Throwable cause )
-    {
-        super( message, cause );
-    }
+public class LocationManagerException extends RuntimeException {
+  public LocationManagerException(String message) {
+    super(message);
+  }
+
+  public LocationManagerException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

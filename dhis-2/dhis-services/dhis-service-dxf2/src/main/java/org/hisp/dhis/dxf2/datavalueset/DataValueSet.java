@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.datavalueset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,364 +25,219 @@ package org.hisp.dhis.dxf2.datavalueset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.datavalueset;
+
+import static org.apache.commons.lang3.StringUtils.defaultIfEmpty;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hisp.dhis.common.DxfNamespaces;
 import org.hisp.dhis.common.IdScheme;
 import org.hisp.dhis.dxf2.datavalue.DataValue;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
-import static org.apache.commons.lang3.StringUtils.defaultIfEmpty;
-
 /**
  * @author Lars Helge Overland
  */
-@JacksonXmlRootElement( localName = "dataValueSet", namespace = DxfNamespaces.DXF_2_0 )
-public class DataValueSet
-{
-    protected static final String FIELD_IDSCHEME = "idScheme";
-    protected static final String FIELD_DATAELEMENTIDSCHEME = "dataElementIdScheme";
-    protected static final String FIELD_ORGUNITIDSCHEME = "orgUnitIdScheme";
-    protected static final String FIELD_CATEGORYOPTCOMBOIDSCHEME = "categoryOptionComboIdScheme";
-    protected static final String FIELD_DATASETIDSCHEME = "dataSetIdScheme";
-    protected static final String FIELD_DRYRUN = "dryRun";
-    protected static final String FIELD_IMPORTSTRATEGY = "importStrategy";
+@Setter
+@NoArgsConstructor
+@JacksonXmlRootElement(localName = "dataValueSet", namespace = DxfNamespaces.DXF_2_0)
+public class DataValueSet {
+  // --------------------------------------------------------------------------
+  // Options
+  // --------------------------------------------------------------------------
 
-    protected static final String FIELD_DATAVALUESET = "dataValueSet";
-    protected static final String FIELD_DATAVALUE = "dataValue";
-    protected static final String FIELD_DATASET = "dataSet";
-    protected static final String FIELD_COMPLETEDATE = "completeDate";
-    protected static final String FIELD_PERIOD = "period";
-    protected static final String FIELD_ORGUNIT = "orgUnit";
-    protected static final String FIELD_ATTRIBUTE_OPTION_COMBO = "attributeOptionCombo";
+  private String idScheme;
 
-    //--------------------------------------------------------------------------
-    // Options
-    //--------------------------------------------------------------------------
+  private String dataElementIdScheme;
 
-    protected String idScheme;
+  private String orgUnitIdScheme;
 
-    protected String dataElementIdScheme;
+  private String categoryOptionComboIdScheme;
 
-    protected String orgUnitIdScheme;
-    
-    protected String categoryOptionComboIdScheme;
-    
-    protected String dataSetIdScheme;
+  private String dataSetIdScheme;
 
-    protected Boolean dryRun;
+  private Boolean dryRun;
 
-    protected String strategy;
+  private String strategy;
 
-    //--------------------------------------------------------------------------
-    // Properties
-    //--------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // Properties
+  // --------------------------------------------------------------------------
 
-    protected String dataSet;
+  private String dataSet;
 
-    protected String completeDate;
+  private String completeDate;
 
-    protected String period;
+  private String period;
 
-    protected String orgUnit;
+  private String orgUnit;
 
-    protected String attributeOptionCombo;
+  private String attributeOptionCombo;
 
-    protected List<DataValue> dataValues = new ArrayList<>();
+  private List<DataValue> dataValues = new ArrayList<>();
 
-    protected List<String> attributeCategoryOptions;
+  private List<String> attributeCategoryOptions;
 
-    //--------------------------------------------------------------------------
-    // Constructors
-    //--------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // Getters and setters
+  // --------------------------------------------------------------------------
 
-    public DataValueSet()
-    {
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getIdScheme() {
+    return idScheme;
+  }
 
-    //--------------------------------------------------------------------------
-    // Getters and setters
-    //--------------------------------------------------------------------------
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getDataElementIdScheme() {
+    return dataElementIdScheme;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getIdScheme()
-    {
-        return idScheme;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getOrgUnitIdScheme() {
+    return orgUnitIdScheme;
+  }
 
-    public void setIdScheme( String idScheme )
-    {
-        this.idScheme = idScheme;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getCategoryOptionComboIdScheme() {
+    return categoryOptionComboIdScheme;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getDataElementIdScheme()
-    {
-        return dataElementIdScheme;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getDataSetIdScheme() {
+    return dataSetIdScheme;
+  }
 
-    public void setDataElementIdScheme( String dataElementIdScheme )
-    {
-        this.dataElementIdScheme = dataElementIdScheme;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public Boolean getDryRun() {
+    return dryRun;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getOrgUnitIdScheme()
-    {
-        return orgUnitIdScheme;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getStrategy() {
+    return strategy;
+  }
 
-    public void setOrgUnitIdScheme( String orgUnitIdScheme )
-    {
-        this.orgUnitIdScheme = orgUnitIdScheme;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getDataSet() {
+    return dataSet;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getCategoryOptionComboIdScheme()
-    {
-        return categoryOptionComboIdScheme;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getCompleteDate() {
+    return completeDate;
+  }
 
-    public void setCategoryOptionComboIdScheme( String categoryOptionComboIdScheme )
-    {
-        this.categoryOptionComboIdScheme = categoryOptionComboIdScheme;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getPeriod() {
+    return period;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getDataSetIdScheme()
-    {
-        return dataSetIdScheme;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getOrgUnit() {
+    return orgUnit;
+  }
 
-    public void setDataSetIdScheme( String dataSetIdScheme )
-    {
-        this.dataSetIdScheme = dataSetIdScheme;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getAttributeOptionCombo() {
+    return attributeOptionCombo;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public Boolean getDryRun()
-    {
-        return dryRun;
-    }
+  @JsonProperty(value = "dataValues")
+  @JacksonXmlElementWrapper(
+      localName = "dataValues",
+      useWrapping = false,
+      namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "dataValue", namespace = DxfNamespaces.DXF_2_0)
+  public List<DataValue> getDataValues() {
+    return dataValues;
+  }
 
-    public void setDryRun( Boolean dryRun )
-    {
-        this.dryRun = dryRun;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public List<String> getAttributeCategoryOptions() {
+    return attributeCategoryOptions;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getStrategy()
-    {
-        return strategy;
-    }
+  /**
+   * Returns the general identifier scheme. IdScheme.NULL is returned if scheme has not been set.
+   */
+  public IdScheme getIdSchemeProperty() {
+    String scheme = getIdScheme();
+    return IdScheme.from(scheme);
+  }
 
-    public void setStrategy( String strategy )
-    {
-        this.strategy = strategy;
-    }
+  /**
+   * Returns the data element identifier scheme. Falls back to the general identifier scheme if not
+   * set. IdScheme.NULL is returned if no scheme has been set.
+   */
+  public IdScheme getDataElementIdSchemeProperty() {
+    return getIdScheme(getDataElementIdScheme());
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getDataSet()
-    {
-        return dataSet;
-    }
+  /**
+   * Returns the organisation unit identifier scheme. Falls back to the general identifier scheme if
+   * not set. IdScheme.NULL is returned if no scheme has been set.
+   */
+  public IdScheme getOrgUnitIdSchemeProperty() {
+    return getIdScheme(getOrgUnitIdScheme());
+  }
 
-    public void setDataSet( String dataSet )
-    {
-        this.dataSet = dataSet;
-    }
+  /**
+   * Returns the category option combo identifier scheme. Falls back to the general identifier
+   * scheme if not set. IdScheme.NULL is returned if no scheme has been set.
+   */
+  public IdScheme getCategoryOptionComboIdSchemeProperty() {
+    return getIdScheme(getCategoryOptionComboIdScheme());
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getCompleteDate()
-    {
-        return completeDate;
-    }
+  /**
+   * Returns the data set identifier scheme. Falls back to the general identifier scheme if not set.
+   * IdScheme.NULL is returned if no scheme has been set.
+   */
+  public IdScheme getDataSetIdSchemeProperty() {
+    return getIdScheme(getDataSetIdScheme());
+  }
 
-    public void setCompleteDate( String completeDate )
-    {
-        this.completeDate = completeDate;
-    }
+  private IdScheme getIdScheme(String objectIdScheme) {
+    String scheme = getIdScheme();
+    scheme = defaultIfEmpty(objectIdScheme, scheme);
+    return IdScheme.from(scheme);
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getPeriod()
-    {
-        return period;
-    }
+  // --------------------------------------------------------------------------
+  // toString
+  // --------------------------------------------------------------------------
 
-    public void setPeriod( String period )
-    {
-        this.period = period;
-    }
-
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getOrgUnit()
-    {
-        return orgUnit;
-    }
-
-    public void setOrgUnit( String orgUnit )
-    {
-        this.orgUnit = orgUnit;
-    }
-
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getAttributeOptionCombo()
-    {
-        return attributeOptionCombo;
-    }
-
-    public void setAttributeOptionCombo( String attributeOptionCombo )
-    {
-        this.attributeOptionCombo = attributeOptionCombo;
-    }
-
-    @JsonProperty( value = "dataValues" )
-    @JacksonXmlElementWrapper( localName = "dataValues", useWrapping = false, namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "dataValue", namespace = DxfNamespaces.DXF_2_0 )
-    public List<DataValue> getDataValues()
-    {
-        return dataValues;
-    }
-
-    public void setDataValues( List<DataValue> dataValues )
-    {
-        this.dataValues = dataValues;
-    }
-
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public List<String> getAttributeCategoryOptions()
-    {
-        return attributeCategoryOptions;
-    }
-
-    public void setAttributeCategoryOptions( List<String> attributeCategoryOptions )
-    {
-        this.attributeCategoryOptions = attributeCategoryOptions;
-    }
-
-    //--------------------------------------------------------------------------
-    // Logic
-    //--------------------------------------------------------------------------
-
-    private Iterator<DataValue> dataValueIterator;
-
-    public void refreshDataValueIterator()
-    {
-        dataValueIterator = dataValues.iterator();
-    }
-
-    public boolean hasNextDataValue()
-    {
-        if ( dataValueIterator == null )
-        {
-            refreshDataValueIterator();
-        }
-
-        return dataValueIterator.hasNext();
-    }
-
-    public DataValue getNextDataValue()
-    {
-        if ( dataValueIterator == null )
-        {
-            refreshDataValueIterator();
-        }
-
-        return dataValueIterator.next();
-    }
-
-    public DataValue getDataValueInstance()
-    {
-        return new DataValue();
-    }
-
-    public void close()
-    {
-    }
-
-    /**
-     * Returns the general identifier scheme. IdScheme.NULL is returned if
-     * scheme has not been set.
-     */
-    public IdScheme getIdSchemeProperty()
-    {
-        String scheme = getIdScheme();
-        return IdScheme.from( scheme );
-    }
-
-    /**
-     * Returns the data element identifier scheme. Falls back to the general
-     * identifier scheme if not set. IdScheme.NULL is returned if no scheme has
-     * been set.
-     */
-    public IdScheme getDataElementIdSchemeProperty()
-    {
-        return getIdScheme( getDataElementIdScheme() );
-    }
-
-    /**
-     * Returns the organisation unit identifier scheme. Falls back to the general
-     * identifier scheme if not set. IdScheme.NULL is returned if no scheme has
-     * been set.
-     */
-    public IdScheme getOrgUnitIdSchemeProperty()
-    {
-        return getIdScheme( getOrgUnitIdScheme() );
-    }
-
-    /**
-     * Returns the category option combo identifier scheme. Falls back to the general
-     * identifier scheme if not set. IdScheme.NULL is returned if no scheme has
-     * been set.
-     */
-    public IdScheme getCategoryOptionComboIdSchemeProperty()
-    {
-        return getIdScheme( getCategoryOptionComboIdScheme() );
-    }
-
-    /**
-     * Returns the data set identifier scheme. Falls back to the general
-     * identifier scheme if not set. IdScheme.NULL is returned if no scheme has
-     * been set.
-     */
-    public IdScheme getDataSetIdSchemeProperty()
-    {
-        return getIdScheme( getDataSetIdScheme() );
-    }
-
-    private IdScheme getIdScheme( String objectIdScheme )
-    {
-        String scheme = getIdScheme();
-        scheme = defaultIfEmpty( objectIdScheme, scheme );
-        return IdScheme.from( scheme );
-    }
-    
-    //--------------------------------------------------------------------------
-    // toString
-    //--------------------------------------------------------------------------
-
-    @Override
-    public String toString()
-    {
-        return "[" + dataSet + ", " + completeDate + ", " + period + ", " + orgUnit + ", " + dataValues.size() + "]";
-    }
+  @Override
+  public String toString() {
+    return "["
+        + dataSet
+        + ", "
+        + completeDate
+        + ", "
+        + period
+        + ", "
+        + orgUnit
+        + ", "
+        + dataValues.size()
+        + "]";
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.sms.incoming;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,130 +25,103 @@ package org.hisp.dhis.sms.incoming;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.sms.incoming;
 
 import java.util.Date;
 import java.util.List;
-
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.hisp.dhis.sms.MessageQueue;
-import org.hisp.dhis.user.User;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-public class DefaultIncomingSmsService
-    implements IncomingSmsService
-{
-    private static final String DEFAULT_GATEWAY = "default";
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.sms.incoming.IncomingSmsService")
+public class DefaultIncomingSmsService implements IncomingSmsService {
+  private static final String DEFAULT_GATEWAY = "default";
 
-    private IncomingSmsStore incomingSmsStore;
+  private final IncomingSmsStore incomingSmsStore;
 
-    public void setIncomingSmsStore( IncomingSmsStore incomingSmsStore )
-    {
-        this.incomingSmsStore = incomingSmsStore;
+  @Override
+  @Transactional(readOnly = true)
+  public List<IncomingSms> getAll() {
+    return incomingSmsStore.getAll();
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<IncomingSms> getAll(Integer min, Integer max, boolean hasPagination) {
+    return incomingSmsStore.getAll(min, max, hasPagination);
+  }
+
+  @Override
+  @Transactional
+  public String save(IncomingSms sms) {
+    if (sms.getReceivedDate() != null) {
+      sms.setSentDate(sms.getReceivedDate());
+    } else {
+      sms.setSentDate(new Date());
     }
+    sms.setReceivedDate(new Date());
 
-    private MessageQueue incomingSmsQueue;
+    sms.setGatewayId(StringUtils.defaultIfBlank(sms.getGatewayId(), DEFAULT_GATEWAY));
 
-    public void setIncomingSmsQueue( MessageQueue incomingSmsQueue )
-    {
-        this.incomingSmsQueue = incomingSmsQueue;
+    incomingSmsStore.save(sms);
+    return sms.getUid();
+  }
+
+  @Transactional
+  public void delete(long id) {
+    IncomingSms incomingSms = incomingSmsStore.get(id);
+
+    if (incomingSms != null) {
+      incomingSmsStore.delete(incomingSms);
     }
+  }
 
-    // -------------------------------------------------------------------------
-    // Implementation
-    // -------------------------------------------------------------------------
+  @Override
+  @Transactional
+  public void delete(String uid) {
+    IncomingSms incomingSms = incomingSmsStore.getByUid(uid);
 
-    @Override
-    public List<IncomingSms> listAllMessage()
-    {
-        return incomingSmsStore.getAllSmses();
+    if (incomingSms != null) {
+      incomingSmsStore.delete(incomingSms);
     }
+  }
 
-    @Override
-    public int save( IncomingSms sms )
-    {
-        if ( sms.getReceivedDate() != null )
-        {
-            sms.setSentDate( sms.getReceivedDate() );
-        }
-        else
-        {
-            sms.setSentDate( new Date() );
-        }
+  @Override
+  @Transactional(readOnly = true)
+  public IncomingSms get(long id) {
+    return incomingSmsStore.get(id);
+  }
 
-        sms.setReceivedDate( new Date() );
-        sms.setGatewayId( StringUtils.defaultIfBlank( sms.getGatewayId(), DEFAULT_GATEWAY ) );
+  @Override
+  @Transactional(readOnly = true)
+  public IncomingSms get(String id) {
+    return incomingSmsStore.getByUid(id);
+  }
 
-        incomingSmsStore.save( sms );
-        incomingSmsQueue.put( sms );
-        return sms.getId();
-    }
+  @Override
+  @Transactional
+  public void update(IncomingSms incomingSms) {
+    incomingSmsStore.update(incomingSms);
+  }
 
-    @Override
-    public int save( String message, String originator, String gateway, Date receivedTime, User user )
-    {
-        IncomingSms sms = new IncomingSms();
-        sms.setText( message );
-        sms.setOriginator( originator );
-        sms.setGatewayId( gateway );
-        sms.setUser( user );
+  @Override
+  @Transactional(readOnly = true)
+  public List<IncomingSms> getSmsByStatus(SmsMessageStatus status, String originator) {
+    return incomingSmsStore.getSmsByStatus(status, originator);
+  }
 
-        if ( receivedTime != null )
-        {
-            sms.setSentDate( receivedTime );
-        }
-        else
-        {
-            sms.setSentDate( new Date() );
-        }
-        
-        sms.setReceivedDate( new Date() );
-        
-        return save( sms );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<IncomingSms> getSmsByStatus(
+      SmsMessageStatus status, String keyword, Integer min, Integer max, boolean hasPagination) {
+    return incomingSmsStore.getSmsByStatus(status, keyword, min, max, hasPagination);
+  }
 
-    @Override
-    public void deleteById( Integer id )
-    {
-        IncomingSms incomingSms = incomingSmsStore.get( id );
-
-        incomingSmsStore.delete( incomingSms );
-    }
-
-    @Override
-    public IncomingSms findBy( Integer id )
-    {
-        return incomingSmsStore.get( id );
-    }
-
-    @Override
-    public IncomingSms getNextUnprocessed()
-    {
-        return null;
-    }
-
-    @Override
-    public void update( IncomingSms incomingSms )
-    {
-        incomingSmsStore.update( incomingSms );
-    }
-
-    @Override
-    public List<IncomingSms> getSmsByStatus( SmsMessageStatus status, String keyword )
-    {
-        return incomingSmsStore.getSmsByStatus( status, keyword );
-    }
-
-    @Override
-    public List<IncomingSms> getSmsByStatus( SmsMessageStatus status, String keyword, Integer min, Integer max )
-    {
-        return incomingSmsStore.getSmsByStatus( status, keyword, min, max );
-    }
-
-    @Override
-    public List<IncomingSms> getAllUnparsedMessages()
-    {
-        return incomingSmsStore.getAllUnparsedSmses();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<IncomingSms> getAllUnparsedMessages() {
+    return incomingSmsStore.getAllUnparsedMessages();
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.common;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,33 +25,34 @@ package org.hisp.dhis.dxf2.common;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.common;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import org.hisp.dhis.commons.jackson.config.JacksonObjectMapperConfig;
 import org.hisp.dhis.dxf2.importsummary.ImportSummaries;
-import org.hisp.dhis.dxf2.webmessage.utils.WebMessageParseUtils;
+import org.hisp.dhis.jsontree.JsonMixed;
+import org.hisp.dhis.jsontree.JsonObject;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.web.client.ResponseExtractor;
-
-import java.io.IOException;
-import java.io.InputStream;
 
 /**
  * @author aamerm
  */
-public class ImportSummariesResponseExtractor
-    implements ResponseExtractor<ImportSummaries>
-{
-    @Override
-    public ImportSummaries extractData( ClientHttpResponse response ) throws IOException
-    {
-        InputStream stream = response.getBody();
+public class ImportSummariesResponseExtractor implements ResponseExtractor<ImportSummaries> {
+  private static final ObjectMapper JSON_MAPPER = JacksonObjectMapperConfig.staticJsonMapper();
 
-        ImportSummaries summary = null;
-        
-        if ( stream != null )
-        {
-            summary = WebMessageParseUtils.fromWebMessageResponse( stream, ImportSummaries.class );
-        }
-        
-        return summary;
+  @Override
+  public ImportSummaries extractData(ClientHttpResponse response) throws IOException {
+    JsonObject body =
+        JsonMixed.of(new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8));
+    // auto-detect if it is wrapped in a WebMessage envelope
+    if (body.has("httpStatus", "response")) // is a WebMessage wrapper
+    {
+      return JSON_MAPPER.readValue(
+          body.getObject("response").node().getDeclaration(), ImportSummaries.class);
     }
+    return JSON_MAPPER.readValue(body.node().getDeclaration(), ImportSummaries.class);
+  }
 }

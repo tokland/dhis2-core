@@ -1,7 +1,5 @@
-package org.hisp.dhis.notification;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,23 +25,26 @@ package org.hisp.dhis.notification;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.common.DeliveryChannel;
+package org.hisp.dhis.notification;
 
 import java.util.Set;
+import org.hisp.dhis.common.DeliveryChannel;
 
 /**
  * @author Halvdan Hoem Grelland
  */
-public interface NotificationTemplate
-{
-    String getSubjectTemplate();
+public interface NotificationTemplate {
+  String getSubjectTemplate();
 
-    String getMessageTemplate();
+  String getDisplaySubjectTemplate();
 
-    Set<DeliveryChannel> getDeliveryChannels();
+  String getMessageTemplate();
 
-    Boolean getNotifyUsersInHierarchyOnly();
+  String getDisplayMessageTemplate();
 
-    Boolean getNotifyParentOrganisationUnitOnly();
+  Set<DeliveryChannel> getDeliveryChannels();
+
+  Boolean getNotifyUsersInHierarchyOnly();
+
+  Boolean getNotifyParentOrganisationUnitOnly();
 }

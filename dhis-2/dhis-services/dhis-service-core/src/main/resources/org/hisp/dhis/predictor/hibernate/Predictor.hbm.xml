@@ -15,10 +15,13 @@
 
     <property name="name" column="name" not-null="true" unique="true" length="230" />
 
+    <property name="shortName" column="shortname" not-null="true" unique="true" length="50" />
+
     <property name="description" type="text" />
 
     <many-to-one name="generator" column="generatorexpressionid" class="org.hisp.dhis.expression.Expression"
-      cascade="all" foreign-key="fk_predictor_generatorexpressionid" not-null="true" />
+                 cascade="all-delete-orphan" foreign-key="fk_predictor_generatorexpressionid" not-null="false"
+                 unique="true"/>
 
     <many-to-one name="output" column="generatoroutput" class="org.hisp.dhis.dataelement.DataElement"
       foreign-key="fk_predictor_outputdataelementid" not-null="true" />
@@ -27,7 +30,7 @@
       foreign-key="fk_predictor_outputcomboid" />
 
     <many-to-one name="sampleSkipTest" column="skiptestexpressionid" class="org.hisp.dhis.expression.Expression"
-      cascade="all" foreign-key="fk_validationrule_skiptestexpressionid" />
+                 cascade="all-delete-orphan" foreign-key="fk_validationrule_skiptestexpressionid" unique="true"/>
 
     <many-to-one name="periodType" class="org.hisp.dhis.period.PeriodType" column="periodtypeid"
       foreign-key="fk_validationrule_periodtypeid" not-null="true" />
@@ -38,11 +41,28 @@
         foreign-key="fk_predictororgunitlevels_orgunitlevelid" />
     </set>
 
+    <property name="organisationUnitDescendants" column="organisationunitdescendants" length="100" not-null="true">
+      <type name="org.hibernate.type.EnumType">
+        <param name="enumClass">org.hisp.dhis.common.OrganisationUnitDescendants</param>
+        <param name="useNamed">true</param>
+        <param name="type">12</param>
+      </type>
+    </property>
+
     <property name="sequentialSampleCount" column="sequentialsamplecount" not-null="true" />
 
     <property name="annualSampleCount" column="annualsamplecount" not-null="true" />
 
     <property name="sequentialSkipCount" column="sequentialskipcount" />
+
+    <property name="translations" type="jblTranslations"/>
+
+    <set name="groups" table="predictorgroupmembers" inverse="true">
+      <key column="predictorid" />
+      <many-to-many class="org.hisp.dhis.predictor.PredictorGroup" column="predictorgroupid" />
+    </set>
+
+    <!-- Sharing is intentionally excluded. No known use case.  -->
 
   </class>
 

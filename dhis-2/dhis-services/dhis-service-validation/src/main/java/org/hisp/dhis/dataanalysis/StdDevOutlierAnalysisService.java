@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataanalysis;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,91 +25,95 @@ package org.hisp.dhis.dataanalysis;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataanalysis;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.hisp.dhis.common.MapMap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.hisp.dhis.category.CategoryOptionCombo;
+import org.hisp.dhis.common.MapMap;
 import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.datavalue.DeflatedDataValue;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.period.Period;
 import org.hisp.dhis.system.util.MathUtils;
-
-import java.util.*;
-import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
 
 /**
  * @author Lars Helge Overland
  */
-public class StdDevOutlierAnalysisService
-    implements DataAnalysisService
-{
-    private static final Log log = LogFactory.getLog( StdDevOutlierAnalysisService.class );
+@Slf4j
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.dataanalysis.StdDevOutlierAnalysisService")
+public class StdDevOutlierAnalysisService implements DataAnalysisService {
+  private final DataAnalysisStore dataAnalysisStore;
 
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // DataAnalysisService implementation
+  // -------------------------------------------------------------------------
 
-    private DataAnalysisStore dataAnalysisStore;
+  @Override
+  public final List<DeflatedDataValue> analyse(
+      OrganisationUnit orgUnit,
+      Collection<DataElement> dataElements,
+      Collection<Period> periods,
+      Double stdDevFactor,
+      Date from) {
+    log.info("Starting std dev analysis, factor: {}, from: {}", stdDevFactor, from);
 
-    public void setDataAnalysisStore( DataAnalysisStore dataAnalysisStore )
-    {
-        this.dataAnalysisStore = dataAnalysisStore;
-    }
+    List<DeflatedDataValue> outlierCollection = new ArrayList<>();
 
-    // -------------------------------------------------------------------------
-    // DataAnalysisService implementation
-    // -------------------------------------------------------------------------
+    loop:
+    for (DataElement dataElement : dataElements) {
 
-    @Override
-    public final List<DeflatedDataValue> analyse( Collection<OrganisationUnit> parents,
-        Collection<DataElement> dataElements, Collection<Period> periods, Double stdDevFactor, Date from )
-    {
-        log.info( "Starting std dev analysis, no of org units: " + parents.size() + ", factor: " + stdDevFactor + ", from: " + from );
+      if (dataElement.getValueType().isNumeric() && stdDevFactor != null) {
+        Set<CategoryOptionCombo> categoryOptionCombos = dataElement.getCategoryOptionCombos();
 
-        List<DeflatedDataValue> outlierCollection = new ArrayList<>();
+        List<DataAnalysisMeasures> measuresList =
+            dataAnalysisStore.getDataAnalysisMeasures(
+                dataElement, categoryOptionCombos, orgUnit, from);
 
-        List<String> parentsPaths = parents.stream().map( OrganisationUnit::getPath ).collect( Collectors.toList() );
+        MapMap<Long, Long, Integer> lowBoundMapMap = new MapMap<>();
+        MapMap<Long, Long, Integer> highBoundMapMap = new MapMap<>();
 
-        loop : for ( DataElement dataElement : dataElements )
-        {
-            // TODO filter periods with data element period type
+        for (DataAnalysisMeasures measures : measuresList) {
+          int lowBound =
+              (int)
+                  Math.round(
+                      MathUtils.getLowBound(
+                          measures.getStandardDeviation(), stdDevFactor, measures.getAverage()));
+          int highBound =
+              (int)
+                  Math.round(
+                      MathUtils.getHighBound(
+                          measures.getStandardDeviation(), stdDevFactor, measures.getAverage()));
 
-            if ( dataElement.getValueType().isNumeric() && stdDevFactor != null )
-            {
-                Set<CategoryOptionCombo> categoryOptionCombos = dataElement.getCategoryOptionCombos();
-
-                List<DataAnalysisMeasures> measuresList = dataAnalysisStore.getDataAnalysisMeasures( dataElement, categoryOptionCombos, parentsPaths, from );
-
-                MapMap<Integer, Integer, Integer> lowBoundMapMap = new MapMap<>(); // catOptionComboId, orgUnitId, lowBound
-                MapMap<Integer, Integer, Integer> highBoundMapMap = new MapMap<>(); // catOptionComboId, orgUnitId, highBound
-
-                for ( DataAnalysisMeasures measures : measuresList )
-                {
-                    int lowBound = (int) Math.round( MathUtils.getLowBound( measures.getStandardDeviation(), stdDevFactor, measures.getAverage() ) );
-                    int highBound = (int) Math.round( MathUtils.getHighBound( measures.getStandardDeviation(), stdDevFactor, measures.getAverage() ) );
-
-                    lowBoundMapMap.putEntry( measures.getCategoryOptionComboId(), measures.getOrgUnitId(), lowBound );
-                    highBoundMapMap.putEntry( measures.getCategoryOptionComboId(), measures.getOrgUnitId(), highBound );
-                }
-
-                for ( CategoryOptionCombo categoryOptionCombo : categoryOptionCombos )
-                {
-                    Map<Integer, Integer> lowBoundMap = lowBoundMapMap.get( categoryOptionCombo.getId() );
-                    Map<Integer, Integer> highBoundMap = highBoundMapMap.get( categoryOptionCombo.getId() );
-
-                    outlierCollection.addAll( dataAnalysisStore.getDeflatedDataValues( dataElement, categoryOptionCombo, periods,
-                        lowBoundMap, highBoundMap ) );
-
-                    if ( outlierCollection.size() > MAX_OUTLIERS )
-                    {
-                        break loop;
-                    }
-                }
-            }
+          lowBoundMapMap.putEntry(
+              measures.getCategoryOptionComboId(), measures.getOrgUnitId(), lowBound);
+          highBoundMapMap.putEntry(
+              measures.getCategoryOptionComboId(), measures.getOrgUnitId(), highBound);
         }
 
-        return outlierCollection;
+        for (CategoryOptionCombo categoryOptionCombo : categoryOptionCombos) {
+          Map<Long, Integer> lowBoundMap = lowBoundMapMap.get(categoryOptionCombo.getId());
+          Map<Long, Integer> highBoundMap = highBoundMapMap.get(categoryOptionCombo.getId());
+
+          outlierCollection.addAll(
+              dataAnalysisStore.getDeflatedDataValues(
+                  dataElement, categoryOptionCombo, periods, lowBoundMap, highBoundMap));
+
+          if (outlierCollection.size() > MAX_OUTLIERS) {
+            break loop;
+          }
+        }
+      }
     }
+
+    return outlierCollection;
+  }
 }

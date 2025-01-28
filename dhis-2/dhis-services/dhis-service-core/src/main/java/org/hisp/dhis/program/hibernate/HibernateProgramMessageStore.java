@@ -1,7 +1,5 @@
-package org.hisp.dhis.program.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,123 +25,100 @@ package org.hisp.dhis.program.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program.hibernate;
 
-import org.hibernate.Criteria;
-import org.hibernate.Query;
-import org.hibernate.criterion.Restrictions;
+import jakarta.persistence.EntityManager;
+import java.util.List;
+import org.hibernate.query.Query;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.commons.util.SqlHelper;
 import org.hisp.dhis.program.message.ProgramMessage;
 import org.hisp.dhis.program.message.ProgramMessageQueryParams;
 import org.hisp.dhis.program.message.ProgramMessageStore;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
  */
+@Repository("org.hisp.dhis.program.ProgramMessageStore")
+public class HibernateProgramMessageStore extends HibernateIdentifiableObjectStore<ProgramMessage>
+    implements ProgramMessageStore {
+  public HibernateProgramMessageStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, ProgramMessage.class, aclService, true);
+  }
 
-@Transactional
-public class HibernateProgramMessageStore
-    extends HibernateIdentifiableObjectStore<ProgramMessage>
-    implements ProgramMessageStore
-{
-    private static final String TABLE_NAME = "ProgramMessage";
+  // -------------------------------------------------------------------------
+  // Implementation of ProgramMessageStore
+  // -------------------------------------------------------------------------
 
-    // -------------------------------------------------------------------------
-    // Implementation
-    // -------------------------------------------------------------------------
+  /**
+   * Retrieves a list of ProgramMessages based on the provided query parameters.
+   *
+   * @param params the query parameters for filtering ProgramMessages
+   * @return a list of ProgramMessages that match the query parameters
+   */
+  @Override
+  public List<ProgramMessage> getProgramMessages(ProgramMessageQueryParams params) {
+    Query<ProgramMessage> query = getHqlQuery(params);
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<ProgramMessage> getProgramMessages( ProgramMessageQueryParams params )
-    {
-        Query query = getHqlQuery( params );
-
-        if ( params.hasPaging() )
-        {
-            query.setFirstResult( params.getPage() );
-            query.setMaxResults( params.getPageSize() );
-        }
-
-        return query.list();
+    if (params.hasPaging()) {
+      query.setFirstResult(params.getPage());
+      query.setMaxResults(params.getPageSize());
     }
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<ProgramMessage> getAllOutboundMessages()
-    {
-        Criteria criteria = getSession().createCriteria( ProgramMessage.class );
-        criteria.add( Restrictions.and( Restrictions.eq( "messageStatus", "OUTBOUND" ),
-            Restrictions.eq( "messageCatagory", "OUTGOING" ) ) );
+    return query.list();
+  }
 
-        return criteria.list();
+  // -------------------------------------------------------------------------
+  // Supportive Methods
+  // -------------------------------------------------------------------------
+
+  private Query<ProgramMessage> getHqlQuery(ProgramMessageQueryParams params) {
+    SqlHelper helper = new SqlHelper(true);
+    StringBuilder hql = new StringBuilder("SELECT DISTINCT pm FROM ProgramMessage pm");
+
+    // Add conditions to the query based on the parameters
+    if (params.hasEnrollment()) {
+      hql.append(helper.whereAnd()).append("pm.enrollment = :enrollment");
+    }
+    if (params.hasEvent()) {
+      hql.append(helper.whereAnd()).append("pm.event = :event");
+    }
+    if (params.getMessageStatus() != null) {
+      hql.append(helper.whereAnd()).append("pm.messageStatus = :messageStatus");
+    }
+    if (params.getAfterDate() != null) {
+      hql.append(helper.whereAnd()).append("pm.processeddate > :afterDate");
+    }
+    if (params.getBeforeDate() != null) {
+      hql.append(helper.whereAnd()).append("pm.processeddate < :beforeDate");
     }
 
-    @Override
-    public boolean exists( String uid )
-    {
-        ProgramMessage programMessage = getByUid( uid );
+    Query<ProgramMessage> query = getQuery(hql.toString());
 
-        return programMessage != null && programMessage.getId() > 0;
+    if (params.hasEnrollment()) {
+      query.setParameter("enrollment", params.getEnrollment());
+    }
+    if (params.hasEvent()) {
+      query.setParameter("event", params.getEvent());
+    }
+    if (params.getMessageStatus() != null) {
+      query.setParameter("messageStatus", params.getMessageStatus());
+    }
+    if (params.getAfterDate() != null) {
+      query.setParameter("afterDate", params.getAfterDate());
+    }
+    if (params.getBeforeDate() != null) {
+      query.setParameter("beforeDate", params.getBeforeDate());
     }
 
-    // -------------------------------------------------------------------------
-    // Supportive Methods
-    // -------------------------------------------------------------------------
-
-    private Query getHqlQuery( ProgramMessageQueryParams params )
-    {
-        SqlHelper helper = new SqlHelper( true );
-
-        String hql = " select distinct pm from " + TABLE_NAME + " pm ";
-
-        if ( params.hasProgramInstance() )
-        {
-            hql += helper.whereAnd() + "pm.programInstance = :programInstance";
-        }
-
-        if ( params.hasProgramStageInstance() )
-        {
-            hql += helper.whereAnd() + "pm.programStageInstance = :programStageInstance";
-        }
-
-        hql += params.getMessageStatus() != null
-            ? helper.whereAnd() + "pm.messageStatus = :messageStatus" : ""; 
-
-        hql += params.getAfterDate() != null ? helper.whereAnd() + "pm.processeddate > :processeddate" : "" ;
-
-        hql += params.getBeforeDate() != null
-            ? helper.whereAnd() + "pm.processeddate < :processeddate" : ""; 
-
-        Query query = sessionFactory.getCurrentSession().createQuery( hql );
-        
-        if ( params.hasProgramInstance() )
-        {
-            query.setInteger( "programInstance", params.getProgramInstance().getId() );
-        }
-
-        if ( params.hasProgramStageInstance() )
-        {
-            query.setInteger( "programStageInstance", params.getProgramStageInstance().getId() );
-        }
-        
-        if ( params.getMessageStatus() != null)
-        {
-            query.setParameter( "messageStatus", params.getMessageStatus() );
-        }
-
-        if ( params.getAfterDate() != null )
-        {
-            query.setTime( "processeddate", params.getAfterDate() );
-        }
-        
-        if ( params.getBeforeDate() != null )
-        {
-            query.setTime( "processeddate", params.getBeforeDate() );
-        }
-        
-        return query;
-    }
+    return query;
+  }
 }

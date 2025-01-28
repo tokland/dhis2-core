@@ -1,7 +1,5 @@
-package org.hisp.dhis.program;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,75 +25,52 @@ package org.hisp.dhis.program;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program;
 
 import java.util.Set;
-
+import lombok.RequiredArgsConstructor;
 import org.hisp.dhis.dataentryform.DataEntryForm;
 import org.hisp.dhis.dataentryform.DataEntryFormService;
 import org.hisp.dhis.system.deletion.DeletionHandler;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Chau Thu Tran
  */
-public class ProgramDataEntryFormDeletionHandler
-    extends DeletionHandler
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@RequiredArgsConstructor
+@Component
+public class ProgramDataEntryFormDeletionHandler extends DeletionHandler {
+  private final DataEntryFormService dataEntryFormService;
 
-    private DataEntryFormService dataEntryFormService;
+  private final ProgramStageService programStageService;
 
-    public void setDataEntryFormService( DataEntryFormService dataEntryFormService )
-    {
-        this.dataEntryFormService = dataEntryFormService;
-    }
+  @Override
+  protected void register() {
+    whenDeleting(ProgramStage.class, this::deleteProgramStage);
+  }
 
-    private ProgramStageService programStageService;
+  public void deleteProgramStage(ProgramStage programStage) {
+    DataEntryForm dataEntryForm = programStage.getDataEntryForm();
 
-    public void setProgramStageService( ProgramStageService programStageService )
-    {
-        this.programStageService = programStageService;
-    }
+    if (dataEntryForm != null) {
+      boolean flag = false;
 
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
+      Set<ProgramStage> programStages = programStage.getProgram().getProgramStages();
 
-    @Override
-    public String getClassName()
-    {
-        return DataEntryForm.class.getSimpleName();
-    }
+      programStages.remove(programStage);
 
-    @Override
-    public void deleteProgramStage( ProgramStage programStage )
-    {
-        DataEntryForm dataEntryForm = programStage.getDataEntryForm();
-
-        if ( dataEntryForm != null )
-        {
-            boolean flag = false;
-            
-            Set<ProgramStage> programStages = programStage.getProgram().getProgramStages();
-            
-            programStages.remove( programStage );
-            
-            for ( ProgramStage stage : programStages )
-            {
-                if ( stage.getDataEntryForm() != null )
-                {
-                    programStage.setDataEntryForm( null );
-                    programStageService.updateProgramStage( programStage );
-                    flag = true;
-                    break;
-                }
-            }
-
-            if ( !flag )
-            {
-                dataEntryFormService.deleteDataEntryForm( dataEntryForm );
-            }
+      for (ProgramStage stage : programStages) {
+        if (stage.getDataEntryForm() != null) {
+          programStage.setDataEntryForm(null);
+          programStageService.updateProgramStage(programStage);
+          flag = true;
+          break;
         }
+      }
+
+      if (!flag) {
+        dataEntryFormService.deleteDataEntryForm(dataEntryForm);
+      }
     }
+  }
 }

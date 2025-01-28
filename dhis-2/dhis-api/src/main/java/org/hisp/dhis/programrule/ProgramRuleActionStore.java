@@ -1,7 +1,5 @@
-package org.hisp.dhis.programrule;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,24 +25,22 @@ package org.hisp.dhis.programrule;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.programrule;
 
+import java.util.Collection;
 import java.util.List;
-
 import org.hisp.dhis.common.IdentifiableObjectStore;
+import org.hisp.dhis.dataelement.DataElement;
 
 /**
  * @author markusbekken
  */
-public interface ProgramRuleActionStore
-    extends IdentifiableObjectStore<ProgramRuleAction>
-{
-    String ID = ProgramRuleActionStore.class.getName();
+public interface ProgramRuleActionStore extends IdentifiableObjectStore<ProgramRuleAction> {
+  List<ProgramRuleAction> getProgramActionsWithNoDataObject();
 
-    /**
-     * Get programRuleAction by program
-     *
-     * @param programRule {@link ProgramRule}
-     * @return ProgramRuleActionVariable list
-     */
-    List<ProgramRuleAction> get( ProgramRule programRule );
+  List<ProgramRuleAction> getProgramActionsWithNoNotification();
+
+  List<ProgramRuleAction> getMalFormedRuleActionsByType(ProgramRuleActionType type);
+
+  List<ProgramRuleAction> getByDataElement(Collection<DataElement> dataElements);
 }

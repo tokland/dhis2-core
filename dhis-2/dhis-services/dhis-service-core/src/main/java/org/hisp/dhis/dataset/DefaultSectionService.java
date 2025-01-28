@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,82 +25,63 @@ package org.hisp.dhis.dataset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataset;
 
-import org.springframework.transaction.annotation.Transactional;
-
+import java.util.Collection;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.dataelement.DataElement;
+import org.hisp.dhis.indicator.Indicator;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Tri
- * @version $Id$
  */
-@Transactional
-public class DefaultSectionService
-    implements SectionService
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Service
+@RequiredArgsConstructor
+public class DefaultSectionService implements SectionService {
+  private final SectionStore sectionStore;
 
-    private SectionStore sectionStore;
+  @Override
+  @Transactional
+  public long addSection(Section section) {
+    sectionStore.save(section);
 
-    public void setSectionStore( SectionStore sectionStore )
-    {
-        this.sectionStore = sectionStore;
-    }
+    return section.getId();
+  }
 
-    private DataSetService dataSetService;
+  @Override
+  @Transactional
+  public void deleteSection(Section section) {
+    sectionStore.delete(section);
+  }
 
-    public void setDataSetService( DataSetService dataSetService )
-    {
-        this.dataSetService = dataSetService;
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public Section getSection(String uid) {
+    return sectionStore.getByUid(uid);
+  }
 
-    // -------------------------------------------------------------------------
-    // SectionService implementation
-    // -------------------------------------------------------------------------
+  @Override
+  @Transactional
+  public void updateSection(Section section) {
+    sectionStore.update(section);
+  }
 
-    @Override
-    public int addSection( Section section )
-    {
-        sectionStore.save( section );
+  @Override
+  public List<Section> getSectionsByDataElement(String uid) {
+    return sectionStore.getSectionsByDataElement(uid);
+  }
 
-        return section.getId();
-    }
+  @Override
+  public List<Section> getSectionsByDataElement(Collection<DataElement> dataElements) {
+    return sectionStore.getSectionsByDataElement(dataElements);
+  }
 
-    @Override
-    public void deleteSection( Section section )
-    {
-        sectionStore.delete( section );
-    }
-
-    @Override
-    public List<Section> getAllSections()
-    {
-        return sectionStore.getAll();
-    }
-
-    @Override
-    public Section getSection( int id )
-    {
-        return sectionStore.get( id );
-    }
-
-    @Override
-    public Section getSection( String uid )
-    {
-        return sectionStore.getByUid( uid );
-    }
-
-    @Override
-    public Section getSectionByName( String name, Integer dataSetId )
-    {
-        return sectionStore.getSectionByName( name, dataSetService.getDataSet( dataSetId ) );
-    }
-
-    @Override
-    public void updateSection( Section section )
-    {
-        sectionStore.update( section );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<Section> getSectionsByIndicators(Collection<Indicator> indicators) {
+    return sectionStore.getSectionsByIndicators(indicators);
+  }
 }

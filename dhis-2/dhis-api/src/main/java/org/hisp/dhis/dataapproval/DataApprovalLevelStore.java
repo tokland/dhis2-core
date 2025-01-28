@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataapproval;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,9 +25,9 @@ package org.hisp.dhis.dataapproval;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataapproval;
 
 import java.util.List;
-
 import org.hisp.dhis.common.IdentifiableObjectStore;
 
 /**
@@ -37,28 +35,25 @@ import org.hisp.dhis.common.IdentifiableObjectStore;
  *
  * @author Jim Grace
  */
-public interface DataApprovalLevelStore
-    extends IdentifiableObjectStore<DataApprovalLevel>
-{
-    String ID = DataApprovalLevelStore.class.getName();
+public interface DataApprovalLevelStore extends IdentifiableObjectStore<DataApprovalLevel> {
+  String ID = DataApprovalLevelStore.class.getName();
 
-    // -------------------------------------------------------------------------
-    // Basic DataApprovalLevel
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Basic DataApprovalLevel
+  // -------------------------------------------------------------------------
 
-    /**
-     * Gets a list of all data approval levels, ordered by level in ascending order,
-     * i.e. from 1 to n.
-     *
-     * @return List of all data approval levels, ordered from 1 to n.
-     */
-    List<DataApprovalLevel> getAllDataApprovalLevels();
+  /**
+   * Gets a list of all data approval levels, ordered by level in ascending order, i.e. from 1 to n.
+   *
+   * @return List of all data approval levels, ordered from 1 to n.
+   */
+  List<DataApprovalLevel> getAllDataApprovalLevels();
 
-    /**
-     * Gets data approval levels by org unit level.
-     * 
-     * @param orgUnitLevel the org unit level.
-     * @return a list of data approval levels, ordered by level number.
-     */
-    List<DataApprovalLevel> getDataApprovalLevelsByOrgUnitLevel( int orgUnitLevel );
+  /**
+   * Gets data approval levels by org unit level.
+   *
+   * @param orgUnitLevel the org unit level.
+   * @return a list of data approval levels, ordered by level number.
+   */
+  List<DataApprovalLevel> getDataApprovalLevelsByOrgUnitLevel(int orgUnitLevel);
 }

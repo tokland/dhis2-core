@@ -1,7 +1,5 @@
-package org.hisp.dhis.reservedvalue;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,16 +25,15 @@ package org.hisp.dhis.reservedvalue;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.reservedvalue;
 
 import java.util.List;
 
 /**
  * @author Stian Sandvold
  */
-public interface SequentialNumberCounterStore
-{
-    List<Integer> getNextValues( String uid, String key, int length );
+public interface SequentialNumberCounterStore {
+  List<Integer> getNextValues(String uid, String key, int length);
 
-    void deleteCounter( String uid );
-
+  void deleteCounter(String uid);
 }

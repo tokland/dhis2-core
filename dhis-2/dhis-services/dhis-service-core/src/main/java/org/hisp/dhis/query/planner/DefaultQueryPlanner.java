@@ -1,7 +1,5 @@
-package org.hisp.dhis.query.planner;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,219 +25,279 @@ package org.hisp.dhis.query.planner;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.query.planner;
 
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Root;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.attribute.Attribute;
+import org.hisp.dhis.common.CodeGenerator;
+import org.hisp.dhis.i18n.locale.LocaleManager;
 import org.hisp.dhis.query.Conjunction;
 import org.hisp.dhis.query.Criterion;
 import org.hisp.dhis.query.Disjunction;
 import org.hisp.dhis.query.Junction;
 import org.hisp.dhis.query.Query;
 import org.hisp.dhis.query.Restriction;
+import org.hisp.dhis.query.operators.TokenOperator;
 import org.hisp.dhis.schema.Property;
 import org.hisp.dhis.schema.Schema;
 import org.hisp.dhis.schema.SchemaService;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import org.hisp.dhis.setting.SystemSettingsProvider;
+import org.hisp.dhis.setting.UserSettings;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class DefaultQueryPlanner implements QueryPlanner
-{
-    private final SchemaService schemaService;
+@Component
+@RequiredArgsConstructor
+public class DefaultQueryPlanner implements QueryPlanner {
+  private final SchemaService schemaService;
+  private final SystemSettingsProvider settingsProvider;
 
-    public DefaultQueryPlanner( SchemaService schemaService )
-    {
-        this.schemaService = schemaService;
+  @Override
+  public QueryPlan planQuery(Query query) {
+    return planQuery(query, false);
+  }
+
+  @Override
+  public QueryPlan planQuery(Query query, boolean persistedOnly) {
+    // if only one filter, always set to Junction.Type AND
+    Junction.Type junctionType =
+        query.getCriterions().size() <= 1 ? Junction.Type.AND : query.getRootJunctionType();
+
+    if (Junction.Type.OR == junctionType && !persistedOnly) {
+      return QueryPlan.builder()
+          .persistedQuery(Query.from(query.getSchema()).setPlannedQuery(true))
+          .nonPersistedQuery(Query.from(query).setPlannedQuery(true))
+          .build();
     }
 
-    @Override
-    public QueryPlan planQuery( Query query )
-    {
-        return planQuery( query, false );
+    Query npQuery =
+        Query.from(query)
+            .setCurrentUserDetails(query.getCurrentUserDetails())
+            .setPlannedQuery(true);
+
+    Query pQuery =
+        getQuery(npQuery, persistedOnly)
+            .setCurrentUserDetails(query.getCurrentUserDetails())
+            .setPlannedQuery(true);
+
+    // if there are any non persisted criterions left, we leave the paging
+    // to the in-memory engine
+    if (!npQuery.isEmpty()) {
+      pQuery.setSkipPaging(true);
+    } else {
+      pQuery.setFirstResult(npQuery.getFirstResult());
+      pQuery.setMaxResults(npQuery.getMaxResults());
     }
 
-    @Override
-    public QueryPlan planQuery( Query query, boolean persistedOnly )
-    {
-        if ( Junction.Type.OR == query.getRootJunctionType() && !persistedOnly )
-        {
-            return new QueryPlan(
-                Query.from( query.getSchema() ).setPlannedQuery( true ),
-                Query.from( query ).setPlannedQuery( true )
-            );
-        }
+    return QueryPlan.builder().persistedQuery(pQuery).nonPersistedQuery(npQuery).build();
+  }
 
-        Query npQuery = Query.from( query )
-            .setUser( query.getUser() ).setPlannedQuery( true );
+  @Override
+  public QueryPath getQueryPath(Schema schema, String path) {
+    Schema curSchema = schema;
+    Property curProperty = null;
+    boolean persisted = true;
+    List<String> alias = new ArrayList<>();
+    String[] pathComponents = path.split("\\.");
 
-        Query pQuery = getQuery( npQuery, persistedOnly )
-            .setUser( query.getUser() ).setPlannedQuery( true );
-
-        // if there are any non persisted criterions left, we leave the paging to the in-memory engine
-        if ( !npQuery.getCriterions().isEmpty() )
-        {
-            pQuery.setSkipPaging( true );
-        }
-        else
-        {
-            pQuery.setFirstResult( npQuery.getFirstResult() );
-            pQuery.setMaxResults( npQuery.getMaxResults() );
-        }
-
-        return new QueryPlan( pQuery, npQuery );
+    if (pathComponents.length == 0) {
+      return null;
     }
 
-    @Override
-    public QueryPath getQueryPath( Schema schema, String path )
-    {
-        Schema curSchema = schema;
-        Property curProperty = null;
-        boolean persisted = true;
-        List<String> alias = new ArrayList<>();
-        String[] pathComponents = path.split( "\\." );
+    for (int idx = 0; idx < pathComponents.length; idx++) {
+      String name = pathComponents[idx];
+      curProperty = curSchema.getProperty(name);
 
-        if ( pathComponents.length == 0 )
-        {
-            return null;
-        }
+      if (isFilterByAttributeId(curProperty, name)) {
+        // filter by Attribute Uid
+        persisted = false;
+        curProperty = curSchema.getProperty("attributeValues");
+      }
 
-        for ( int idx = 0; idx < pathComponents.length; idx++ )
-        {
-            String name = pathComponents[idx];
-            curProperty = curSchema.getProperty( name );
+      if (curProperty == null) {
+        throw new RuntimeException("Invalid path property: " + name);
+      }
 
-            if ( curProperty == null )
-            {
-                throw new RuntimeException( "Invalid path property: " + name );
-            }
+      if (!curProperty.isPersisted()) {
+        persisted = false;
+      }
 
-            if ( !curProperty.isPersisted() )
-            {
-                persisted = false;
-            }
+      if ((!curProperty.isSimple() && idx == pathComponents.length - 1)) {
+        return new QueryPath(curProperty, persisted, alias.toArray(new String[] {}));
+      }
 
-            if ( (!curProperty.isSimple() && idx == pathComponents.length - 1) )
-            {
-                return new QueryPath( curProperty, persisted, alias.toArray( new String[]{} ) );
-            }
-
-            if ( curProperty.isCollection() )
-            {
-                curSchema = schemaService.getDynamicSchema( curProperty.getItemKlass() );
-                alias.add( curProperty.getFieldName() );
-            }
-            else if ( !curProperty.isSimple() )
-            {
-                curSchema = schemaService.getDynamicSchema( curProperty.getKlass() );
-                alias.add( curProperty.getFieldName() );
-            }
-            else
-            {
-                return new QueryPath( curProperty, persisted, alias.toArray( new String[]{} ) );
-            }
-        }
-
-        return new QueryPath( curProperty, persisted, alias.toArray( new String[]{} ) );
+      if (curProperty.isCollection()) {
+        curSchema = schemaService.getDynamicSchema(curProperty.getItemKlass());
+        alias.add(curProperty.getFieldName());
+      } else if (!curProperty.isSimple()) {
+        curSchema = schemaService.getDynamicSchema(curProperty.getKlass());
+        alias.add(curProperty.getFieldName());
+      } else {
+        return new QueryPath(curProperty, persisted, alias.toArray(new String[] {}));
+      }
     }
 
-    /**
-     * @param query Query
-     * @return Query instance
-     */
-    private Query getQuery( Query query, boolean persistedOnly )
-    {
-        Query pQuery = Query.from( query.getSchema(), query.getRootJunctionType() );
-        Iterator<Criterion> iterator = query.getCriterions().iterator();
+    return new QueryPath(curProperty, persisted, alias.toArray(new String[] {}));
+  }
 
-        while ( iterator.hasNext() )
-        {
-            org.hisp.dhis.query.Criterion criterion = iterator.next();
+  @Override
+  public Path<?> getQueryPath(Root<?> root, Schema schema, String path) {
+    Schema curSchema = schema;
+    Property curProperty;
+    String[] pathComponents = path.split("\\.");
 
-            if ( Junction.class.isInstance( criterion ) )
-            {
-                Junction junction = handleJunction( pQuery, (Junction) criterion, persistedOnly );
+    Path<?> currentPath = root;
 
-                if ( !junction.getCriterions().isEmpty() )
-                {
-                    pQuery.getAliases().addAll( junction.getAliases() );
-                    pQuery.add( junction );
-                }
-
-                if ( ((Junction) criterion).getCriterions().isEmpty() )
-                {
-                    iterator.remove();
-                }
-            }
-            else if ( Restriction.class.isInstance( criterion ) )
-            {
-                Restriction restriction = (Restriction) criterion;
-                restriction.setQueryPath( getQueryPath( query.getSchema(), restriction.getPath() ) );
-
-                if ( restriction.getQueryPath().isPersisted() && !restriction.getQueryPath().haveAlias() )
-                {
-                    pQuery.getAliases().addAll( Arrays.asList( ((Restriction) criterion).getQueryPath().getAlias() ) );
-                    pQuery.getCriterions().add( criterion );
-                    iterator.remove();
-                }
-            }
-        }
-
-        if ( query.ordersPersisted() )
-        {
-            pQuery.addOrders( query.getOrders() );
-            query.clearOrders();
-        }
-
-        return pQuery;
+    if (pathComponents.length == 0) {
+      return null;
     }
 
-    private Junction handleJunction( Query query, Junction queryJunction, boolean persistedOnly )
-    {
-        Iterator<org.hisp.dhis.query.Criterion> iterator = queryJunction.getCriterions().iterator();
-        Junction criteriaJunction = Disjunction.class.isInstance( queryJunction ) ?
-            new Disjunction( query.getSchema() ) : new Conjunction( query.getSchema() );
+    for (int idx = 0; idx < pathComponents.length; idx++) {
+      String name = pathComponents[idx];
+      curProperty = curSchema.getProperty(name);
 
-        while ( iterator.hasNext() )
-        {
-            org.hisp.dhis.query.Criterion criterion = iterator.next();
+      if (curProperty == null) {
+        throw new RuntimeException("Invalid path property: " + name);
+      }
 
-            if ( Junction.class.isInstance( criterion ) )
-            {
-                Junction junction = handleJunction( query, (Junction) criterion, persistedOnly );
+      if ((!curProperty.isSimple() && idx == pathComponents.length - 1)) {
+        return root.join(curProperty.getFieldName());
+      }
 
-                if ( !junction.getCriterions().isEmpty() )
-                {
-                    criteriaJunction.getAliases().addAll( junction.getAliases() );
-                    criteriaJunction.add( junction );
-                }
+      if (curProperty.isCollection()) {
+        currentPath = root.join(curProperty.getFieldName());
+        curSchema = schemaService.getDynamicSchema(curProperty.getItemKlass());
+      } else if (!curProperty.isSimple()) {
+        curSchema = schemaService.getDynamicSchema(curProperty.getKlass());
+        currentPath = root.join(curProperty.getFieldName());
+      } else {
+        return currentPath.get(curProperty.getFieldName());
+      }
+    }
 
-                if ( ((Junction) criterion).getCriterions().isEmpty() )
-                {
-                    iterator.remove();
-                }
-            }
-            else if ( Restriction.class.isInstance( criterion ) )
-            {
-                Restriction restriction = (Restriction) criterion;
-                restriction.setQueryPath( getQueryPath( query.getSchema(), restriction.getPath() ) );
+    return currentPath;
+  }
 
-                if ( restriction.getQueryPath().isPersisted() && !restriction.getQueryPath().haveAlias( 1 ) )
-                {
-                    criteriaJunction.getAliases().addAll( Arrays.asList( ((Restriction) criterion).getQueryPath().getAlias() ) );
-                    criteriaJunction.getCriterions().add( criterion );
-                    iterator.remove();
-                }
-                else if ( persistedOnly )
-                {
-                    throw new RuntimeException( "Path " + restriction.getQueryPath().getPath() +
-                        " is not fully persisted, unable to build persisted only query plan." );
-                }
-            }
+  /**
+   * @param query Query
+   * @return Query instance
+   */
+  private Query getQuery(Query query, boolean persistedOnly) {
+    Query pQuery = Query.from(query.getSchema(), query.getRootJunctionType());
+    pQuery.setSkipSharing(query.isSkipSharing());
+    Iterator<Criterion> iterator = query.getCriterions().iterator();
+
+    while (iterator.hasNext()) {
+      Criterion criterion = iterator.next();
+
+      if (criterion instanceof Junction) {
+        Junction junction = handleJunction(pQuery, (Junction) criterion, persistedOnly);
+
+        if (!junction.getCriterions().isEmpty()) {
+          pQuery.getAliases().addAll(junction.getAliases());
+          pQuery.add(junction);
         }
 
-        return criteriaJunction;
+        if (((Junction) criterion).getCriterions().isEmpty()) {
+          iterator.remove();
+        }
+      } else if (criterion instanceof Restriction) {
+        Restriction restriction = (Restriction) criterion;
+        restriction.setQueryPath(getQueryPath(query.getSchema(), restriction.getPath()));
+
+        if (restriction.getOperator().getClass().isAssignableFrom(TokenOperator.class)) {
+          setQueryPathLocale(restriction);
+        }
+
+        if (restriction.getQueryPath().isPersisted()
+            && !restriction.getQueryPath().haveAlias()
+            && !Attribute.ObjectType.isValidType(restriction.getQueryPath().getPath())) {
+          pQuery
+              .getAliases()
+              .addAll(Arrays.asList(((Restriction) criterion).getQueryPath().getAlias()));
+          pQuery.getCriterions().add(criterion);
+          iterator.remove();
+        }
+      }
     }
+
+    if (query.ordersPersisted()) {
+      pQuery.addOrders(query.getOrders());
+      query.clearOrders();
+    }
+
+    return pQuery;
+  }
+
+  private Junction handleJunction(Query query, Junction queryJunction, boolean persistedOnly) {
+    Iterator<Criterion> iterator = queryJunction.getCriterions().iterator();
+    Junction criteriaJunction =
+        queryJunction instanceof Disjunction
+            ? new Disjunction(query.getSchema())
+            : new Conjunction(query.getSchema());
+
+    while (iterator.hasNext()) {
+      Criterion criterion = iterator.next();
+
+      if (criterion instanceof Junction) {
+        Junction junction = handleJunction(query, (Junction) criterion, persistedOnly);
+
+        if (!junction.getCriterions().isEmpty()) {
+          criteriaJunction.getAliases().addAll(junction.getAliases());
+          criteriaJunction.add(junction);
+        }
+
+        if (((Junction) criterion).getCriterions().isEmpty()) {
+          iterator.remove();
+        }
+      } else if (criterion instanceof Restriction) {
+        Restriction restriction = (Restriction) criterion;
+        restriction.setQueryPath(getQueryPath(query.getSchema(), restriction.getPath()));
+
+        if (restriction.getOperator().getClass().isAssignableFrom(TokenOperator.class)) {
+          setQueryPathLocale(restriction);
+        }
+
+        if (restriction.getQueryPath().isPersisted()
+            && !restriction.getQueryPath().haveAlias(1)
+            && !Attribute.ObjectType.isValidType(restriction.getQueryPath().getPath())) {
+          criteriaJunction
+              .getAliases()
+              .addAll(Arrays.asList(((Restriction) criterion).getQueryPath().getAlias()));
+          criteriaJunction.getCriterions().add(criterion);
+          iterator.remove();
+        } else if (persistedOnly) {
+          throw new RuntimeException(
+              "Path "
+                  + restriction.getQueryPath().getPath()
+                  + " is not fully persisted, unable to build persisted only query plan.");
+        }
+      }
+    }
+
+    return criteriaJunction;
+  }
+
+  private boolean isFilterByAttributeId(Property curProperty, String propertyName) {
+    return curProperty == null && CodeGenerator.isValidUid(propertyName);
+  }
+
+  /**
+   * Set the current locale on the query path. The current locale is the user's selected database
+   * locale if available, otherwise the system setting DB_Locale. If neither is available, the
+   * {@link LocaleManager#DEFAULT_LOCALE} is used.
+   *
+   * @param restriction the {@link Restriction} which contains the query path.
+   */
+  private void setQueryPathLocale(Restriction restriction) {
+    restriction.getQueryPath().setLocale(UserSettings.getCurrentSettings().getUserDbLocale());
+  }
 }

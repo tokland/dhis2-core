@@ -1,7 +1,5 @@
-package org.hisp.dhis.attribute.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,61 +25,30 @@ package org.hisp.dhis.attribute.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.attribute.hibernate;
 
-import org.hibernate.criterion.Restrictions;
+import jakarta.persistence.EntityManager;
 import org.hisp.dhis.attribute.Attribute;
 import org.hisp.dhis.attribute.AttributeStore;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
-
-import java.util.ArrayList;
-import java.util.List;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class HibernateAttributeStore
-    extends HibernateIdentifiableObjectStore<Attribute>
-    implements AttributeStore
-{
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<Attribute> getAttributes( Class<?> klass )
-    {
-        if ( !CLASS_ATTRIBUTE_MAP.containsKey( klass ) )
-        {
-            return new ArrayList<>();
-        }
-
-        return new ArrayList<>( getCriteria( Restrictions.eq( CLASS_ATTRIBUTE_MAP.get( klass ), true ) ).list() );
-    }
-
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<Attribute> getMandatoryAttributes( Class<?> klass )
-    {
-        if ( !CLASS_ATTRIBUTE_MAP.containsKey( klass ) )
-        {
-            return new ArrayList<>();
-        }
-
-        return new ArrayList<>( getCriteria(
-            Restrictions.eq( "mandatory", true ),
-            Restrictions.eq( CLASS_ATTRIBUTE_MAP.get( klass ), true )
-        ).list() );
-    }
-
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<Attribute> getUniqueAttributes( Class<?> klass )
-    {
-        if ( !CLASS_ATTRIBUTE_MAP.containsKey( klass ) )
-        {
-            return new ArrayList<>();
-        }
-
-        return new ArrayList<>( getCriteria(
-            Restrictions.eq( "unique", true ),
-            Restrictions.eq( CLASS_ATTRIBUTE_MAP.get( klass ), true )
-        ).list() );
-    }
+@Repository("org.hisp.dhis.attribute.AttributeStore")
+public class HibernateAttributeStore extends HibernateIdentifiableObjectStore<Attribute>
+    implements AttributeStore {
+  @Autowired
+  public HibernateAttributeStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, Attribute.class, aclService, true);
+  }
 }

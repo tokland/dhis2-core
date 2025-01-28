@@ -1,7 +1,5 @@
-package org.hisp.dhis.query.operators;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +25,14 @@ package org.hisp.dhis.query.operators;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.query.operators;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import java.util.Collection;
+import java.util.Date;
+import java.util.Map;
 import org.hibernate.criterion.Criterion;
 import org.hibernate.criterion.Restrictions;
 import org.hisp.dhis.query.QueryException;
@@ -37,85 +42,95 @@ import org.hisp.dhis.query.Typed;
 import org.hisp.dhis.query.planner.QueryPath;
 import org.hisp.dhis.schema.Property;
 
-import java.util.Collection;
-import java.util.Date;
-
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class GreaterEqualOperator extends Operator
-{
-    public GreaterEqualOperator( Object arg )
-    {
-        super( "ge", Typed.from( String.class, Boolean.class, Number.class, Date.class ), arg );
+public class GreaterEqualOperator<T extends Comparable<? super T>> extends Operator<T> {
+  public GreaterEqualOperator(T arg) {
+    super("ge", Typed.from(String.class, Boolean.class, Number.class, Date.class), arg);
+  }
+
+  @Override
+  public Criterion getHibernateCriterion(QueryPath queryPath) {
+    Property property = queryPath.getProperty();
+
+    if (property.isCollection()) {
+      Integer value = QueryUtils.parseValue(Integer.class, args.get(0));
+
+      if (value == null) {
+        throw new QueryException(
+            "Left-side is collection, and right-side is not a valid integer, so can't compare by size.");
+      }
+
+      return Restrictions.sizeGe(queryPath.getPath(), value);
     }
 
-    @Override
-    public Criterion getHibernateCriterion( QueryPath queryPath )
-    {
-        Property property = queryPath.getProperty();
+    return Restrictions.ge(queryPath.getPath(), args.get(0));
+  }
 
-        if ( property.isCollection() )
-        {
-            Integer value = QueryUtils.parseValue( Integer.class, args.get( 0 ) );
+  @Override
+  public <Y> Predicate getPredicate(CriteriaBuilder builder, Root<Y> root, QueryPath queryPath) {
+    Property property = queryPath.getProperty();
 
-            if ( value == null )
-            {
-                throw new QueryException( "Left-side is collection, and right-side is not a valid integer, so can't compare by size." );
-            }
+    if (property.isCollection()) {
+      Integer value = QueryUtils.parseValue(Integer.class, args.get(0));
 
-            return Restrictions.sizeGe( queryPath.getPath(), value );
-        }
+      if (value == null) {
+        throw new QueryException(
+            "Left-side is collection, and right-side is not a valid integer, so can't compare by size.");
+      }
 
-        return Restrictions.ge( queryPath.getPath(), args.get( 0 ) );
+      return builder.greaterThanOrEqualTo(builder.size(root.get(queryPath.getPath())), value);
     }
 
-    @Override
-    public boolean test( Object value )
-    {
-        if ( args.isEmpty() || value == null )
-        {
-            return false;
-        }
+    return builder.greaterThanOrEqualTo(root.get(queryPath.getPath()), args.get(0));
+  }
 
-        Type type = new Type( value );
-
-        if ( type.isString() )
-        {
-            String s1 = getValue( String.class );
-            String s2 = (String) value;
-
-            return s1 != null && (s2.equals( s1 ) || s2.compareTo( s1 ) > 0);
-        }
-        if ( type.isInteger() )
-        {
-            Integer s1 = getValue( Integer.class );
-            Integer s2 = (Integer) value;
-
-            return s1 != null && s2 >= s1;
-        }
-        else if ( type.isFloat() )
-        {
-            Float s1 = getValue( Float.class );
-            Float s2 = (Float) value;
-
-            return s1 != null && s2 >= s1;
-        }
-        else if ( type.isDate() )
-        {
-            Date s1 = getValue( Date.class );
-            Date s2 = (Date) value;
-
-            return s1 != null && (s2.after( s1 ) || s2.equals( s1 ));
-        }
-        else if ( type.isCollection() )
-        {
-            Collection<?> collection = (Collection<?>) value;
-            Integer size = getValue( Integer.class );
-
-            return size != null && collection.size() >= size;
-        }
-
-        return false;
+  @Override
+  public boolean test(Object value) {
+    if (args.isEmpty() || value == null) {
+      return false;
     }
+
+    Type type = new Type(value);
+
+    if (type.isString()) {
+      String s1 = getValue(String.class);
+      String s2 = (String) value;
+
+      return s1 != null && (s2.equals(s1) || s2.compareTo(s1) > 0);
+    }
+    if (type.isInteger()) {
+      Integer s1 = getValue(Integer.class);
+      Integer s2 = (Integer) value;
+
+      return s1 != null && s2 >= s1;
+    }
+    if (type.isFloat()) {
+      Float s1 = getValue(Float.class);
+      Float s2 = (Float) value;
+
+      return s1 != null && s2 >= s1;
+    }
+    if (type.isDate()) {
+      Date s1 = getValue(Date.class);
+      Date s2 = (Date) value;
+
+      return s1 != null && (s2.after(s1) || s2.equals(s1));
+    }
+    if (type.isCollection()) {
+      Collection<?> collection = (Collection<?>) value;
+      Integer size = getValue(Integer.class);
+
+      return size != null && collection.size() >= size;
+    }
+    if (type.isMap()) {
+      Map<?, ?> map = (Map<?, ?>) value;
+      Integer size = getValue(Integer.class);
+
+      return size != null && map.size() >= size;
+    }
+
+    return false;
+  }
 }

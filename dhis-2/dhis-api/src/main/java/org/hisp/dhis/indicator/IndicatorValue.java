@@ -1,7 +1,5 @@
-package org.hisp.dhis.indicator;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,101 +25,75 @@ package org.hisp.dhis.indicator;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.indicator;
 
 /**
- * Non-persisted class for representing the various components of an aggregated
- * indicator value.
- * 
+ * Non-persisted class for representing the various components of an aggregated indicator value.
+ *
  * @author Lars Helge Overland
  */
-public class IndicatorValue
-{    
-    private double numeratorValue;
-    
-    private double denominatorValue;
+public class IndicatorValue {
+  private double numeratorValue;
 
-    private int factor;
-    
-    private double annualizationFactor;
-    
-    public IndicatorValue()
-    {
-    }
+  private double denominatorValue;
 
-    // -------------------------------------------------------------------------
-    // Logic methods
-    // -------------------------------------------------------------------------
+  private int multiplier;
 
-    /**
-     * Returns the calculated indicator value.
-     */
-    public double getValue()
-    {
-        return getNumeratorFactorValue() / denominatorValue;
-    }
+  private int divisor;
 
-    /**
-     * Returns the product of the indicator numerator value, factor and 
-     * annualization factor.
-     */
-    public double getNumeratorFactorValue()
-    {
-        return numeratorValue * factor * annualizationFactor;
-    }
-    
-    /**
-     * Returns the product of the factor and the annualization factor.
-     */
-    public double getFactorAnnualizedValue()
-    {
-        return factor * annualizationFactor;
-    }
-    
-    // -------------------------------------------------------------------------
-    // Get and set methods
-    // -------------------------------------------------------------------------
+  public IndicatorValue() {}
 
-    public double getNumeratorValue()
-    {
-        return numeratorValue;
-    }
+  // -------------------------------------------------------------------------
+  // Logic methods
+  // -------------------------------------------------------------------------
 
-    public IndicatorValue setNumeratorValue( double numeratorValue )
-    {
-        this.numeratorValue = numeratorValue;
-        return this;
-    }
+  /** Returns the calculated indicator value. */
+  public double getValue() {
+    return (numeratorValue * multiplier) / (denominatorValue * divisor);
+  }
 
-    public double getDenominatorValue()
-    {
-        return denominatorValue;
-    }
+  /** Returns the ratio of the multiplier and divisor. */
+  public double getFactor() {
+    return ((double) multiplier) / ((double) divisor);
+  }
 
-    public IndicatorValue setDenominatorValue( double denominatorValue )
-    {
-        this.denominatorValue = denominatorValue;
-        return this;
-    }
-    
-    public int getFactor()
-    {
-        return factor;
-    }
+  // -------------------------------------------------------------------------
+  // Get and set methods
+  // -------------------------------------------------------------------------
 
-    public IndicatorValue setFactor( int factor )
-    {
-        this.factor = factor;
-        return this;
-    }
+  public double getNumeratorValue() {
+    return numeratorValue;
+  }
 
-    public double getAnnualizationFactor()
-    {
-        return annualizationFactor;
-    }
+  public IndicatorValue setNumeratorValue(double numeratorValue) {
+    this.numeratorValue = numeratorValue;
+    return this;
+  }
 
-    public IndicatorValue setAnnualizationFactor( double annualizationFactor )
-    {
-        this.annualizationFactor = annualizationFactor;
-        return this;
-    }
+  public double getDenominatorValue() {
+    return denominatorValue;
+  }
+
+  public IndicatorValue setDenominatorValue(double denominatorValue) {
+    this.denominatorValue = denominatorValue;
+    return this;
+  }
+
+  public int getMultiplier() {
+    return multiplier;
+  }
+
+  public IndicatorValue setMultiplier(int multiplier) {
+    this.multiplier = multiplier;
+    return this;
+  }
+
+  public int getDivisor() {
+    return divisor;
+  }
+
+  public IndicatorValue setDivisor(int divisor) {
+    this.divisor = divisor;
+    return this;
+  }
 }

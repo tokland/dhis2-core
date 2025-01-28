@@ -1,7 +1,5 @@
-package org.hisp.dhis.external.configuration;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,26 +25,21 @@ package org.hisp.dhis.external.configuration;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.external.configuration;
 
 /**
  * @author Lars Helge Overland
- * @version $Id$
  */
-public class NoConfigurationFoundException
-    extends Exception
-{
-    public NoConfigurationFoundException( String message )
-    {
-        super( message );
-    }
-    
-    public NoConfigurationFoundException( Throwable throable )
-    {
-        super( throable );
-    }
-    
-    public NoConfigurationFoundException( String message, Throwable trowable )
-    {
-        super( message, trowable );
-    }
+public class NoConfigurationFoundException extends Exception {
+  public NoConfigurationFoundException(String message) {
+    super(message);
+  }
+
+  public NoConfigurationFoundException(Throwable throable) {
+    super(throable);
+  }
+
+  public NoConfigurationFoundException(String message, Throwable trowable) {
+    super(message, trowable);
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.query;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,36 +25,31 @@ package org.hisp.dhis.query;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.query;
 
+import lombok.Getter;
+import org.hisp.dhis.common.OpenApi;
 import org.hisp.dhis.schema.Schema;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public abstract class Junction extends Criteria implements Criterion
-{
-    public enum Type
-    {
-        AND, OR
-    }
+public abstract class Junction extends Criteria implements Criterion {
+  @OpenApi.Shared(name = "JunctionType")
+  public enum Type {
+    AND,
+    OR
+  }
 
-    protected Type type;
+  @Getter protected final Type type;
 
-    public Junction( Schema schema, Type type )
-    {
-        super( schema );
-        this.type = type;
-    }
+  Junction(Schema schema, Type type) {
+    super(schema);
+    this.type = type;
+  }
 
-    public Type getType()
-    {
-        return type;
-    }
-
-
-    @Override
-    public String toString()
-    {
-        return "[ " + type + ", " + criterions + "]";
-    }
+  @Override
+  public String toString() {
+    return "[ " + type + ", " + criterions + "]";
+  }
 }

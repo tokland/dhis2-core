@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.datavalueset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,24 +25,42 @@ package org.hisp.dhis.dxf2.datavalueset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.datavalueset;
 
 import java.io.OutputStream;
 import java.io.Writer;
 import java.util.Date;
-
 import org.hisp.dhis.common.IdSchemes;
 import org.hisp.dhis.datavalue.DataExportParams;
 
 /**
  * @author Lars Helge Overland
  */
-public interface DataValueSetStore
-{
-    void writeDataValueSetXml( DataExportParams params, Date completeDate, OutputStream out );
+public interface DataValueSetStore {
+  void exportDataValueSetXml(DataExportParams params, Date completeDate, OutputStream out);
 
-    void writeDataValueSetJson( DataExportParams params, Date completeDate, OutputStream out );
+  void exportDataValueSetJson(DataExportParams params, Date completeDate, OutputStream out);
 
-    void writeDataValueSetCsv( DataExportParams params, Date completeDate, Writer writer );
+  void exportDataValueSetCsv(DataExportParams params, Date completeDate, Writer writer);
 
-    void writeDataValueSetJson( Date lastUpdated, OutputStream outputStream, IdSchemes idSchemes );
+  /**
+   * Query for {@link DataValueSet DataValueSets} and write result as JSON.
+   *
+   * @param lastUpdated specifies the date to filter complete data sets last updated after
+   * @param outputStream the stream to write to
+   * @param idSchemes idSchemes
+   */
+  void exportDataValueSetJson(Date lastUpdated, OutputStream outputStream, IdSchemes idSchemes);
+
+  /**
+   * Query for {@link DataValueSet DataValueSets} and write result as JSON.
+   *
+   * @param lastUpdated specifies the date to filter complete data sets last updated after
+   * @param outputStream the stream to write to
+   * @param idSchemes idSchemes
+   * @param pageSize pageSize
+   * @param page page
+   */
+  void exportDataValueSetJson(
+      Date lastUpdated, OutputStream outputStream, IdSchemes idSchemes, int pageSize, int page);
 }

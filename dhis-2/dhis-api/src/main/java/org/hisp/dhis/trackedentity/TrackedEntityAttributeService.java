@@ -1,7 +1,5 @@
-package org.hisp.dhis.trackedentity;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,130 +25,168 @@ package org.hisp.dhis.trackedentity;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.organisationunit.OrganisationUnit;
-import org.hisp.dhis.program.Program;
+package org.hisp.dhis.trackedentity;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import javax.annotation.Nonnull;
+import org.hisp.dhis.program.Program;
+import org.hisp.dhis.user.UserDetails;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Abyot Asalefew
- * @version $Id$
  */
-public interface TrackedEntityAttributeService
-{
-    String ID = TrackedEntityAttributeService.class.getName();
+public interface TrackedEntityAttributeService {
+  String ID = TrackedEntityAttributeService.class.getName();
 
-    /**
-     * Adds an {@link TrackedEntityAttribute}
-     *
-     * @param attribute The to TrackedEntityAttribute add.
-     * @return A generated unique id of the added {@link TrackedEntityAttribute}
-     * .
-     */
-    int addTrackedEntityAttribute( TrackedEntityAttribute attribute );
+  /**
+   * The max length of a value. This is also naturally constrained by the database table, due to the
+   * data type: varchar(1200).
+   */
+  int TEA_VALUE_MAX_LENGTH = 1200;
 
-    /**
-     * Deletes a {@link TrackedEntityAttribute}.
-     *
-     * @param attribute the TrackedEntityAttribute to delete.
-     */
-    void deleteTrackedEntityAttribute( TrackedEntityAttribute attribute );
+  /**
+   * Adds an {@link TrackedEntityAttribute}
+   *
+   * @param attribute The to TrackedEntityAttribute add.
+   * @return A generated unique id of the added {@link TrackedEntityAttribute} .
+   */
+  long addTrackedEntityAttribute(TrackedEntityAttribute attribute);
 
-    /**
-     * Updates an {@link TrackedEntityAttribute}.
-     *
-     * @param attribute the TrackedEntityAttribute to update.
-     */
-    void updateTrackedEntityAttribute( TrackedEntityAttribute attribute );
+  /**
+   * Deletes a {@link TrackedEntityAttribute}.
+   *
+   * @param attribute the TrackedEntityAttribute to delete.
+   */
+  void deleteTrackedEntityAttribute(TrackedEntityAttribute attribute);
 
-    /**
-     * Returns a {@link TrackedEntityAttribute}.
-     *
-     * @param id the id of the TrackedEntityAttribute to return.
-     * @return the TrackedEntityAttribute with the given id
-     */
-    TrackedEntityAttribute getTrackedEntityAttribute( int id );
+  /**
+   * Updates an {@link TrackedEntityAttribute}.
+   *
+   * @param attribute the TrackedEntityAttribute to update.
+   */
+  void updateTrackedEntityAttribute(TrackedEntityAttribute attribute);
 
-    /**
-     * Returns the {@link TrackedEntityAttribute} with the given UID.
-     *
-     * @param uid the UID.
-     * @return the TrackedEntityAttribute with the given UID, or null if no
-     * match.
-     */
-    TrackedEntityAttribute getTrackedEntityAttribute( String uid );
+  /** returns all programAttributes */
+  List<TrackedEntityAttribute> getProgramTrackedEntityAttributes(List<Program> programs);
 
-    /**
-     * Returns a {@link TrackedEntityAttribute} with a given name.
-     *
-     * @param name the name of the TrackedEntityAttribute to return.
-     * @return the TrackedEntityAttribute with the given name, or null if no
-     * match.
-     */
-    TrackedEntityAttribute getTrackedEntityAttributeByName( String name );
+  /**
+   * Returns a {@link TrackedEntityAttribute}.
+   *
+   * @param id the id of the TrackedEntityAttribute to return.
+   * @return the TrackedEntityAttribute with the given id
+   */
+  TrackedEntityAttribute getTrackedEntityAttribute(long id);
 
-    /**
-     * Returns all {@link TrackedEntityAttribute}
-     *
-     * @return a List of all TrackedEntityAttribute, or an empty
-     * List if there are no TrackedEntityAttributes.
-     */
-    List<TrackedEntityAttribute> getAllTrackedEntityAttributes();
-    
-    
-    /**
-     * Returns all {@link TrackedEntityAttribute}
-     *
-     * @return a List of all system wide uniqe TrackedEntityAttribute, or an empty
-     * List if there are no TrackedEntityAttributes.
-     */
-    List<TrackedEntityAttribute> getAllSystemWideUniqueTrackedEntityAttributes();
+  /**
+   * Returns the {@link TrackedEntityAttribute} with the given UID.
+   *
+   * @param uid the UID.
+   * @return the TrackedEntityAttribute with the given UID, or null if no match.
+   */
+  TrackedEntityAttribute getTrackedEntityAttribute(String uid);
 
-    /**
-     * Get attributes which are displayed in visit schedule
-     *
-     * @param displayOnVisitSchedule True/False value
-     * @return List of attributes
-     */
-    List<TrackedEntityAttribute> getTrackedEntityAttributesByDisplayOnVisitSchedule(
-        boolean displayOnVisitSchedule );
+  /**
+   * Returns the {@link TrackedEntityAttribute}s with the given UIDs.
+   *
+   * @param uids list of UIDs.
+   * @return all the TrackedEntityAttribute with the given UIDs.
+   */
+  List<TrackedEntityAttribute> getTrackedEntityAttributes(@Nonnull List<String> uids);
 
-    /**
-     * Get attributes which are displayed in visit schedule
-     *
-     * @return List of attributes
-     */
-    List<TrackedEntityAttribute> getTrackedEntityAttributesDisplayInListNoProgram();
-    
-    /**
-     * Get all attributes that user is allowed to read 
-     * (through program and tracked entity type)
-     * 
-     * @return
-     */
-    Set<TrackedEntityAttribute> getAllUserReadableTrackedEntityAttributes();
+  /**
+   * Returns the {@link TrackedEntityAttribute}s with the given UIDs.
+   *
+   * @param ids list of primary key ids.
+   * @return all the TrackedEntityAttribute with the given ids.
+   */
+  List<TrackedEntityAttribute> getTrackedEntityAttributesById(List<Long> ids);
 
-    /**
-     * Validate scope of tracked entity attribute. Will return true if attribute is non-unique.
-     *
-     * @param trackedEntityAttribute TrackedEntityAttribute
-     * @param value                  Value
-     * @param trackedEntityInstance  TrackedEntityInstance - required if updating TEI
-     * @param organisationUnit       OrganisationUnit - only required if org unit scoped
-     * @param program                Program - only required if program scoped
-     * @return null if valid, a message if not
-     */
-    String validateScope( TrackedEntityAttribute trackedEntityAttribute,
-        String value, TrackedEntityInstance trackedEntityInstance, OrganisationUnit organisationUnit, Program program );
+  /**
+   * Returns a {@link TrackedEntityAttribute} with a given name.
+   *
+   * @param name the name of the TrackedEntityAttribute to return.
+   * @return the TrackedEntityAttribute with the given name, or null if no match.
+   */
+  TrackedEntityAttribute getTrackedEntityAttributeByName(String name);
 
-    /**
-     * Validate value against tracked entity attribute value type.
-     *
-     * @param trackedEntityAttribute TrackedEntityAttribute
-     * @param value                  Value
-     * @return null if valid, a message if not
-     */
-    String validateValueType( TrackedEntityAttribute trackedEntityAttribute, String value );
+  /**
+   * Returns all {@link TrackedEntityAttribute}
+   *
+   * @return a list of all TrackedEntityAttribute, or an empty List if there are no
+   *     TrackedEntityAttributes.
+   */
+  List<TrackedEntityAttribute> getAllTrackedEntityAttributes();
+
+  Set<TrackedEntityAttribute> getAllUserReadableTrackedEntityAttributes(UserDetails userDetails);
+
+  /**
+   * Get the tracked entity attributes for given program i.e. program attributes to which the
+   * current user must have data read access.
+   */
+  Set<TrackedEntityAttribute> getProgramAttributes(Program program);
+
+  /**
+   * Get the tracked entity attributes for given tracked entity type i.e. tracked entity type
+   * attributes to which the current user must have data read access.
+   */
+  Set<TrackedEntityAttribute> getTrackedEntityTypeAttributes(TrackedEntityType trackedEntityType);
+
+  Set<TrackedEntityAttribute> getAllUserReadableTrackedEntityAttributes(
+      UserDetails userDetails, List<Program> programs, List<TrackedEntityType> trackedEntityTypes);
+
+  /**
+   * Returns all {@link TrackedEntityAttribute} that are candidates for creating trigram indexes.
+   *
+   * @return a set of all TrackedEntityAttribute, or an empty List if there are no
+   *     TrackedEntityAttributes that are indexable
+   */
+  Set<TrackedEntityAttribute> getAllTrigramIndexableTrackedEntityAttributes();
+
+  /**
+   * Returns all {@link TrackedEntityAttribute}
+   *
+   * @return a List of all system wide uniqe TrackedEntityAttribute, or an empty List if there are
+   *     no TrackedEntityAttributes.
+   */
+  List<TrackedEntityAttribute> getAllSystemWideUniqueTrackedEntityAttributes();
+
+  /**
+   * Get attributes which are displayed in visit schedule
+   *
+   * @param displayOnVisitSchedule True/False value
+   * @return a list of attributes
+   */
+  List<TrackedEntityAttribute> getTrackedEntityAttributesByDisplayOnVisitSchedule(
+      boolean displayOnVisitSchedule);
+
+  /**
+   * Validate value against tracked entity attribute value type.
+   *
+   * @param trackedEntityAttribute TrackedEntityAttribute
+   * @param value Value
+   * @return null if valid, a message if not
+   */
+  String validateValueType(TrackedEntityAttribute trackedEntityAttribute, String value);
+
+  @Transactional(readOnly = true)
+  List<TrackedEntityAttribute> getAllUniqueTrackedEntityAttributes();
+
+  /**
+   * Get all {@link TrackedEntityAttribute} linked to all {@link TrackedEntityType} present in the
+   * system
+   *
+   * @return a Set of {@link TrackedEntityAttribute}
+   */
+  Set<TrackedEntityAttribute> getTrackedEntityAttributesByTrackedEntityTypes();
+
+  /**
+   * Get all {@link TrackedEntityAttribute} grouped by {@link Program}
+   *
+   * @return a Map, where the key is the {@link Program} and the values is a Set of {@link
+   *     TrackedEntityAttribute} associated to the {@link Program} in the key
+   */
+  Map<Program, Set<TrackedEntityAttribute>> getTrackedEntityAttributesByProgram();
 }

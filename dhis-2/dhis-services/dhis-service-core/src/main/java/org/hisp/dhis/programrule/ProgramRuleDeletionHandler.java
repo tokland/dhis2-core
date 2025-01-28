@@ -1,7 +1,5 @@
-package org.hisp.dhis.programrule;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,43 +25,80 @@ package org.hisp.dhis.programrule;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.programrule;
 
+import java.util.Objects;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
+import org.hisp.dhis.common.IdentifiableObject;
 import org.hisp.dhis.program.Program;
+import org.hisp.dhis.program.ProgramStage;
+import org.hisp.dhis.program.ProgramStageSection;
 import org.hisp.dhis.system.deletion.DeletionHandler;
+import org.hisp.dhis.system.deletion.DeletionVeto;
+import org.springframework.stereotype.Component;
 
 /**
  * @author markusbekken
  */
-public class ProgramRuleDeletionHandler
-    extends DeletionHandler 
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Component
+@RequiredArgsConstructor
+public class ProgramRuleDeletionHandler extends DeletionHandler {
+  private final ProgramRuleService programRuleService;
 
-    private ProgramRuleService programRuleService;
+  @Override
+  protected void register() {
+    whenDeleting(Program.class, this::deleteProgram);
+    whenVetoing(ProgramStageSection.class, this::allowDeleteProgramStageSection);
+    whenVetoing(ProgramStage.class, this::allowDeleteProgramStage);
+  }
 
-    public void setProgramRuleService( ProgramRuleService programRuleService )
-    {
-        this.programRuleService = programRuleService;
+  private void deleteProgram(Program program) {
+    for (ProgramRule programRule : programRuleService.getProgramRule(program)) {
+      programRuleService.deleteProgramRule(programRule);
     }
+  }
 
-    // -------------------------------------------------------------------------
-    // Implementation methods
-    // -------------------------------------------------------------------------
-    
-    @Override
-    protected String getClassName()
-    {
-        return ProgramRule.class.getSimpleName();
+  private DeletionVeto allowDeleteProgramStageSection(ProgramStageSection programStageSection) {
+    ProgramStage programStage = programStageSection.getProgramStage();
+    if (programStage == null) {
+      return DeletionVeto.ACCEPT;
     }
-    
-    @Override
-    public void deleteProgram( Program program )
-    {
-        for ( ProgramRule programRule : programRuleService.getProgramRule( program ) )
-        {
-            programRuleService.deleteProgramRule( programRule );
-        }
-    }
+    String programRules =
+        programRuleService.getProgramRule(programStage.getProgram()).stream()
+            .filter(pr -> isLinkedToProgramStageSection(programStageSection, pr))
+            .map(IdentifiableObject::getName)
+            .collect(Collectors.joining(", "));
+
+    return StringUtils.isBlank(programRules)
+        ? DeletionVeto.ACCEPT
+        : new DeletionVeto(ProgramRule.class, programRules);
+  }
+
+  private DeletionVeto allowDeleteProgramStage(ProgramStage programStage) {
+    String programRules =
+        programRuleService.getProgramRule(programStage.getProgram()).stream()
+            .filter(pr -> isLinkedToProgramStage(programStage, pr))
+            .map(IdentifiableObject::getName)
+            .collect(Collectors.joining(", "));
+
+    return StringUtils.isBlank(programRules)
+        ? DeletionVeto.ACCEPT
+        : new DeletionVeto(ProgramRule.class, programRules);
+  }
+
+  private boolean isLinkedToProgramStage(ProgramStage programStage, ProgramRule programRule) {
+    return Objects.equals(programRule.getProgramStage(), programStage)
+        || programRule.getProgramRuleActions().stream()
+            .anyMatch(pra -> Objects.equals(pra.getProgramStage(), programStage))
+        || programStage.getProgramStageSections().stream()
+            .anyMatch(s -> isLinkedToProgramStageSection(s, programRule));
+  }
+
+  private boolean isLinkedToProgramStageSection(
+      ProgramStageSection programStageSection, ProgramRule programRule) {
+    return programRule.getProgramRuleActions().stream()
+        .anyMatch(pra -> Objects.equals(pra.getProgramStageSection(), programStageSection));
+  }
 }

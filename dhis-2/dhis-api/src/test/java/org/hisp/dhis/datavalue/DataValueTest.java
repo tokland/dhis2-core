@@ -1,7 +1,5 @@
-package org.hisp.dhis.datavalue;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,47 +25,39 @@ package org.hisp.dhis.datavalue;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.datavalue;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.hisp.dhis.common.ValueType;
 import org.hisp.dhis.dataelement.DataElement;
-import org.junit.Test;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Lars Helge Overland
  */
-public class DataValueTest
-{
-    @Test
-    public void testIsZero()
-    {
-        DataElement dataElement = new DataElement( "A" );
-        dataElement.setValueType( ValueType.NUMBER );
+class DataValueTest {
 
-        DataValue dataValue = new DataValue();
-        dataValue.setDataElement( dataElement );
-
-        dataValue.setValue( "5" );
-        assertFalse( dataValue.isZero() );
-
-        dataValue.setValue( "0.2" );
-        assertFalse( dataValue.isZero() );
-
-        dataValue.setValue( "0.00001" );
-        assertFalse( dataValue.isZero() );
-
-        dataValue.setValue( "String" );
-        assertFalse( dataValue.isZero() );
-
-        dataValue.setValue( "0" );
-        assertTrue( dataValue.isZero() );
-
-        dataValue.setValue( "0.0" );
-        assertTrue( dataValue.isZero() );
-
-        dataValue.setValue( "0.0000" );
-        assertTrue( dataValue.isZero() );
-    }
+  @Test
+  void testIsZero() {
+    DataElement dataElement = new DataElement("A");
+    dataElement.setValueType(ValueType.NUMBER);
+    DataValue dataValue = new DataValue();
+    dataValue.setDataElement(dataElement);
+    dataValue.setValue("5");
+    assertFalse(dataValue.isZero());
+    dataValue.setValue("0.2");
+    assertFalse(dataValue.isZero());
+    dataValue.setValue("0.00001");
+    assertFalse(dataValue.isZero());
+    dataValue.setValue("String");
+    assertFalse(dataValue.isZero());
+    dataValue.setValue("0");
+    assertTrue(dataValue.isZero());
+    dataValue.setValue("0.0");
+    assertTrue(dataValue.isZero());
+    dataValue.setValue("0.0000");
+    assertTrue(dataValue.isZero());
+  }
 }

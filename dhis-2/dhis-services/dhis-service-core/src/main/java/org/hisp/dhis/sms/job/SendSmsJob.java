@@ -1,7 +1,5 @@
-package org.hisp.dhis.sms.job;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,68 +25,59 @@ package org.hisp.dhis.sms.job;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.sms.job;
 
+import static java.lang.String.format;
+
+import java.util.HashSet;
+import lombok.RequiredArgsConstructor;
 import org.hisp.dhis.message.MessageSender;
 import org.hisp.dhis.outboundmessage.OutboundMessageResponse;
-import org.hisp.dhis.scheduling.AbstractJob;
+import org.hisp.dhis.scheduling.Job;
 import org.hisp.dhis.scheduling.JobConfiguration;
+import org.hisp.dhis.scheduling.JobProgress;
 import org.hisp.dhis.scheduling.JobType;
 import org.hisp.dhis.scheduling.parameters.SmsJobParameters;
 import org.hisp.dhis.sms.outbound.OutboundSms;
 import org.hisp.dhis.sms.outbound.OutboundSmsService;
 import org.hisp.dhis.sms.outbound.OutboundSmsStatus;
-import org.hisp.dhis.system.notification.Notifier;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
-import javax.annotation.Resource;
+@RequiredArgsConstructor
+@Component
+public class SendSmsJob implements Job {
+  private final MessageSender smsMessageSender;
 
-public class SendSmsJob
-    extends AbstractJob
-{
-    @Autowired
-    @Resource( name = "smsMessageSender" )
-    private MessageSender smsSender;
+  private final OutboundSmsService outboundSmsService;
 
-    @Autowired
-    private Notifier notifier;
+  @Override
+  public JobType getJobType() {
+    return JobType.SMS_SEND;
+  }
 
-    @Autowired
-    private OutboundSmsService outboundSmsService;
+  @Override
+  public void execute(JobConfiguration config, JobProgress progress) {
+    SmsJobParameters params = (SmsJobParameters) config.getJobParameters();
+    OutboundSms sms = new OutboundSms();
+    sms.setSubject(params.getSmsSubject());
+    sms.setMessage(params.getMessage());
+    sms.setRecipients(new HashSet<>(params.getRecipientsList()));
 
-    // -------------------------------------------------------------------------
-    // I18n
-    // -------------------------------------------------------------------------
+    progress.startingProcess("Send SMS");
 
-    @Override
-    public JobType getJobType()
-    {
-        return JobType.SMS_SEND;
-    }
+    progress.startingStage(format("Sending SMS to %d recipients", sms.getRecipients().size()));
+    OutboundMessageResponse status =
+        progress.runStage(
+            (OutboundMessageResponse) null,
+            () ->
+                smsMessageSender.sendMessage(
+                    sms.getSubject(), sms.getMessage(), sms.getRecipients()));
 
-    @Override
-    public void execute( JobConfiguration jobConfiguration )
-    {
-        SmsJobParameters parameters = (SmsJobParameters) jobConfiguration.getJobParameters();
-        OutboundSms sms = new OutboundSms( parameters.getSmsSubject(), parameters.getMessage(), parameters.getRecipientsList().toString() );
+    sms.setStatus(
+        status != null && status.isOk() ? OutboundSmsStatus.SENT : OutboundSmsStatus.FAILED);
+    progress.startingStage(format("Persisting outcome as %s", sms.getStatus().name()));
+    progress.runStage(() -> outboundSmsService.save(sms));
 
-        notifier.notify( jobConfiguration, "Sending SMS" );
-
-        OutboundMessageResponse status = smsSender.sendMessage( sms.getSubject(), sms.getMessage(), sms.getRecipients() );
-
-        if ( status.isOk() )
-        {
-            notifier.notify( jobConfiguration, "Message sending successful" );
-
-            sms.setStatus( OutboundSmsStatus.SENT );
-        }
-        else
-        {
-            notifier.notify( jobConfiguration, "Message sending failed" );
-
-            sms.setStatus( OutboundSmsStatus.FAILED );
-        }
-
-        outboundSmsService.saveOutboundSms( sms );
-    }
-
+    progress.completedProcess(null);
+  }
 }

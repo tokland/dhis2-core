@@ -1,7 +1,5 @@
-package org.hisp.dhis.dbms;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,30 +25,42 @@ package org.hisp.dhis.dbms;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dbms;
 
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.springframework.orm.hibernate5.SessionFactoryUtils;
-import org.springframework.orm.hibernate5.SessionHolder;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import org.hibernate.StatelessSession;
+import org.hisp.dhis.commons.util.DebugUtils;
+import org.springframework.orm.jpa.EntityManagerFactoryUtils;
+import org.springframework.orm.jpa.EntityManagerHolder;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * @author Lars Helge Overland
  * @version $Id$
  */
-public class DbmsUtils
-{
-    public static void bindSessionToThread( SessionFactory sessionFactory )
-    {
-        Session session = sessionFactory.openSession();
+public class DbmsUtils {
+  public static void bindSessionToThread(EntityManagerFactory entityManagerFactory) {
+    EntityManager entityManager = entityManagerFactory.createEntityManager();
+    TransactionSynchronizationManager.bindResource(
+        entityManagerFactory, new EntityManagerHolder(entityManager));
+  }
 
-        TransactionSynchronizationManager.bindResource( sessionFactory, new SessionHolder( session ) );
+  public static void unbindSessionFromThread(EntityManagerFactory entityManagerFactory) {
+    EntityManagerHolder entityManagerHolder =
+        (EntityManagerHolder)
+            TransactionSynchronizationManager.unbindResource(entityManagerFactory);
+    EntityManagerFactoryUtils.closeEntityManager(entityManagerHolder.getEntityManager());
+  }
+
+  public static void closeStatelessSession(StatelessSession session) {
+    try {
+      session.getTransaction().commit();
+    } catch (Exception exception) {
+      session.getTransaction().rollback();
+      DebugUtils.getStackTrace(exception);
+    } finally {
+      session.close();
     }
-
-    public static void unbindSessionFromThread( SessionFactory sessionFactory )
-    {
-        SessionHolder sessionHolder = (SessionHolder) TransactionSynchronizationManager.unbindResource( sessionFactory );
-
-        SessionFactoryUtils.closeSession( sessionHolder.getSession() );
-    }
+  }
 }

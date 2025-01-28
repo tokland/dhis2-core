@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataapproval.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,37 +25,52 @@ package org.hisp.dhis.dataapproval.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataapproval.hibernate;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import java.util.List;
-
-import org.hibernate.criterion.Order;
-import org.hibernate.criterion.Restrictions;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.dataapproval.DataApprovalLevel;
 import org.hisp.dhis.dataapproval.DataApprovalLevelStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Jim Grace
  */
+@Repository("org.hisp.dhis.dataapproval.DataApprovalLevelStore")
 public class HibernateDataApprovalLevelStore
-    extends HibernateIdentifiableObjectStore<DataApprovalLevel>
-    implements DataApprovalLevelStore
-{
-    // -------------------------------------------------------------------------
-    // DataApprovalLevelStore implementation
-    // -------------------------------------------------------------------------
+    extends HibernateIdentifiableObjectStore<DataApprovalLevel> implements DataApprovalLevelStore {
+  public HibernateDataApprovalLevelStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, DataApprovalLevel.class, aclService, true);
+  }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public List<DataApprovalLevel> getAllDataApprovalLevels()
-    {
-        return getCriteria().addOrder( Order.asc( "level" ) ).list();
-    }
+  // -------------------------------------------------------------------------
+  // DataApprovalLevelStore implementation
+  // -------------------------------------------------------------------------
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public List<DataApprovalLevel> getDataApprovalLevelsByOrgUnitLevel( int orgUnitLevel )
-    {
-        return getCriteria( Restrictions.eq( "orgUnitLevel", orgUnitLevel ) ).addOrder( Order.asc( "level" ) ).list();
-    }
+  @Override
+  public List<DataApprovalLevel> getAllDataApprovalLevels() {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getList(builder, newJpaParameters().addOrder(root -> builder.asc(root.get("level"))));
+  }
+
+  @Override
+  public List<DataApprovalLevel> getDataApprovalLevelsByOrgUnitLevel(int orgUnitLevel) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("orgUnitLevel"), orgUnitLevel))
+            .addOrder(root -> builder.asc(root.get("level"))));
+  }
 }

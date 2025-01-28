@@ -1,7 +1,5 @@
-package org.hisp.dhis.legend;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,69 +25,63 @@ package org.hisp.dhis.legend;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.common.IdentifiableObjectStore;
-import org.springframework.transaction.annotation.Transactional;
+package org.hisp.dhis.legend;
 
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.common.IdentifiableObjectStore;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Lars Helge Overland
  */
-@Transactional
-public class DefaultLegendSetService
-    implements LegendSetService
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.legend.LegendService")
+public class DefaultLegendSetService implements LegendSetService {
+  @Qualifier("org.hisp.dhis.legend.LegendSetStore")
+  private final IdentifiableObjectStore<LegendSet> legendSetStore;
 
-    private IdentifiableObjectStore<LegendSet> legendSetStore;
+  // -------------------------------------------------------------------------
+  // LegendSet
+  // -------------------------------------------------------------------------
 
-    public void setLegendSetStore( IdentifiableObjectStore<LegendSet> legendSetStore )
-    {
-        this.legendSetStore = legendSetStore;
-    }
+  @Override
+  @Transactional
+  public long addLegendSet(LegendSet legend) {
+    legendSetStore.save(legend);
 
-    // -------------------------------------------------------------------------
-    // LegendSet
-    // -------------------------------------------------------------------------
+    return legend.getId();
+  }
 
-    @Override
-    public int addLegendSet( LegendSet legend )
-    {
-        legendSetStore.save( legend );
+  @Override
+  @Transactional
+  public void updateLegendSet(LegendSet legend) {
+    legendSetStore.update(legend);
+  }
 
-        return legend.getId();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public LegendSet getLegendSet(long id) {
+    return legendSetStore.get(id);
+  }
 
-    @Override
-    public void updateLegendSet( LegendSet legend )
-    {
-        legendSetStore.update( legend );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public LegendSet getLegendSet(String uid) {
+    return legendSetStore.getByUid(uid);
+  }
 
-    @Override
-    public LegendSet getLegendSet( int id )
-    {
-        return legendSetStore.get( id );
-    }
+  @Override
+  @Transactional
+  public void deleteLegendSet(LegendSet legendSet) {
+    legendSetStore.delete(legendSet);
+  }
 
-    @Override
-    public LegendSet getLegendSet( String uid )
-    {
-        return legendSetStore.getByUid( uid );
-    }
-
-    @Override
-    public void deleteLegendSet( LegendSet legendSet )
-    {
-        legendSetStore.delete( legendSet );
-    }
-
-    @Override
-    public List<LegendSet> getAllLegendSets()
-    {
-        return legendSetStore.getAll();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<LegendSet> getAllLegendSets() {
+    return legendSetStore.getAll();
+  }
 }

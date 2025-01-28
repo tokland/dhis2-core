@@ -1,7 +1,5 @@
-package org.hisp.dhis.commons.util;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,138 +25,266 @@ package org.hisp.dhis.commons.util;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.commons.util;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.hisp.dhis.commons.util.TextUtils.*;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hisp.dhis.commons.util.TextUtils.removeAnyTrailingSlash;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.AbstractSequentialList;
 import java.util.ArrayList;
 import java.util.Arrays;
-
-import org.hisp.dhis.commons.util.TextUtils;
-import org.junit.Test;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Lars Helge Overland
  */
-public class TextUtilsTest
-{
-    private static final String STRING = "abcdefghij";
-    
-    @Test
-    public void testHtmlLinks()
-    {
-        assertEquals( "<a href=\"http://dhis2.org\">http://dhis2.org</a>", htmlLinks( "http://dhis2.org" ) );
-        assertEquals( "<a href=\"https://dhis2.org\">https://dhis2.org</a>", htmlLinks( "https://dhis2.org" ) );
-        assertEquals( "<a href=\"http://www.dhis2.org\">www.dhis2.org</a>", htmlLinks( "www.dhis2.org" ) );        
-        assertEquals( "Navigate to <a href=\"http://dhis2.org\">http://dhis2.org</a> or <a href=\"http://www.dhis2.com\">www.dhis2.com</a> to read more.", 
-            htmlLinks( "Navigate to http://dhis2.org or www.dhis2.com to read more." ) );
-    }
-    
-    @Test
-    public void testSubString()
-    {
-        assertEquals( "abcdefghij", subString( STRING, 0, 10 ) );        
-        assertEquals( "cdef", subString( STRING, 2, 4 ) );
-        assertEquals( "ghij", subString( STRING, 6, 4 ) );        
-        assertEquals( "ghij", subString( STRING, 6, 6 ) );
-        assertEquals( "", subString( STRING, 11, 3 ) );        
-        assertEquals( "j", subString( STRING, 9, 1 ) );        
-        assertEquals( "", subString( STRING, 4, 0 ) );
-    }
-    
-    @Test
-    public void testTrim()
-    {
-        assertEquals( "abcdefgh", trimEnd( "abcdefghijkl", 4 ) );
-    }
-    
-    @Test
-    public void testGetTokens()
-    {
-        assertEquals( new ArrayList<>( Arrays.asList( "John", "Doe", "Main", "Road", "25" ) ), TextUtils.getTokens( "John Doe Main Road 25" ) );
-        assertEquals( new ArrayList<>( Arrays.asList( "Ted,Johnson", "Upper-Road", "45" ) ), TextUtils.getTokens( "Ted,Johnson Upper-Road 45" ) );
-    }
+class TextUtilsTest {
 
-    @Test
-    public void testRemoveLastOr()
-    {
-        assertEquals( null, TextUtils.removeLastOr( null ) );
-        assertEquals( "", TextUtils.removeLastOr( "" ) );
-        assertEquals( "or name='tom' or name='john' ", TextUtils.removeLastOr( "or name='tom' or name='john' or" ) );
-        assertEquals( "or name='tom' or name='john' ", TextUtils.removeLastOr( "or name='tom' or name='john' or " ) );
-        assertEquals( "or name='tom' or name='john' ", TextUtils.removeLastOr( "or name='tom' or name='john' or  " ) );
-    }
-    
-    @Test
-    public void testRemoveLastAnd()
-    {
-        assertEquals( null, TextUtils.removeLastAnd( null ) );
-        assertEquals( "", TextUtils.removeLastAnd( "" ) );
-        assertEquals( "and name='tom' and name='john' ", TextUtils.removeLastAnd( "and name='tom' and name='john' and" ) );
-        assertEquals( "and name='tom' and name='john' ", TextUtils.removeLastAnd( "and name='tom' and name='john' and " ) );
-        assertEquals( "and name='tom' and name='john' ", TextUtils.removeLastAnd( "and name='tom' and name='john' and  " ) );
-    }
-    
-    @Test
-    public void testRemoveLastComma()
-    {
-        assertEquals( null, TextUtils.removeLastComma( null ) );
-        assertEquals( "", TextUtils.removeLastComma( "" ) );
-        assertEquals( "tom,john", TextUtils.removeLastComma( "tom,john," ) );
-        assertEquals( "tom, john", TextUtils.removeLastComma( "tom, john, " ) );
-        assertEquals( "tom, john", TextUtils.removeLastComma( "tom, john,  " ) );
-    }
-    
-    @Test
-    public void testJoinReplaceNull()
-    {
-        assertEquals( "green-red-blue", TextUtils.join( Arrays.asList( "green", "red", "blue" ), "-", "[n/a]" ) );
-        assertEquals( "green-[n/a]-blue", TextUtils.join( Arrays.asList( "green", null, "blue" ), "-", "[n/a]" ) );
-        assertEquals( "green-red-[n/a]", TextUtils.join( Arrays.asList( "green", "red", null ), "-", "[n/a]" ) );
-        assertEquals( "greenred[n/a]", TextUtils.join( Arrays.asList( "green", "red", null ), null, "[n/a]" ) );
-        assertEquals( "greenred", TextUtils.join( Arrays.asList( "green", "red", null ), null, null ) );
-    }
-    
-    @Test
-    public void testGetPrettyClassName()
-    {
-        assertEquals( "Array List", TextUtils.getPrettyClassName( ArrayList.class ) );
-        assertEquals( "Abstract Sequential List", TextUtils.getPrettyClassName( AbstractSequentialList.class ) );
-    }
-    
-    @Test
-    public void testSplitSafe()
-    {
-        assertEquals( "green", TextUtils.splitSafe( "red-green-blue", "-", 1 ) );
-        assertEquals( "green", TextUtils.splitSafe( "red.green.blue", "\\.", 1 ) );
-        assertEquals( "red", TextUtils.splitSafe( "red-green-blue", "-", 0 ) );
-        assertEquals( "blue", TextUtils.splitSafe( "red-green-blue", "-", 2 ) );
-        assertNull( TextUtils.splitSafe( "red-green-blue", "-", 3 ) );
-        assertNull( TextUtils.splitSafe( "red-green-blue", "-", -2 ) );
-        assertNull( TextUtils.splitSafe( "red-green-blue-", "-", 3 ) );        
-    }
+  private static final String STRING = "abcdefghij";
 
-    @Test
-    public void testReplaceFirst()
-    {
-        assertEquals( "green;red;blue,orange", TextUtils.replaceFirst( "green,red,blue,orange", ",", ";", 2 ) );
-        assertEquals( "green.red.blue-orange", TextUtils.replaceFirst( "green-red-blue-orange", "-", ".", 2 ) );
-        assertEquals( "llland", TextUtils.replaceFirst( "lalaland", "a", "", 2 ) );
-        assertEquals( "mamamand", TextUtils.replaceFirst( "lalaland", "la", "ma", 3 ) );
-        assertEquals( "lalaland", TextUtils.replaceFirst( "lalaland", "la", "ma", 0 ) );
-    }
-    
-    @Test
-    public void testReplace()
-    {        
-        String actual = TextUtils.replace( "select * from {table} where {column} = 'Foo'", "{table}", "dataelement", "{column}", "name" );
-        
-        assertEquals( "select * from dataelement where name = 'Foo'", actual );
-        
-        actual = TextUtils.replace( "Hi [name] and welcome to [place]", "[name]", "Frank", "[place]", "Oslo" );
-        
-        assertEquals( "Hi Frank and welcome to Oslo", actual );
-    }
+  enum Disease {
+    ANTIBIOTIC_RESISTANT_INFECTION,
+    MALARIA,
+    CHRONIC_WASTING_DISEASE
+  }
+
+  @Test
+  public void testRemoveNonEssentialChars() {
+    String same = "abcdefghijkl-";
+    assertEquals(same, TextUtils.removeNonEssentialChars(same));
+
+    assertEquals("abcdefghijkl-", TextUtils.removeNonEssentialChars("abcdefghijkl-øæå"));
+    assertEquals("abcdefghijkl-", TextUtils.removeNonEssentialChars("abcdefghijkl-øæå§!"));
+    assertEquals(" abcdefghijkl-", TextUtils.removeNonEssentialChars(" abcdefghijkl-øæå§!"));
+    assertEquals(
+        " abcde fghijkl-", TextUtils.removeNonEssentialChars("/(/%å^{} abcde fghijkl-øæå§!&"));
+  }
+
+  @Test
+  void testSubString() {
+    assertEquals("abcdefghij", TextUtils.subString(STRING, 0, 10));
+    assertEquals("cdef", TextUtils.subString(STRING, 2, 4));
+    assertEquals("ghij", TextUtils.subString(STRING, 6, 4));
+    assertEquals("ghij", TextUtils.subString(STRING, 6, 6));
+    assertEquals("", TextUtils.subString(STRING, 11, 3));
+    assertEquals("j", TextUtils.subString(STRING, 9, 1));
+    assertEquals("", TextUtils.subString(STRING, 4, 0));
+  }
+
+  @Test
+  void testGetTokens() {
+    assertEquals(
+        List.of("John", "Doe", "Main", "Road", "25"), TextUtils.getTokens("John Doe Main Road 25"));
+    assertEquals(
+        List.of("Ted,Johnson", "Upper-Road", "45"),
+        TextUtils.getTokens("Ted,Johnson Upper-Road 45"));
+  }
+
+  @Test
+  void testRemoveLastOr() {
+    assertEquals(null, TextUtils.removeLastOr(null));
+    assertEquals("", TextUtils.removeLastOr(""));
+    assertEquals(
+        "or name='tom' or name='john' ", TextUtils.removeLastOr("or name='tom' or name='john' or"));
+    assertEquals(
+        "or name='tom' or name='john' ",
+        TextUtils.removeLastOr("or name='tom' or name='john' or "));
+    assertEquals(
+        "or name='tom' or name='john' ",
+        TextUtils.removeLastOr("or name='tom' or name='john' or  "));
+  }
+
+  @Test
+  void testRemoveLastAnd() {
+    assertEquals(null, TextUtils.removeLastAnd(null));
+    assertEquals("", TextUtils.removeLastAnd(""));
+    assertEquals(
+        "and name='tom' and name='john' ",
+        TextUtils.removeLastAnd("and name='tom' and name='john' and"));
+    assertEquals(
+        "and name='tom' and name='john' ",
+        TextUtils.removeLastAnd("and name='tom' and name='john' and "));
+    assertEquals(
+        "and name='tom' and name='john' ",
+        TextUtils.removeLastAnd("and name='tom' and name='john' and  "));
+  }
+
+  @Test
+  void testRemoveLastComma() {
+    String nullValue = null;
+
+    assertEquals(null, TextUtils.removeLastComma(nullValue));
+    assertEquals("", TextUtils.removeLastComma(""));
+    assertEquals("tom", TextUtils.removeLastComma("tom"));
+    assertEquals("tom,john", TextUtils.removeLastComma("tom,john,"));
+    assertEquals("tom, john", TextUtils.removeLastComma("tom, john, "));
+    assertEquals("tom, john", TextUtils.removeLastComma("tom, john,  "));
+  }
+
+  @Test
+  void testRemoveLastCommaStringBuilder() {
+    StringBuilder nullValue = null;
+
+    assertEquals(null, TextUtils.removeLastComma(nullValue));
+    assertEquals("", TextUtils.removeLastComma(new StringBuilder()).toString());
+    assertEquals("tom", TextUtils.removeLastComma(new StringBuilder("tom")).toString());
+    assertEquals("tom,john", TextUtils.removeLastComma(new StringBuilder("tom,john,")).toString());
+    assertEquals(
+        "tom, john", TextUtils.removeLastComma(new StringBuilder("tom, john, ")).toString());
+    assertEquals(
+        "tom, john", TextUtils.removeLastComma(new StringBuilder("tom, john,  ")).toString());
+  }
+
+  @Test
+  void testJoinReplaceNull() {
+    assertEquals(
+        "green-red-blue", TextUtils.join(Arrays.asList("green", "red", "blue"), "-", "[n/a]"));
+    assertEquals(
+        "green-[n/a]-blue", TextUtils.join(Arrays.asList("green", null, "blue"), "-", "[n/a]"));
+    assertEquals(
+        "green-red-[n/a]", TextUtils.join(Arrays.asList("green", "red", null), "-", "[n/a]"));
+    assertEquals(
+        "greenred[n/a]", TextUtils.join(Arrays.asList("green", "red", null), null, "[n/a]"));
+    assertEquals("greenred", TextUtils.join(Arrays.asList("green", "red", null), null, null));
+  }
+
+  @Test
+  void testGetPrettyClassName() {
+    assertEquals("Array List", TextUtils.getPrettyClassName(ArrayList.class));
+    assertEquals(
+        "Abstract Sequential List", TextUtils.getPrettyClassName(AbstractSequentialList.class));
+  }
+
+  @Test
+  void testGetPrettyEnumName() {
+    assertEquals(
+        "Antibiotic resistant infection",
+        TextUtils.getPrettyEnumName(Disease.ANTIBIOTIC_RESISTANT_INFECTION));
+    assertEquals(
+        "Chronic wasting disease", TextUtils.getPrettyEnumName(Disease.CHRONIC_WASTING_DISEASE));
+    assertEquals("Malaria", TextUtils.getPrettyEnumName(Disease.MALARIA));
+  }
+
+  @Test
+  void testGetPrettyPropertyName() {
+    assertEquals(
+        "Tracker program page size", TextUtils.getPrettyPropertyName("trackerProgramPageSize"));
+    assertEquals("Data values page size", TextUtils.getPrettyPropertyName("dataValuesPageSize"));
+    assertEquals("Relative start", TextUtils.getPrettyPropertyName("relativeStart"));
+  }
+
+  @Test
+  void testSplitSafe() {
+    assertEquals("green", TextUtils.splitSafe("red-green-blue", "-", 1));
+    assertEquals("green", TextUtils.splitSafe("red.green.blue", "\\.", 1));
+    assertEquals("red", TextUtils.splitSafe("red-green-blue", "-", 0));
+    assertEquals("blue", TextUtils.splitSafe("red-green-blue", "-", 2));
+    assertNull(TextUtils.splitSafe("red-green-blue", "-", 3));
+    assertNull(TextUtils.splitSafe("red-green-blue", "-", -2));
+    assertNull(TextUtils.splitSafe("red-green-blue-", "-", 3));
+  }
+
+  @Test
+  void testReplace() {
+    assertEquals(
+        "Welcome John Doe",
+        TextUtils.replace(
+            "Welcome ${first_name} ${last_name}",
+            Map.of("first_name", "John", "last_name", "Doe")));
+  }
+
+  @Test
+  void testReplaceMultiple() {
+    assertEquals(
+        "Hey John, my name is John",
+        TextUtils.replace("Hey ${name}, my name is ${name}", Map.of("name", "John")));
+  }
+
+  @Test
+  void testReplaceVarargs() {
+    assertEquals("Welcome John", TextUtils.replace("Welcome ${first_name}", "first_name", "John"));
+  }
+
+  @Test
+  void testGetOptions() {
+    assertEquals(List.of("uidA", "uidB"), TextUtils.getOptions("uidA;uidB"));
+    assertEquals(List.of("uidA"), TextUtils.getOptions("uidA"));
+    assertEquals(List.of(), TextUtils.getOptions(null));
+  }
+
+  @Test
+  void testGetCommaDelimitedString() {
+    assertThat(
+        TextUtils.getCommaDelimitedString(List.of("1", "2", "3", "4", "5")), is("1, 2, 3, 4, 5"));
+    assertThat(TextUtils.getCommaDelimitedString(List.of("1")), is("1"));
+    assertThat(TextUtils.getCommaDelimitedString(null), is(""));
+  }
+
+  @Test
+  void testToLinesUnix() {
+    String string = "one,two,three\naa,bb,cc";
+    List<String> lines = TextUtils.toLines(string);
+    assertEquals(2, lines.size());
+    assertEquals("one,two,three", lines.get(0));
+    assertEquals("aa,bb,cc", lines.get(1));
+  }
+
+  @Test
+  void testToLinesWindows() {
+    String string = "one,two,three\r\naa,bb,cc";
+    List<String> lines = TextUtils.toLines(string);
+    assertEquals(2, lines.size());
+    assertEquals("one,two,three", lines.get(0));
+    assertEquals("aa,bb,cc", lines.get(1));
+  }
+
+  @Test
+  void testRemoveTrailingSlash() {
+    String strWithSlash = "/path/";
+    String slashRemoved = removeAnyTrailingSlash(strWithSlash);
+    assertEquals("/path", slashRemoved);
+  }
+
+  @Test
+  void testRemoveNoTrailingSlash() {
+    String strWithSlash = "/path";
+    String slashRemoved = removeAnyTrailingSlash(strWithSlash);
+    assertEquals("/path", slashRemoved);
+  }
+
+  @Test
+  void testFormat() {
+    assertEquals(
+        "Found 2 items of type text", TextUtils.format("Found {} items of type {}", 2, "text"));
+  }
+
+  @Test
+  void testEmptyIfFalse() {
+    assertEquals("", TextUtils.emptyIfFalse("foo", false));
+    assertEquals("foo", TextUtils.emptyIfFalse("foo", true));
+  }
+
+  @Test
+  void testEmptyIfTrue() {
+    assertEquals("", TextUtils.emptyIfTrue("foo", true));
+    assertEquals("foo", TextUtils.emptyIfTrue("foo", false));
+  }
+
+  @Test
+  void testGetVariableNames() {
+    assertEquals(
+        Set.of("animal", "target"),
+        TextUtils.getVariableNames("The ${animal} jumped over the ${target}."));
+  }
+
+  @Test
+  void testGetVariableNamesWithNullInput() {
+    assertEquals(Set.of(), TextUtils.getVariableNames(null));
+  }
 }

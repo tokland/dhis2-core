@@ -1,7 +1,5 @@
-package org.hisp.dhis.user;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,30 +25,20 @@ package org.hisp.dhis.user;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.user;
+
+import static org.hisp.dhis.user.PasswordValidationError.PASSWORD_MUST_HAVE_UPPER;
 
 import java.util.regex.Pattern;
 
-/**
- * Created by zubair on 08.03.17.
- */
-public class UpperCasePatternValidationRule implements PasswordValidationRule
-{
-    private static final Pattern UPPERCASE_PATTERN = Pattern.compile( ".*[A-Z].*" );
+/** Created by zubair on 08.03.17. */
+public class UpperCasePatternValidationRule implements PasswordValidationRule {
+  private static final Pattern UPPERCASE_PATTERN = Pattern.compile(".*[A-Z].*");
 
-    @Override
-    public PasswordValidationResult validate( CredentialsInfo credentialsInfo )
-    {
-        if ( !UPPERCASE_PATTERN.matcher( credentialsInfo.getPassword() ).matches() )
-        {
-            return new PasswordValidationResult( "Password must have at least one upper case", "password_uppercase_validation",false );
-        }
-
-        return new PasswordValidationResult( true );
-    }
-
-    @Override
-    public boolean isRuleApplicable( CredentialsInfo credentialsInfo )
-    {
-        return true;
-    }
+  @Override
+  public PasswordValidationResult validate(CredentialsInfo credentialsInfo) {
+    return !UPPERCASE_PATTERN.matcher(credentialsInfo.getPassword()).matches()
+        ? new PasswordValidationResult(PASSWORD_MUST_HAVE_UPPER)
+        : PasswordValidationResult.VALID;
+  }
 }

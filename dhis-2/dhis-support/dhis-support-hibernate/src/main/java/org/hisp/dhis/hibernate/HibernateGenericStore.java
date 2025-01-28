@@ -1,7 +1,5 @@
-package org.hisp.dhis.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,346 +25,463 @@ package org.hisp.dhis.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.hibernate;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.hibernate.Criteria;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.criterion.Criterion;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static java.lang.String.join;
+
+import com.google.common.collect.Lists;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.NonUniqueResultException;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Order;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
+import lombok.extern.slf4j.Slf4j;
+import org.hibernate.annotations.QueryHints;
 import org.hibernate.criterion.DetachedCriteria;
-import org.hibernate.criterion.Projections;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.query.Query;
-import org.hisp.dhis.attribute.Attribute;
-import org.hisp.dhis.attribute.AttributeValue;
+import org.hisp.dhis.HibernateNativeStore;
 import org.hisp.dhis.common.AuditLogUtil;
 import org.hisp.dhis.common.GenericStore;
-import org.hisp.dhis.common.IdentifiableObject;
-import org.springframework.beans.factory.annotation.Required;
+import org.hisp.dhis.common.ObjectDeletionRequestedEvent;
+import org.hisp.dhis.common.UID;
+import org.intellij.lang.annotations.Language;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
-
-import javax.persistence.TypedQuery;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Join;
-import javax.persistence.criteria.JoinType;
-import javax.persistence.criteria.Root;
-import java.util.List;
 
 /**
  * @author Lars Helge Overland
  */
-public class HibernateGenericStore<T>
-    implements GenericStore<T>
-{
-    private static final Log log = LogFactory.getLog( HibernateGenericStore.class );
+@Slf4j
+public class HibernateGenericStore<T> extends HibernateNativeStore<T> implements GenericStore<T> {
 
-    protected SessionFactory sessionFactory;
+  protected static final int OBJECT_FETCH_SIZE = 2000;
 
-    @Required
-    public void setSessionFactory( SessionFactory sessionFactory )
-    {
-        this.sessionFactory = sessionFactory;
+  protected final JdbcTemplate jdbcTemplate;
+  protected final ApplicationEventPublisher publisher;
+
+  protected boolean cacheable;
+
+  public HibernateGenericStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      Class<T> clazz,
+      boolean cacheable) {
+    super(entityManager, clazz);
+    checkNotNull(jdbcTemplate);
+    checkNotNull(publisher);
+
+    this.jdbcTemplate = jdbcTemplate;
+    this.publisher = publisher;
+    this.cacheable = cacheable;
+  }
+
+  /** Could be overridden programmatically. */
+  protected boolean isCacheable() {
+    return cacheable;
+  }
+
+  /** Could be injected through container. */
+  public void setCacheable(boolean cacheable) {
+    this.cacheable = cacheable;
+  }
+
+  // -------------------------------------------------------------------------
+  // Convenience methods
+  // -------------------------------------------------------------------------
+
+  /**
+   * Creates a Query for given HQL query string. Return type is casted to generic type T of the
+   * Store class.
+   *
+   * @param hql the HQL query.
+   * @return a Query instance with return type is the object type T of the store class
+   */
+  @SuppressWarnings("unchecked")
+  protected final Query<T> getQuery(@Language("hql") String hql) {
+    return getSession()
+        .createQuery(hql)
+        .setCacheable(cacheable)
+        .setHint(QueryHints.CACHEABLE, cacheable);
+  }
+
+  protected final <C> Query<C> getQuery(@Language("hql") String hql, Class<C> customClass) {
+    return getSession()
+        .createQuery(hql, customClass)
+        .setCacheable(cacheable)
+        .setHint(QueryHints.CACHEABLE, cacheable);
+  }
+
+  /**
+   * Creates a Query for given HQL query string. Must specify the return type of the Query variable.
+   *
+   * @param hql the HQL query.
+   * @return a Query instance with return type specified in the Query<Y>
+   */
+  @SuppressWarnings("unchecked")
+  protected final <V> Query<V> getTypedQuery(@Language("hql") String hql) {
+    return getSession()
+        .createQuery(hql)
+        .setCacheable(cacheable)
+        .setHint(QueryHints.CACHEABLE, cacheable);
+  }
+
+  /** Override to add additional restrictions to criteria before it is invoked. */
+  protected void preProcessDetachedCriteria(DetachedCriteria detachedCriteria) {}
+
+  public CriteriaBuilder getCriteriaBuilder() {
+    return entityManager.getCriteriaBuilder();
+  }
+
+  // ------------------------------------------------------------------------------------------
+  // JPA Methods
+  // ------------------------------------------------------------------------------------------
+
+  /**
+   * Get executable Typed Query from Criteria Query. Apply cache if needed.
+   *
+   * @return executable TypedQuery
+   */
+  private TypedQuery<T> getExecutableTypedQuery(CriteriaQuery<T> criteriaQuery) {
+    return entityManager.createQuery(criteriaQuery).setHint(QueryHints.CACHEABLE, cacheable);
+  }
+
+  /** Method for adding additional Predicates into where clause */
+  protected void preProcessPredicates(
+      CriteriaBuilder builder, List<Function<Root<T>, Predicate>> predicates) {}
+
+  /**
+   * Get single result from executable typedQuery
+   *
+   * @param typedQuery TypedQuery
+   * @return single object
+   */
+  protected <V> V getSingleResult(TypedQuery<V> typedQuery) {
+    List<V> list = typedQuery.getResultList();
+
+    if (list != null && list.size() > 1) {
+      throw new NonUniqueResultException("More than one entity found for query");
     }
 
-    protected JdbcTemplate jdbcTemplate;
+    return list != null && !list.isEmpty() ? list.get(0) : null;
+  }
 
-    public void setJdbcTemplate( JdbcTemplate jdbcTemplate )
-    {
-        this.jdbcTemplate = jdbcTemplate;
+  protected <V> V getSingleResult(Query<V> typedQuery) {
+    List<V> list = typedQuery.getResultList();
+
+    if (list != null && list.size() > 1) {
+      throw new NonUniqueResultException("More than one entity found for query");
     }
 
-    protected Class<T> clazz;
+    return list != null && !list.isEmpty() ? list.get(0) : null;
+  }
 
-    /**
-     * Could be overridden programmatically.
-     */
-    @Override
-    public Class<T> getClazz()
-    {
-        return clazz;
+  protected <V> V getSingleResult(NativeQuery<V> nativeQuery) {
+    List<V> list = nativeQuery.getResultList();
+
+    if (list != null && list.size() > 1) {
+      throw new NonUniqueResultException("More than one entity found for query");
     }
 
-    /**
-     * Could be injected through container.
-     */
-    @Required
-    public void setClazz( Class<T> clazz )
-    {
-        this.clazz = clazz;
+    return list != null && !list.isEmpty() ? list.get(0) : null;
+  }
+
+  /**
+   * Get List objects returned by executable TypedQuery
+   *
+   * @return list result
+   */
+  protected final List<T> getList(TypedQuery<T> typedQuery) {
+    return typedQuery.getResultList();
+  }
+
+  protected final List<T> getList(Query<T> typedQuery) {
+    return typedQuery.getResultList();
+  }
+
+  /**
+   * Get List objects return by querying given JpaQueryParameters with Pagination
+   *
+   * @param parameters JpaQueryParameters
+   * @return list objects
+   */
+  protected final List<T> getList(CriteriaBuilder builder, JpaQueryParameters<T> parameters) {
+    return getTypedQuery(builder, parameters).getResultList();
+  }
+
+  protected final <V> List<T> getListFromPartitions(
+      CriteriaBuilder builder,
+      Collection<V> values,
+      int partitionSize,
+      Function<Collection<V>, JpaQueryParameters<T>> createPartitionParams) {
+    if (values == null || values.isEmpty()) {
+      return new ArrayList<>(0);
+    }
+    if (values.size() <= partitionSize) {
+      // fast path: avoid aggregation collection
+      return getList(builder, createPartitionParams.apply(values));
     }
 
-    protected boolean cacheable = false;
+    List<List<V>> partitionedValues = Lists.partition(new ArrayList<>(values), partitionSize);
+    List<T> aggregate = new ArrayList<>();
+    for (List<V> valuesPartition : partitionedValues) {
+      aggregate.addAll(getList(builder, createPartitionParams.apply(valuesPartition)));
+    }
+    return aggregate;
+  }
 
-    /**
-     * Could be overridden programmatically.
-     */
-    protected boolean isCacheable()
-    {
-        return cacheable;
+  /**
+   * Get executable TypedQuery from JpaQueryParameter.
+   *
+   * @return executable TypedQuery
+   */
+  protected final TypedQuery<T> getTypedQuery(
+      CriteriaBuilder builder, JpaQueryParameters<T> parameters) {
+    List<Function<Root<T>, Predicate>> predicateProviders = parameters.getPredicates();
+    List<Function<Root<T>, Order>> orderProviders = parameters.getOrders();
+    preProcessPredicates(builder, predicateProviders);
+
+    CriteriaQuery<T> query = builder.createQuery(getClazz());
+    Root<T> root = query.from(getClazz());
+    query.select(root);
+
+    if (!predicateProviders.isEmpty()) {
+      List<Predicate> predicates =
+          predicateProviders.stream().map(t -> t.apply(root)).collect(Collectors.toList());
+      query.where(predicates.toArray(new Predicate[0]));
     }
 
-    /**
-     * Could be injected through container.
-     */
-    public void setCacheable( boolean cacheable )
-    {
-        this.cacheable = cacheable;
+    if (!orderProviders.isEmpty()) {
+      List<Order> orders =
+          orderProviders.stream().map(o -> o.apply(root)).collect(Collectors.toList());
+      query.orderBy(orders);
     }
 
-    // -------------------------------------------------------------------------
-    // Convenience methods
-    // -------------------------------------------------------------------------
+    TypedQuery<T> typedQuery = getExecutableTypedQuery(query);
 
-    /**
-     * Returns the current session.
-     *
-     * @return the current session.
-     */
-    protected final Session getSession()
-    {
-        return sessionFactory.getCurrentSession();
+    if (parameters.hasFirstResult()) {
+      typedQuery.setFirstResult(parameters.getFirstResult());
     }
 
-    /**
-     * Creates a Query.
-     *
-     * @param hql the hql query.
-     * @return a Query instance.
-     */
-    protected final Query getQuery( String hql )
-    {
-        return getSession().createQuery( hql ).setCacheable( cacheable );
+    if (parameters.hasMaxResult()) {
+      typedQuery.setMaxResults(parameters.getMaxResults());
     }
 
-    protected final TypedQuery getJpaQuery( String jpaQuery )
-    {
-        return getSession().createQuery( jpaQuery ).setCacheable( cacheable );
+    return typedQuery.setHint(QueryHints.CACHEABLE, parameters.isCacheable(cacheable));
+  }
+
+  /**
+   * Count number of objects based on given parameters
+   *
+   * @param parameters JpaQueryParameters
+   * @return number of objects
+   */
+  protected final Long getCount(CriteriaBuilder builder, JpaQueryParameters<T> parameters) {
+    CriteriaQuery<Long> query = builder.createQuery(Long.class);
+
+    Root<T> root = query.from(getClazz());
+
+    List<Function<Root<T>, Predicate>> predicateProviders = parameters.getPredicates();
+
+    List<Function<Root<T>, Expression<Long>>> countExpressions = parameters.getCountExpressions();
+
+    if (!countExpressions.isEmpty()) {
+      if (countExpressions.size() > 1) {
+        query.multiselect(
+            countExpressions.stream().map(c -> c.apply(root)).collect(Collectors.toList()));
+      } else {
+        query.select(countExpressions.get(0).apply(root));
+      }
+    } else {
+      query.select(parameters.isUseDistinct() ? builder.countDistinct(root) : builder.count(root));
     }
 
-    /**
-     * Creates a SqlQuery.
-     *
-     * @param sql the sql query.
-     * @return a SqlQuery instance.
-     */
-    protected final NativeQuery getSqlQuery( String sql )
-    {
-        NativeQuery query = getSession().createNativeQuery( sql );
-        query.setHint( HibernateUtils.HIBERNATE_CACHEABLE_HINT, cacheable );
-        return query;
-    }
-    
-    /**
-     * Creates a Criteria for the implementation Class type.
-     * <p>
-     * Please note that sharing is not considered.
-     *
-     * @return a Criteria instance.
-     */
-    public final Criteria getCriteria()
-    {
-        DetachedCriteria criteria = DetachedCriteria.forClass( getClazz() );
-
-        preProcessDetachedCriteria( criteria );
-
-        return getExecutableCriteria( criteria );
+    if (!predicateProviders.isEmpty()) {
+      List<Predicate> predicates =
+          predicateProviders.stream().map(t -> t.apply(root)).collect(Collectors.toList());
+      query.where(predicates.toArray(new Predicate[0]));
     }
 
-    public final Criteria getExecutableCriteria( DetachedCriteria detachedCriteria )
-    {
-        return detachedCriteria.getExecutableCriteria( getSession() ).setCacheable( cacheable );
-    }
+    return getSession()
+        .createQuery(query)
+        .setHint(QueryHints.CACHEABLE, parameters.isCacheable(cacheable))
+        .getSingleResult();
+  }
 
-    /**
-     * Override to add additional restrictions to criteria before
-     * it is invoked.
-     */
-    protected void preProcessDetachedCriteria( DetachedCriteria detachedCriteria )
-    {
-    }
+  /**
+   * Retrieves an object based on the given Jpa Predicates.
+   *
+   * @return an object of the implementation Class type.
+   */
+  protected T getSingleResult(CriteriaBuilder builder, JpaQueryParameters<T> parameters) {
+    return getSingleResult(getTypedQuery(builder, parameters));
+  }
 
-    protected Criteria getClazzCriteria()
-    {
-        return getSession().createCriteria( getClazz() );
-    }
+  // ------------------------------------------------------------------------------------------
+  // End JPA Methods
+  // ------------------------------------------------------------------------------------------
 
-    protected CriteriaBuilder getCriteriaBuilder()
-    {
-        return sessionFactory.getCriteriaBuilder();
-    }
+  // -------------------------------------------------------------------------
+  // GenericIdentifiableObjectStore implementation
+  // -------------------------------------------------------------------------
 
-    protected CriteriaQuery getCriteriaQuery()
-    {
-        return getCriteriaBuilder().createQuery();
-    }
+  @Override
+  public void save(@Nonnull T object) {
+    AuditLogUtil.infoWrapper(log, object, AuditLogUtil.ACTION_CREATE);
+    getSession().save(object);
+  }
 
-    protected TypedQuery executeQuery( CriteriaQuery query )
-    {
-        return sessionFactory.getCurrentSession().createQuery( query );
-    }
+  @Override
+  public void update(@Nonnull T object) {
+    getSession().update(object);
+  }
 
-    /**
-     * Creates a Criteria for the implementation Class type restricted by the
-     * given Criterions.
-     *
-     * @param expressions the Criterions for the Criteria.
-     * @return a Criteria instance.
-     */
-    protected final Criteria getCriteria( Criterion... expressions )
-    {
-        Criteria criteria = getCriteria();
+  @Override
+  public void delete(@Nonnull T object) {
+    publisher.publishEvent(new ObjectDeletionRequestedEvent(object));
 
-        for ( Criterion expression : expressions )
-        {
-            criteria.add( expression );
-        }
+    getSession().delete(object);
+  }
 
-        criteria.setCacheable( cacheable );
-        return criteria;
-    }
+  @CheckForNull
+  @Override
+  public T get(long id) {
+    T object = getNoPostProcess(id);
+    return postProcessObject(object);
+  }
 
-    /**
-     * Retrieves an object based on the given Criterions.
-     *
-     * @param expressions the Criterions for the Criteria.
-     * @return an object of the implementation Class type.
-     */
-    @SuppressWarnings( "unchecked" )
-    protected final T getObject( Criterion... expressions )
-    {
-        return (T) getCriteria( expressions ).uniqueResult();
-    }
+  @CheckForNull
+  protected final T getNoPostProcess(long id) {
+    return getSession().get(getClazz(), id);
+  }
 
-    /**
-     * Retrieves a List based on the given Criterions.
-     *
-     * @param expressions the Criterions for the Criteria.
-     * @return a List with objects of the implementation Class type.
-     */
-    @SuppressWarnings( "unchecked" )
-    protected final List<T> getList( Criterion... expressions )
-    {
-        return getCriteria( expressions ).list();
-    }
+  /**
+   * Override for further processing of a retrieved object.
+   *
+   * @param object the object.
+   * @return the processed object.
+   */
+  protected T postProcessObject(T object) {
+    return object;
+  }
 
-    // -------------------------------------------------------------------------
-    // GenericIdentifiableObjectStore implementation
-    // -------------------------------------------------------------------------
+  @Nonnull
+  @Override
+  public List<T> getAll() {
+    return getList(getCriteriaBuilder(), new JpaQueryParameters<>());
+  }
 
-    @Override
-    public void save( T object )
-    {
-        AuditLogUtil.infoWrapper( log, object, AuditLogUtil.ACTION_CREATE );
-        
-        getSession().save( object );
-    }
-    
-    @Override
-    public void update( T object )
-    {
-        getSession().update( object );
-    }
-    
-    @Override
-    public void delete( T object )
-    {
-        getSession().delete( object );
-    }
-    
-    @Override
-    public T get( int id )
-    {
-        T object = (T) getSession().get( getClazz(), id );
-        
-        return postProcessObject( object );
-    }
-    
-    /**
-     * Override for further processing of a retrieved object.
-     * 
-     * @param object the object.
-     * @return the processed object.
-     */
-    protected T postProcessObject( T object )
-    {
-        return object;
-    }
-    
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<T> getAll()
-    {
-        return getCriteria().list();
-    }
-    
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<T> getAllByAttributes( List<Attribute> attributes )
-    {
-        CriteriaQuery query = getCriteriaQuery();
+  @Nonnull
+  @Override
+  public List<T> getAllByAttributes(@Nonnull Collection<UID> attributes) {
+    String quotedIds = join(",", attributes.stream().map(id -> "'" + id.getValue() + "'").toList());
+    // language=sql
+    String sql =
+        "select * from %s where jsonb_exists_any(attributevalues, array[%s])"
+            .formatted(tableName, quotedIds);
+    return nativeSynchronizedTypedQuery(sql).list();
+  }
 
-        Root root = query.from( getClazz() );
-        Join joinAttributeValue = root.join( ("attributeValues"), JoinType.INNER );
-        query.select( root );
-        query.where( joinAttributeValue.get( "attribute" ).in( attributes ) );
+  @Override
+  public long countAllValuesByAttributes(@Nonnull Collection<UID> attributes) {
+    String quotedIds = join(",", attributes.stream().map(id -> "'" + id.getValue() + "'").toList());
+    // language=sql
+    String sql =
+        "select count(*) from %s where jsonb_exists_any(attributevalues, array[%s])"
+            .formatted(tableName, quotedIds);
+    return ((Number) nativeSynchronizedQuery(sql).getSingleResult()).longValue();
+  }
 
-        return sessionFactory.getCurrentSession().createQuery( query ).list();
-    }
+  @Override
+  public int getCount() {
+    CriteriaBuilder builder = getCriteriaBuilder();
 
-    @Override
-    public int getCount()
-    {
-        return ((Number) getCriteria()
-            .setProjection( Projections.countDistinct( "id" ) )
-            .uniqueResult()).intValue();
-    }
+    return getCount(
+            builder, newJpaParameters().count(root -> builder.countDistinct(root.get("id"))))
+        .intValue();
+  }
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<AttributeValue> getAttributeValueByAttribute( Attribute attribute )
-    {
-        CriteriaBuilder builder = getCriteriaBuilder();
-        CriteriaQuery query = getCriteriaQuery();
+  @Nonnull
+  @Override
+  public List<T> getByAttribute(@Nonnull UID attribute) {
+    // language=sql
+    String sql =
+        "select * from %s where jsonb_exists(attributevalues, '%s')"
+            .formatted(tableName, attribute.getValue());
+    return nativeSynchronizedTypedQuery(sql).list();
+  }
 
-        Root root = query.from( getClazz() );
-        Join joinAttributeValue = root.join( ("attributeValues"), JoinType.INNER );
-        query.select( root.get( "attributeValues" ) );
-        query.where( builder.equal( joinAttributeValue.get( "attribute" ), attribute ) );
+  @Nonnull
+  @Override
+  public List<T> getByAttributeAndValue(@Nonnull UID attribute, String value) {
+    // language=sql
+    String sql =
+        "select * from %s where jsonb_extract_path_text(attributevalues, '%s', 'value') = :value"
+            .formatted(tableName, attribute.getValue());
+    return nativeSynchronizedTypedQuery(sql).setParameter("value", value).list();
+  }
 
-        return sessionFactory.getCurrentSession().createQuery( query ).list();
-    }
+  @Override
+  public boolean isAttributeValueUniqueTo(
+      @Nonnull UID object, @Nonnull UID attribute, @Nonnull String value) {
+    // language=sql
+    String sql =
+        "select count(*) from %s where uid != :object and jsonb_extract_path_text(attributeValues, '%s', 'value') = :value"
+            .formatted(tableName, attribute.getValue());
+    Number count =
+        (Number)
+            nativeSynchronizedQuery(sql)
+                .setParameter("value", value)
+                .setParameter("object", object.getValue())
+                .getSingleResult();
+    return count.intValue() == 0;
+  }
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<AttributeValue> getAttributeValueByAttributeAndValue( Attribute attribute, String value )
-    {
-        CriteriaBuilder builder = getCriteriaBuilder();
-        CriteriaQuery query = getCriteriaQuery();
+  @Nonnull
+  @Override
+  public List<T> getAllByAttributeAndValues(@Nonnull UID attribute, @Nonnull List<String> values) {
+    // language=sql
+    String sql =
+        "select * from %s where jsonb_extract_path_text(attributeValues, '%s', 'value') in :values"
+            .formatted(tableName, attribute.getValue());
 
-        Root root = query.from( getClazz() );
-        Join joinAttributeValue = root.join( ("attributeValues"), JoinType.INNER );
-        query.select( root.get( "attributeValues" ) );
-        query.where(
-            builder.and(
-                builder.equal( joinAttributeValue.get( "attribute" ), attribute ),
-                builder.equal( joinAttributeValue.get( "value" ), value ) ) );
+    return nativeSynchronizedTypedQuery(sql).setParameterList("values", values).list();
+  }
 
-        return sessionFactory.getCurrentSession().createQuery( query ).list();
-    }
+  @Override
+  public int updateAllAttributeValues(
+      @Nonnull UID attribute, @Nonnull String newValue, boolean createMissing) {
+    // language=sql
+    String sql =
+        """
+        update %s set attributevalues = jsonb_strip_nulls(
+            jsonb_set(cast(attributevalues as jsonb), '{%s}', cast(:value as jsonb), :createMissing))"""
+            .formatted(tableName, attribute.getValue());
+    return nativeSynchronizedQuery(sql)
+        .setParameter("value", newValue)
+        .setParameter("createMissing", createMissing)
+        .executeUpdate();
+  }
 
-    @Override
-    public <P extends IdentifiableObject> boolean isAttributeValueUnique( P object, AttributeValue attributeValue )
-    {
-        List<AttributeValue> values = getAttributeValueByAttribute( attributeValue.getAttribute() );
-        return values.isEmpty() || (object != null && values.size() == 1 && object.getAttributeValues().contains( values.get( 0 ) ));
-    }
-
-    @Override
-    public <P extends IdentifiableObject> boolean isAttributeValueUnique( P object, Attribute attribute, String value )
-    {
-        List<AttributeValue> values = getAttributeValueByAttributeAndValue( attribute, value );
-        return values.isEmpty() || (object != null && values.size() == 1 && object.getAttributeValues().contains( values.get( 0 ) ));
-    }
+  /**
+   * Create new instance of JpaQueryParameters
+   *
+   * @return JpaQueryParameters<T>
+   */
+  protected JpaQueryParameters<T> newJpaParameters() {
+    return new JpaQueryParameters<>();
+  }
 }

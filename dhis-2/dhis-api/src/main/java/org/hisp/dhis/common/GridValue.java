@@ -1,7 +1,5 @@
-package org.hisp.dhis.common;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.common;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.common;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,73 +33,62 @@ import java.util.Map;
 /**
  * @author Lars Helge Overland
  */
-public class GridValue
-{
-    private Object value;
-    
-    private Map<Object, Object> attributes = new HashMap<>();
+public class GridValue {
+  private Object value;
 
-    // ---------------------------------------------------------------------
-    // Constructors
-    // ---------------------------------------------------------------------
+  private Map<Object, Object> attributes = new HashMap<>();
 
-    public GridValue( Object value )
-    {
-        this.value = value;
-    }
-    
-    public GridValue( Object value, Map<Object, Object> attributes )
-    {
-        this.value = value;
-        this.attributes = attributes;
-    }
-    
-    // ---------------------------------------------------------------------
-    // Logic
-    // ---------------------------------------------------------------------
+  // ---------------------------------------------------------------------
+  // Constructors
+  // ---------------------------------------------------------------------
 
-    public void attr( Object attribute, Object value )
-    {
-        this.attributes.put( attribute, value );
-    }
-    
-    public Object attr( Object attribute )
-    {
-        return this.attributes.get( attribute );
-    }
-    
-    public boolean hasAttr( Object attribute )
-    {
-        return this.attributes.containsKey( attribute );
-    }
+  public GridValue(Object value) {
+    this.value = value;
+  }
 
-    @Override
-    public String toString()
-    {
-        return value != null ? value.toString() : null;
-    }
+  public GridValue(Object value, Map<Object, Object> attributes) {
+    this.value = value;
+    this.attributes = attributes;
+  }
 
-    // ---------------------------------------------------------------------
-    // Get and set methods
-    // ---------------------------------------------------------------------
+  // ---------------------------------------------------------------------
+  // Logic
+  // ---------------------------------------------------------------------
 
-    public Object getValue()
-    {
-        return value;
-    }
+  public void attr(Object attribute, Object value) {
+    this.attributes.put(attribute, value);
+  }
 
-    public void setValue( Object value )
-    {
-        this.value = value;
-    }
+  public Object attr(Object attribute) {
+    return this.attributes.get(attribute);
+  }
 
-    public Map<Object, Object> getAttributes()
-    {
-        return attributes;
-    }
+  public boolean hasAttr(Object attribute) {
+    return this.attributes.containsKey(attribute);
+  }
 
-    public void setAttributes( Map<Object, Object> attributes )
-    {
-        this.attributes = attributes;
-    }
+  @Override
+  public String toString() {
+    return value != null ? value.toString() : null;
+  }
+
+  // ---------------------------------------------------------------------
+  // Get and set methods
+  // ---------------------------------------------------------------------
+
+  public Object getValue() {
+    return value;
+  }
+
+  public void setValue(Object value) {
+    this.value = value;
+  }
+
+  public Map<Object, Object> getAttributes() {
+    return attributes;
+  }
+
+  public void setAttributes(Map<Object, Object> attributes) {
+    this.attributes = attributes;
+  }
 }

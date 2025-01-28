@@ -27,38 +27,15 @@
 
     <property name="attachment" />
 
+    <property name="translations" type="jblTranslations"/>
+
     <!-- Dynamic attribute values -->
-    <set name="attributeValues" table="documentattributevalues" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="documentid" />
-      <many-to-many class="org.hisp.dhis.attribute.AttributeValue" column="attributevalueid" unique="true" />
-    </set>
+    <property name="attributeValues" type="jsbAttributeValues"/>
 
-    <!-- Access properties -->
-    <property name="externalAccess" />
+    <many-to-one name="createdBy" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_document_userid" />
 
-    <many-to-one name="user" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_document_userid" />
-
-    <property name="publicAccess" length="8" />
-
-    <set name="userGroupAccesses" table="documentusergroupaccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="documentid" />
-      <many-to-many class="org.hisp.dhis.user.UserGroupAccess" column="usergroupaccessid" unique="true" />
-    </set>
-
-    <set name="userAccesses" table="documentuseraccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="documentid" />
-      <many-to-many class="org.hisp.dhis.user.UserAccess" column="useraccessid" unique="true" />
-    </set>
-
-    <!-- Object Translation -->
-    <set name="translations" table="documenttranslations" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="documentid" foreign-key="fk_objecttranslation_documentid" />
-      <many-to-many class="org.hisp.dhis.translation.ObjectTranslation" column="objecttranslationid" unique="true" />
-    </set>
+    <!-- Sharing -->
+    <property name="sharing" type="jsbObjectSharing"/>
 
   </class>
 

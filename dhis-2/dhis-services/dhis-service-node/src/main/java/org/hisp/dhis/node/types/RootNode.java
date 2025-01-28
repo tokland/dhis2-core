@@ -1,7 +1,5 @@
-package org.hisp.dhis.node.types;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,44 +25,63 @@ package org.hisp.dhis.node.types;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.node.types;
 
+import java.util.Objects;
 import org.hisp.dhis.node.Node;
 import org.hisp.dhis.node.config.Config;
 
 /**
+ * The Node services are being deprecated so please do not use in new code.
+ *
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class RootNode extends ComplexNode
-{
-    private String defaultNamespace;
+public class RootNode extends ComplexNode {
+  private String defaultNamespace;
 
-    private final Config config = new Config();
+  private final Config config = new Config();
 
-    public RootNode( String name )
-    {
-        super( name );
+  public RootNode(String name) {
+    super(name);
+  }
+
+  public RootNode(Node node) {
+    super(node.getName());
+    setNamespace(node.getNamespace());
+    setComment(node.getComment());
+    addChildren(node.getChildren());
+  }
+
+  public String getDefaultNamespace() {
+    return defaultNamespace;
+  }
+
+  public void setDefaultNamespace(String defaultNamespace) {
+    this.defaultNamespace = defaultNamespace;
+  }
+
+  public Config getConfig() {
+    return config;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
-
-    public RootNode( Node node )
-    {
-        super( node.getName() );
-        setNamespace( node.getNamespace() );
-        setComment( node.getComment() );
-        addChildren( node.getChildren() );
+    if (o == null || getClass() != o.getClass()) {
+      return false;
     }
-
-    public String getDefaultNamespace()
-    {
-        return defaultNamespace;
+    if (!super.equals(o)) {
+      return false;
     }
+    RootNode rootNode = (RootNode) o;
+    return Objects.equals(defaultNamespace, rootNode.defaultNamespace)
+        && config.equals(rootNode.config);
+  }
 
-    public void setDefaultNamespace( String defaultNamespace )
-    {
-        this.defaultNamespace = defaultNamespace;
-    }
-
-    public Config getConfig()
-    {
-        return config;
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), defaultNamespace, config);
+  }
 }

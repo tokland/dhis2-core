@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.pdfform;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.dxf2.pdfform;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.pdfform;
 
 import com.lowagie.text.Document;
 import com.lowagie.text.Rectangle;
@@ -36,9 +35,13 @@ import org.hisp.dhis.i18n.I18nFormat;
 /**
  * @author James Chang
  */
-
-public interface PdfDataEntryFormService
-{
-    void generatePDFDataEntryForm( Document document, PdfWriter writer, String inputUid, int typeId,
-        Rectangle pageSize, PdfFormFontSettings pdfFormFontSettings, I18nFormat format );
+public interface PdfDataEntryFormService {
+  void generatePDFDataEntryForm(
+      Document document,
+      PdfWriter writer,
+      String inputUid,
+      int typeId,
+      Rectangle pageSize,
+      PdfFormFontSettings pdfFormFontSettings,
+      I18nFormat format);
 }

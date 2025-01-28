@@ -1,7 +1,5 @@
-package org.hisp.dhis.scheduling.parameters;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,74 +25,51 @@ package org.hisp.dhis.scheduling.parameters;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.scheduling.parameters;
 
-import org.hisp.dhis.feedback.ErrorReport;
-import org.hisp.dhis.scheduling.JobParameters;
-import org.hisp.dhis.schema.annotation.Property;
-
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hisp.dhis.common.OpenApi;
+import org.hisp.dhis.common.UID;
+import org.hisp.dhis.predictor.Predictor;
+import org.hisp.dhis.predictor.PredictorGroup;
+import org.hisp.dhis.scheduling.JobParameters;
 
 /**
  * @author Henning Håkonsen
  */
-public class PredictorJobParameters
-    implements JobParameters
-{
-    private static final long serialVersionUID = 5526554074518768146L;
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PredictorJobParameters implements JobParameters {
+  /** Today plus n days (n can be negative) */
+  @JsonProperty private int relativeStart;
 
-    @Property
-    private int relativeStart;
+  /** Today plus n days (n can be negative) */
+  @JsonProperty private int relativeEnd;
 
-    @Property
-    private int relativeEnd;
+  @JsonProperty
+  @OpenApi.Property({UID[].class, Predictor.class})
+  private List<String> predictors = new ArrayList<>();
 
-    @Property
-    private List<String> predictors;
+  @JsonProperty
+  @OpenApi.Property({UID[].class, PredictorGroup.class})
+  private List<String> predictorGroups = new ArrayList<>();
 
-    public PredictorJobParameters()
-    {
-    }
+  // programmatically used only
 
-    public PredictorJobParameters( int relativeStart, int relativeEnd, List<String> predictors )
-    {
-        this.relativeStart = relativeStart;
-        this.relativeEnd = relativeEnd;
-        this.predictors = predictors;
-    }
+  /** When set overrides the {@link #relativeStart} */
+  private Date startDate;
 
-    public int getRelativeStart()
-    {
-        return relativeStart;
-    }
-
-    public void setRelativeStart( int relativeStart )
-    {
-        this.relativeStart = relativeStart;
-    }
-
-    public int getRelativeEnd()
-    {
-        return relativeEnd;
-    }
-
-    public void setRelativeEnd( int relativeEnd )
-    {
-        this.relativeEnd = relativeEnd;
-    }
-
-    public List<String> getPredictors()
-    {
-        return predictors;
-    }
-
-    public void setPredictors( List<String> predictors )
-    {
-        this.predictors = predictors;
-    }
-
-    @Override
-    public ErrorReport validate()
-    {
-        return null;
-    }
+  /** When set overrides the {@link #relativeEnd} */
+  private Date endDate;
 }

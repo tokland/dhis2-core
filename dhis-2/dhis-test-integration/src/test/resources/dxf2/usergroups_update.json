@@ -1,0 +1,23 @@
+{
+  "userGroups": [
+    {
+      "created": "2019-04-15T14:40:58.215",
+      "lastUpdated": "2019-04-15T14:40:58.215",
+      "name": "TA user group updated",
+      "id": "OPVIvvXzNTw",
+      "attributeValues": [],
+      "managedGroups": [],
+      "translations": [],
+      "user": {
+        "id": "userabcdefA"
+      },
+      "sharing": {
+        "public": "rw------",
+        "external": false,
+        "owner": "userabcdefA",
+        "users": {},
+        "userGroups": {}
+      }
+    }
+  ]
+}

@@ -1,7 +1,5 @@
-package org.hisp.dhis.analytics;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,29 +25,36 @@ package org.hisp.dhis.analytics;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.analytics;
+
+import lombok.Getter;
 
 /**
-* @author Lars Helge Overland
-*/
-public enum AnalyticsTableType
-{
-    DATA_VALUE( "analytics" ),
-    COMPLETENESS( "analytics_completeness" ),
-    COMPLETENESS_TARGET( "analytics_completenesstarget" ),
-    ORG_UNIT_TARGET( "analytics_orgunittarget" ),
-    EVENT( "analytics_event" ),
-    ENROLLMENT( "analytics_enrollment" ),
-    VALIDATION_RESULT( "analytics_validationresult" );
+ * @author Lars Helge Overland
+ */
+@Getter
+public enum AnalyticsTableType {
+  DATA_VALUE("analytics", true, true),
+  COMPLETENESS("analytics_completeness", true, true),
+  COMPLETENESS_TARGET("analytics_completenesstarget", false, false),
+  ORG_UNIT_TARGET("analytics_orgunittarget", false, false),
+  VALIDATION_RESULT("analytics_validationresult", true, false),
+  EVENT("analytics_event", false, true),
+  ENROLLMENT("analytics_enrollment", false, false),
+  OWNERSHIP("analytics_ownership", false, false),
+  TRACKED_ENTITY_INSTANCE_EVENTS("analytics_te_event", false, true),
+  TRACKED_ENTITY_INSTANCE_ENROLLMENTS("analytics_te_enrollment", false, false),
+  TRACKED_ENTITY_INSTANCE("analytics_te", false, false);
 
-    private String tableName;
-    
-    AnalyticsTableType( String tableName )
-    {
-        this.tableName = tableName;
-    }
+  private final String tableName;
 
-    public String getTableName()
-    {
-        return tableName;
-    }
+  private final boolean periodDimension;
+
+  private final boolean latestPartition;
+
+  AnalyticsTableType(String tableName, boolean periodDimension, boolean latestPartition) {
+    this.tableName = tableName;
+    this.periodDimension = periodDimension;
+    this.latestPartition = latestPartition;
+  }
 }

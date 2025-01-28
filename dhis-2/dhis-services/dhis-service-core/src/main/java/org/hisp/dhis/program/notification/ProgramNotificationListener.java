@@ -1,7 +1,5 @@
-package org.hisp.dhis.program.notification;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,51 +25,23 @@ package org.hisp.dhis.program.notification;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program.notification;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.event.EventListener;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.program.notification.event.ProgramEnrollmentNotificationEvent;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionalEventListener;
 
-/**
- * Created by zubair@dhis2.org on 18.01.18.
- */
-public class ProgramNotificationListener
-{
-    @Autowired
-    private ProgramNotificationService programNotificationService;
+/** Created by zubair@dhis2.org on 18.01.18. */
+@Async
+@RequiredArgsConstructor
+@Component("org.hisp.dhis.program.notification.ProgramNotificationListener")
+public class ProgramNotificationListener {
+  private final ProgramNotificationService programNotificationService;
 
-    @EventListener( condition = "#event.eventType.name() == 'PROGRAM_ENROLLMENT'" )
-    @Async
-    public void onEnrollment( ProgramNotificationEvent event )
-    {
-        programNotificationService.sendEnrollmentNotifications( event.getProgramInstance() );
-    }
-
-    @EventListener( condition = "#event.eventType.name() == 'PROGRAM_COMPLETION'" )
-    @Async
-    public void onCompletion( ProgramNotificationEvent event )
-    {
-        programNotificationService.sendCompletionNotifications( event.getProgramInstance() );
-    }
-
-    @EventListener( condition = "#event.eventType.name() == 'PROGRAM_RULE_ENROLLMENT'" )
-    @Async
-    public void onProgramRuleEnrollment( ProgramNotificationEvent event )
-    {
-        programNotificationService.sendProgramRuleTriggeredNotifications( event.getTemplate(), event.getProgramInstance() );
-    }
-
-    @EventListener( condition = "#event.eventType.name() == 'PROGRAM_STAGE_COMPLETION'" )
-    @Async
-    public void onEvent( ProgramNotificationEvent event )
-    {
-        programNotificationService.sendCompletionNotifications( event.getProgramStageInstance() );
-    }
-
-    @EventListener( condition = "#event.eventType.name() == 'PROGRAM_RULE_EVENT'" )
-    @Async
-    public void onProgramRuleEvent( ProgramNotificationEvent event )
-    {
-        programNotificationService.sendProgramRuleTriggeredNotifications( event.getTemplate(), event.getProgramStageInstance() );
-    }
+  @TransactionalEventListener(fallbackExecution = true)
+  public void onEnrollment(ProgramEnrollmentNotificationEvent event) {
+    programNotificationService.sendEnrollmentNotifications(event.getEnrollment());
+  }
 }

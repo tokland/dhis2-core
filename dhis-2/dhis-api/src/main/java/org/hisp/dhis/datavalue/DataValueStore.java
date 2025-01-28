@@ -1,7 +1,5 @@
-package org.hisp.dhis.datavalue;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,132 +25,260 @@ package org.hisp.dhis.datavalue;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.dataelement.DataElement;
-import org.hisp.dhis.category.CategoryOptionCombo;
-import org.hisp.dhis.organisationunit.OrganisationUnit;
-import org.hisp.dhis.period.Period;
+package org.hisp.dhis.datavalue;
 
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import javax.annotation.Nonnull;
+import org.hisp.dhis.category.CategoryCombo;
+import org.hisp.dhis.category.CategoryOptionCombo;
+import org.hisp.dhis.common.UID;
+import org.hisp.dhis.dataelement.DataElement;
+import org.hisp.dhis.organisationunit.OrganisationUnit;
+import org.hisp.dhis.period.Period;
 
 /**
  * Defines the functionality for persisting DataValues.
- * 
+ *
  * @author Torgeir Lorange Ostby
- * @version $Id: DataValueStore.java 5715 2008-09-17 14:05:28Z larshelg $
  */
-public interface DataValueStore
-{
-    String ID = DataValueStore.class.getName();
+public interface DataValueStore {
+  String ID = DataValueStore.class.getName();
 
-    // -------------------------------------------------------------------------
-    // Basic DataValue
-    // -------------------------------------------------------------------------
+  /** Special {@see DeflatedDataValue} to signal "End of file" for queued DDVs. */
+  public static final DeflatedDataValue END_OF_DDV_DATA = new DeflatedDataValue();
 
-    /**
-     * Adds a DataValue.
-     * 
-     * @param dataValue the DataValue to add.
-     */
-    void addDataValue( DataValue dataValue );
+  /**
+   * Timeout value for {@see DeflatedDataValue} queue, to prevent waiting forever if the other
+   * thread has aborted.
+   */
+  public static final int DDV_QUEUE_TIMEOUT_VALUE = 10;
 
-    /**
-     * Updates a DataValue.
-     * 
-     * @param dataValue the DataValue to update.
-     */
-    void updateDataValue( DataValue dataValue );
+  /**
+   * Timeout unit for {@see DeflatedDataValue} queue, to prevent waiting forever if the other thread
+   * has aborted.
+   */
+  public static final TimeUnit DDV_QUEUE_TIMEOUT_UNIT = TimeUnit.MINUTES;
 
-    /**
-     * Deletes all data values for the given organisation unit.
-     *
-     * @param organisationUnit the organisation unit.
-     */
-    void deleteDataValues( OrganisationUnit organisationUnit );
+  // -------------------------------------------------------------------------
+  // Basic DataValue
+  // -------------------------------------------------------------------------
 
-    /**
-     * Deletes all data values for the given data element.
-     *
-     * @param dataElement the data element.
-     */
-    void deleteDataValues( DataElement dataElement );
-    
-    /**
-     * Returns a DataValue.
-     * 
-     * @param dataElement the DataElement of the DataValue.
-     * @param period the Period of the DataValue.
-     * @param source the Source of the DataValue.
-     * @param categoryOptionCombo the category option combo.
-     * @param attributeOptionCombo the attribute option combo.
-     * @return the DataValue which corresponds to the given parameters, or null
-     *         if no match.
-     */
-    DataValue getDataValue( DataElement dataElement, Period period, OrganisationUnit source, 
-        CategoryOptionCombo categoryOptionCombo, CategoryOptionCombo attributeOptionCombo );
-    
-    /**
-     * Returns a soft deleted DataValue.
-     * 
-     * @param dataValue the DataValue to use as parameters.
-     * @return the DataValue which corresponds to the given parameters, or null
-     *         if no match.
-     */
-    DataValue getSoftDeletedDataValue( DataValue dataValue );
-    
-    // -------------------------------------------------------------------------
-    // Collections of DataValues
-    // -------------------------------------------------------------------------
+  /**
+   * Adds a DataValue.
+   *
+   * @param dataValue the DataValue to add.
+   */
+  void addDataValue(DataValue dataValue);
 
-    /**
-     * Returns data values for the given data export parameters.
-     * 
-     * @param params the data export parameters.
-     * @return a list of data values.
-     */
-    List<DataValue> getDataValues( DataExportParams params );
-    
-    /**
-     * Returns all DataValues.
-     * 
-     * @return a list of all DataValues.
-     */
-    List<DataValue> getAllDataValues();
-    
-    /**
-     * Returns all DataValues for a given Source, Period, collection of
-     * DataElements and CategoryOptionCombo.
-     * 
-     * @param source the Source of the DataValues.
-     * @param period the Period of the DataValues.
-     * @param dataElements the DataElements of the DataValues.
-     * @param attributeOptionCombo the CategoryCombo.
-     * @return a list of all DataValues which match the given Source,
-     *         Period, and any of the DataElements, or an empty collection if no
-     *         values match.
-     */
-    List<DataValue> getDataValues( OrganisationUnit source, Period period, 
-        Collection<DataElement> dataElements, CategoryOptionCombo attributeOptionCombo );
+  /**
+   * Updates a DataValue.
+   *
+   * @param dataValue the DataValue to update.
+   */
+  void updateDataValue(DataValue dataValue);
 
-    /**
-     * Returns deflated data values for the given data export parameters.
-     *
-     * @param params the data export parameters.
-     * @return a list of deflated data values.
-     */
-    List<DeflatedDataValue> getDeflatedDataValues( DataExportParams params );
+  /**
+   * Deletes all data values for the given organisation unit.
+   *
+   * @param organisationUnit the organisation unit.
+   */
+  void deleteDataValues(OrganisationUnit organisationUnit);
 
-    /**
-     * Gets the number of DataValues which have been updated between the given 
-     * start and end date. The <pre>startDate</pre> and <pre>endDate</pre> parameters
-     * can both be null but one must be defined.
-     * 
-     * @param startDate the start date to compare against data value last updated.
-     * @param endDate the end date to compare against data value last updated.
-     * @param includeDeleted whether to include deleted data values.
-     * @return the number of DataValues.
-     */
-    int getDataValueCountLastUpdatedBetween( Date startDate, Date endDate, boolean includeDeleted );
+  /**
+   * Deletes all data values for the given data element.
+   *
+   * @param dataElement the data element.
+   */
+  void deleteDataValues(DataElement dataElement);
+
+  /**
+   * Deletes all data values for the given data element.
+   *
+   * @param dataElement the dataElement.
+   */
+  void deleteDataValues(@Nonnull Collection<DataElement> dataElement);
+
+  /**
+   * Deletes all data values for the given category option combos.
+   *
+   * @param categoryOptionCombos the categoryOptionCombos.
+   */
+  void deleteDataValuesByCategoryOptionCombo(
+      @Nonnull Collection<CategoryOptionCombo> categoryOptionCombos);
+
+  /**
+   * Deletes all data values for the given attribute option combos.
+   *
+   * @param attributeOptionCombos the attributeOptionCombos.
+   */
+  void deleteDataValuesByAttributeOptionCombo(
+      @Nonnull Collection<CategoryOptionCombo> attributeOptionCombos);
+
+  /**
+   * Returns a DataValue.
+   *
+   * @param dataElement the DataElement of the DataValue.
+   * @param period the Period of the DataValue.
+   * @param source the Source of the DataValue.
+   * @param categoryOptionCombo the category option combo.
+   * @param attributeOptionCombo the attribute option combo.
+   * @return the DataValue which corresponds to the given parameters, or null if no match.
+   */
+  DataValue getDataValue(
+      DataElement dataElement,
+      Period period,
+      OrganisationUnit source,
+      CategoryOptionCombo categoryOptionCombo,
+      CategoryOptionCombo attributeOptionCombo);
+
+  /**
+   * Returns a DataValue.
+   *
+   * @param dataElement the DataElement of the DataValue.
+   * @param period the Period of the DataValue.
+   * @param source the Source of the DataValue.
+   * @param categoryOptionCombo the category option combo.
+   * @param attributeOptionCombo the attribute option combo.
+   * @param includeDeleted Include deleted data values
+   * @return the DataValue which corresponds to the given parameters, or null if no match.
+   */
+  DataValue getDataValue(
+      DataElement dataElement,
+      Period period,
+      OrganisationUnit source,
+      CategoryOptionCombo categoryOptionCombo,
+      CategoryOptionCombo attributeOptionCombo,
+      boolean includeDeleted);
+
+  /**
+   * Returns a soft deleted DataValue.
+   *
+   * @param dataValue the DataValue to use as parameters.
+   * @return the DataValue which corresponds to the given parameters, or null if no match.
+   */
+  DataValue getSoftDeletedDataValue(DataValue dataValue);
+
+  // -------------------------------------------------------------------------
+  // Collections of DataValues
+  // -------------------------------------------------------------------------
+
+  /**
+   * Returns data values for the given data export parameters.
+   *
+   * @param params the data export parameters.
+   * @return a list of data values.
+   */
+  List<DataValue> getDataValues(DataExportParams params);
+
+  /**
+   * Returns all DataValues.
+   *
+   * @return a list of all DataValues.
+   */
+  List<DataValue> getAllDataValues();
+
+  /**
+   * Returns deflated data values for the given data export parameters.
+   *
+   * @param params the data export parameters.
+   * @return a list of deflated data values.
+   */
+  List<DeflatedDataValue> getDeflatedDataValues(DataExportParams params);
+
+  /**
+   * Gets the number of DataValues which have been updated between the given start and end date.
+   * Either the start or end date can be null, but they cannot both be null.
+   *
+   * @param startDate the start date to compare against data value last updated.
+   * @param endDate the end date to compare against data value last updated.
+   * @param includeDeleted whether to include deleted data values.
+   * @return the number of DataValues.
+   */
+  int getDataValueCountLastUpdatedBetween(Date startDate, Date endDate, boolean includeDeleted);
+
+  /**
+   * Checks if any data values exist for the provided {@link CategoryCombo}.
+   *
+   * @param combo the combo to check
+   * @return true, if any value exist, otherwise false
+   */
+  boolean dataValueExists(CategoryCombo combo);
+
+  /**
+   * Checks if any data values exist for the provided {@link DataElement} {@link UID}.
+   *
+   * @param uid the {@link DataElement} {@link UID} to check
+   * @return true, if any values exist, otherwise false
+   */
+  boolean dataValueExistsForDataElement(String uid);
+
+  /**
+   * SQL for handling merging {@link DataValue}s. There may be multiple potential {@link DataValue}
+   * duplicates. Duplicate {@link DataValue}s with the latest {@link DataValue#lastUpdated} values
+   * are kept, the rest are deleted. Only one of these entries can exist due to the composite key
+   * constraint. <br>
+   * The 3 execution paths are:
+   *
+   * <p>1. If the source {@link DataValue} is not a duplicate, it simply gets its {@link
+   * DataValue#categoryOptionCombo} updated to that of the target.
+   *
+   * <p>2. If the source {@link DataValue} is a duplicate and has an earlier {@link
+   * DataValue#lastUpdated} value, it is deleted.
+   *
+   * <p>3. If the source {@link DataValue} is a duplicate and has a later {@link
+   * DataValue#lastUpdated} value, the target {@link DataValue} is deleted. The source is kept and
+   * has its {@link DataValue#categoryOptionCombo} updated to that of the target.
+   *
+   * @param target target {@link CategoryOptionCombo}
+   * @param sources source {@link CategoryOptionCombo}s
+   */
+  void mergeDataValuesWithCategoryOptionCombos(long target, @Nonnull Set<Long> sources);
+
+  /**
+   * SQL for handling merging {@link DataValue}s. There may be multiple potential {@link DataValue}
+   * duplicates. Duplicate {@link DataValue}s with the latest {@link DataValue#lastUpdated} values
+   * are kept, the rest are deleted. Only one of these entries can exist due to the composite key
+   * constraint. <br>
+   * The 3 execution paths are:
+   *
+   * <p>1. If the source {@link DataValue} is not a duplicate, it simply gets its {@link
+   * DataValue#attributeOptionCombo} updated to that of the target.
+   *
+   * <p>2. If the source {@link DataValue} is a duplicate and has an earlier {@link
+   * DataValue#lastUpdated} value, it is deleted.
+   *
+   * <p>3. If the source {@link DataValue} is a duplicate and has a later {@link
+   * DataValue#lastUpdated} value, the target {@link DataValue} is deleted. The source is kept and
+   * has its {@link DataValue#attributeOptionCombo} updated to that of the target.
+   *
+   * @param target target {@link CategoryOptionCombo} id
+   * @param sources source {@link CategoryOptionCombo} ids
+   */
+  void mergeDataValuesWithAttributeOptionCombos(long target, @Nonnull Set<Long> sources);
+
+  /**
+   * SQL for handling merging {@link DataValue}s. There may be multiple potential {@link DataValue}
+   * duplicates. Duplicate {@link DataValue}s with the latest {@link DataValue#lastUpdated} values
+   * are kept, the rest are deleted. Only one of these entries can exist due to the composite key
+   * constraint. <br>
+   * The 3 execution paths are:
+   *
+   * <p>1. If the source {@link DataValue} is not a duplicate, it simply gets its {@link
+   * DataValue#dataElement} updated to that of the target.
+   *
+   * <p>2. If the source {@link DataValue} is a duplicate and has an earlier {@link
+   * DataValue#lastUpdated} value, it is deleted.
+   *
+   * <p>3. If the source {@link DataValue} is a duplicate and has a later {@link
+   * DataValue#lastUpdated} value, the target {@link DataValue} is deleted. The source is kept and
+   * has its {@link DataValue#dataElement} updated to that of the target.
+   *
+   * @param target target {@link DataElement} id
+   * @param sources source {@link DataElement} ids
+   */
+  void mergeDataValuesWithDataElements(long target, @Nonnull Set<Long> sources);
 }

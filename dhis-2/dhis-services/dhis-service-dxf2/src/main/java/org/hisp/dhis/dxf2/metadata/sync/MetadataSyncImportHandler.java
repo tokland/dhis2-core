@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.sync;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,160 +25,142 @@ package org.hisp.dhis.dxf2.metadata.sync;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.hisp.dhis.common.IdentifiableObject;
-import org.hisp.dhis.dxf2.metadata.sync.exception.MetadataSyncImportException;
-import org.hisp.dhis.feedback.Status;
-import org.hisp.dhis.dxf2.metadata.sync.exception.MetadataSyncServiceException;
-import org.hisp.dhis.dxf2.metadata.version.MetadataVersionDelegate;
-import org.hisp.dhis.dxf2.metadata.version.exception.MetadataVersionServiceException;
-import org.hisp.dhis.dxf2.metadata.MetadataImportParams;
-import org.hisp.dhis.dxf2.metadata.MetadataImportService;
-import org.hisp.dhis.dxf2.metadata.feedback.ImportReport;
-import org.hisp.dhis.metadata.version.MetadataVersion;
-import org.hisp.dhis.metadata.version.VersionType;
-import org.hisp.dhis.render.RenderFormat;
-import org.hisp.dhis.render.RenderService;
-import org.springframework.beans.factory.annotation.Autowired;
+package org.hisp.dhis.dxf2.metadata.sync;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.hisp.dhis.common.IdentifiableObject;
+import org.hisp.dhis.dxf2.metadata.MetadataImportParams;
+import org.hisp.dhis.dxf2.metadata.MetadataImportService;
+import org.hisp.dhis.dxf2.metadata.MetadataObjects;
+import org.hisp.dhis.dxf2.metadata.feedback.ImportReport;
+import org.hisp.dhis.dxf2.metadata.sync.exception.MetadataSyncImportException;
+import org.hisp.dhis.dxf2.metadata.sync.exception.MetadataSyncServiceException;
+import org.hisp.dhis.dxf2.metadata.version.MetadataVersionDelegate;
+import org.hisp.dhis.dxf2.metadata.version.exception.MetadataVersionServiceException;
+import org.hisp.dhis.feedback.Status;
+import org.hisp.dhis.metadata.version.MetadataVersion;
+import org.hisp.dhis.metadata.version.VersionType;
+import org.hisp.dhis.render.RenderFormat;
+import org.hisp.dhis.render.RenderService;
+import org.hisp.dhis.scheduling.JobConfiguration;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
 /**
  * Import handler for metadata sync service
  *
  * @author anilkumk
  */
-public class MetadataSyncImportHandler
-{
-    private static final Log log = LogFactory.getLog( MetadataSyncImportHandler.class );
+@Slf4j
+@RequiredArgsConstructor
+@Component("org.hisp.dhis.dxf2.metadata.sync.MetadataImportHandler")
+@Scope("prototype")
+public class MetadataSyncImportHandler {
+  private final MetadataVersionDelegate metadataVersionDelegate;
 
-    @Autowired
-    private MetadataVersionDelegate metadataVersionDelegate;
+  private final RenderService renderService;
 
-    @Autowired
-    private RenderService renderService;
+  private final MetadataImportService metadataImportService;
 
-    @Autowired
-    private MetadataImportService metadataImportService;
+  public MetadataSyncSummary importMetadata(MetadataSyncParams syncParams, String versionSnapShot) {
+    MetadataVersion version = getMetadataVersion(syncParams);
+    MetadataImportParams importParams = syncParams.getImportParams();
+    MetadataSyncSummary metadataSyncSummary = new MetadataSyncSummary();
 
-    public MetadataSyncSummary importMetadata( MetadataSyncParams syncParams, String versionSnapShot )
-    {
-        MetadataVersion version = getMetadataVersion( syncParams );
-        MetadataImportParams importParams = syncParams.getImportParams();
-        MetadataSyncSummary metadataSyncSummary = new MetadataSyncSummary();
-
-        if ( importParams == null )
-        {
-            throw new MetadataSyncServiceException( "MetadataImportParams for the Sync cant be null." );
-        }
-
-        Map<Class<? extends IdentifiableObject>, List<IdentifiableObject>> classListMap = parseClassListMap(
-            versionSnapShot );
-
-        if ( classListMap == null )
-        {
-            throw new MetadataSyncServiceException( "ClassListMap can't be null" );
-        }
-
-        importParams.setObjects( classListMap );
-
-        ImportReport importReport = null;
-
-        try
-        {
-            importReport = metadataImportService.importMetadata( importParams );
-
-        }
-        catch ( Exception e )
-        {
-            String message = "Exception occurred while trying to import the metadata. " + e.getMessage();
-            log.error( message,e );
-            throw new MetadataSyncImportException( message,e );
-        }
-        
-        boolean addNewVersion = handleImportReport( importReport, version );
-
-        if ( addNewVersion )
-        {
-            try
-            {
-                metadataVersionDelegate.addNewMetadataVersion( version );
-            }
-            catch ( MetadataVersionServiceException e )
-            {
-                throw new MetadataSyncServiceException( e.getMessage(), e );
-            }
-
-        }
-
-        metadataSyncSummary.setImportReport( importReport );
-        metadataSyncSummary.setMetadataVersion( version );
-
-        return metadataSyncSummary;
+    if (importParams == null) {
+      throw new MetadataSyncServiceException("MetadataImportParams for the Sync cant be null.");
     }
 
-    //----------------------------------------------------------------------------------------
-    // Private Methods
-    //----------------------------------------------------------------------------------------
+    Map<Class<? extends IdentifiableObject>, List<IdentifiableObject>> classListMap =
+        parseClassListMap(versionSnapShot);
 
-    private boolean handleImportReport( ImportReport importReport, MetadataVersion version )
-    {
-        if ( importReport == null )
-        {
-            return false;
-        }
-        
-        Status importStatus = importReport.getStatus();
-        return importStatus.equals( Status.OK ) || isBestEffort( version, importStatus );
+    if (classListMap == null) {
+      throw new MetadataSyncServiceException("ClassListMap can't be null");
     }
 
-    private boolean isBestEffort( MetadataVersion version, Status importStatus )
-    {
-        return importStatus.equals( Status.WARNING ) && VersionType.BEST_EFFORT.equals( version.getType() );
+    // Job configurations should not be imported from any source
+    // (neither by normal metadata import nor by sync).
+    classListMap.remove(JobConfiguration.class);
+
+    ImportReport importReport = null;
+
+    try {
+      importReport =
+          metadataImportService.importMetadata(importParams, new MetadataObjects(classListMap));
+
+    } catch (Exception e) {
+      String message = "Exception occurred while trying to import the metadata. " + e.getMessage();
+      log.error(message, e);
+      throw new MetadataSyncImportException(message, e);
     }
 
-    private Map<Class<? extends IdentifiableObject>, List<IdentifiableObject>> parseClassListMap(
-        String metadataVersionSnapshot )
-    {
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(
-            metadataVersionSnapshot.getBytes( StandardCharsets.UTF_8 ) );
+    boolean addNewVersion = handleImportReport(importReport, version);
 
-        try
-        {
-            return renderService.fromMetadata( byteArrayInputStream, RenderFormat.JSON );
-        }
-        catch ( IOException ex )
-        {
-            String message = "Exception occurred while trying to do JSON conversion while parsing class list map";
-            log.error( message );
-            throw new MetadataSyncServiceException( message, ex );
-        }
-        catch ( Exception ex )
-        {
-            throw new MetadataSyncServiceException( ex.getMessage(), ex );
-        }
+    if (addNewVersion) {
+      try {
+        metadataVersionDelegate.addNewMetadataVersion(version);
+      } catch (MetadataVersionServiceException e) {
+        throw new MetadataSyncServiceException(e.getMessage(), e);
+      }
     }
 
-    private MetadataVersion getMetadataVersion( MetadataSyncParams syncParams )
-    {
-        if ( syncParams == null )
-        {
-            throw new MetadataSyncServiceException( "MetadataSyncParams cant be null" );
-        }
+    metadataSyncSummary.setImportReport(importReport);
+    metadataSyncSummary.setMetadataVersion(version);
 
-        MetadataVersion version = syncParams.getVersion();
+    return metadataSyncSummary;
+  }
 
-        if ( version == null )
-        {
-            throw new MetadataSyncServiceException( "MetadataVersion for the Sync cant be null." );
-        }
+  // ----------------------------------------------------------------------------------------
+  // Private Methods
+  // ----------------------------------------------------------------------------------------
 
-        return version;
+  private boolean handleImportReport(ImportReport importReport, MetadataVersion version) {
+    if (importReport == null) {
+      return false;
     }
+
+    Status importStatus = importReport.getStatus();
+    return importStatus.equals(Status.OK) || isBestEffort(version, importStatus);
+  }
+
+  private boolean isBestEffort(MetadataVersion version, Status importStatus) {
+    return importStatus.equals(Status.WARNING) && VersionType.BEST_EFFORT.equals(version.getType());
+  }
+
+  private Map<Class<? extends IdentifiableObject>, List<IdentifiableObject>> parseClassListMap(
+      String metadataVersionSnapshot) {
+    ByteArrayInputStream byteArrayInputStream =
+        new ByteArrayInputStream(metadataVersionSnapshot.getBytes(StandardCharsets.UTF_8));
+
+    try {
+      return renderService.fromMetadata(byteArrayInputStream, RenderFormat.JSON);
+    } catch (IOException ex) {
+      String message =
+          "Exception occurred while trying to do JSON conversion while parsing class list map";
+      log.error(message);
+      throw new MetadataSyncServiceException(message, ex);
+    } catch (Exception ex) {
+      throw new MetadataSyncServiceException(ex.getMessage(), ex);
+    }
+  }
+
+  private MetadataVersion getMetadataVersion(MetadataSyncParams syncParams) {
+    if (syncParams == null) {
+      throw new MetadataSyncServiceException("MetadataSyncParams cant be null");
+    }
+
+    MetadataVersion version = syncParams.getVersion();
+
+    if (version == null) {
+      throw new MetadataSyncServiceException("MetadataVersion for the Sync cant be null.");
+    }
+
+    return version;
+  }
 }

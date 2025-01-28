@@ -1,7 +1,5 @@
-package org.hisp.dhis.schema.descriptors;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.schema.descriptors;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.schema.descriptors;
 
 import com.google.common.collect.Lists;
 import org.hisp.dhis.schema.Schema;
@@ -38,26 +37,24 @@ import org.hisp.dhis.trackedentity.TrackedEntityType;
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class TrackedEntityTypeSchemaDescriptor implements SchemaDescriptor
-{
-    public static final String SINGULAR = "trackedEntityType";
+public class TrackedEntityTypeSchemaDescriptor implements SchemaDescriptor {
+  public static final String SINGULAR = "trackedEntityType";
 
-    public static final String PLURAL = "trackedEntityTypes";
+  public static final String PLURAL = "trackedEntityTypes";
 
-    public static final String API_ENDPOINT = "/" + PLURAL;
+  public static final String API_ENDPOINT = "/" + PLURAL;
 
-    @Override
-    public Schema getSchema()
-    {
-        Schema schema = new Schema( TrackedEntityType.class, SINGULAR, PLURAL );
-        schema.setDataShareable( true );
-        schema.setRelativeApiEndpoint( API_ENDPOINT );
-        schema.setOrder( 1480 );
+  @Override
+  public Schema getSchema() {
+    Schema schema = new Schema(TrackedEntityType.class, SINGULAR, PLURAL);
+    schema.setDataShareable(true);
+    schema.setRelativeApiEndpoint(API_ENDPOINT);
+    schema.setOrder(1480);
 
-        schema.getAuthorities().add( new Authority( AuthorityType.CREATE, Lists.newArrayList( "F_TRACKED_ENTITY_ADD" ) ) );
-        schema.getAuthorities().add( new Authority( AuthorityType.UPDATE, Lists.newArrayList( "F_TRACKED_ENTITY_UPDATE" ) ) );
-        schema.getAuthorities().add( new Authority( AuthorityType.DELETE, Lists.newArrayList( "F_TRACKED_ENTITY_DELETE" ) ) );
+    schema.add(new Authority(AuthorityType.CREATE, Lists.newArrayList("F_TRACKED_ENTITY_ADD")));
+    schema.add(new Authority(AuthorityType.UPDATE, Lists.newArrayList("F_TRACKED_ENTITY_UPDATE")));
+    schema.add(new Authority(AuthorityType.DELETE, Lists.newArrayList("F_TRACKED_ENTITY_DELETE")));
 
-        return schema;
-    }
+    return schema;
+  }
 }

@@ -1,6 +1,5 @@
-package org.hisp.dhis.appmanager;
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,16 +25,17 @@ package org.hisp.dhis.appmanager;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.appmanager;
 
 /**
  * @author Stian Sandvold
  */
-public enum AppStorageSource
-{
-    // NB! LOCAL AppStorageSource represents the old way of storing apps.
-    // This only exists to avoid breaking existing installation of apps
-    // installed prior to 2.28. Post 2.28 all apps will be installed using JCLOUDS
-    // If DHIS2 is used to install.
-    LOCAL,
-    JCLOUDS
+public enum AppStorageSource {
+  // NB! LOCAL AppStorageSource represents the old way of storing apps.
+  // This only exists to avoid breaking existing installation of apps
+  // installed prior to 2.28. Post 2.28 all apps will be installed using
+  // JCLOUDS
+  // If DHIS2 is used to install.
+  LOCAL,
+  JCLOUDS
 }

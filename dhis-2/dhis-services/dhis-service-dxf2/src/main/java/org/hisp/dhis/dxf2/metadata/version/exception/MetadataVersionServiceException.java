@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.version.exception;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,27 +25,23 @@ package org.hisp.dhis.dxf2.metadata.version.exception;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.version.exception;
 
 /**
  * Service Exception for metadata version
  *
  * @author aamerm
  */
-public class MetadataVersionServiceException
-    extends RuntimeException
-{
-    public MetadataVersionServiceException( String message )
-    {
-        super( message );
-    }
+public class MetadataVersionServiceException extends RuntimeException {
+  public MetadataVersionServiceException(String message) {
+    super(message);
+  }
 
-    public MetadataVersionServiceException( Throwable cause )
-    {
-        super( cause );
-    }
+  public MetadataVersionServiceException(Throwable cause) {
+    super(cause);
+  }
 
-    public MetadataVersionServiceException( String message, Throwable cause )
-    {
-        super( message, cause );
-    }
+  public MetadataVersionServiceException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

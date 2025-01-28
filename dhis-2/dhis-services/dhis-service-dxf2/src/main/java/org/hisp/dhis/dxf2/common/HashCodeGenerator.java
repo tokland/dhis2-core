@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.common;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.dxf2.common;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.common;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -35,22 +34,18 @@ import java.security.NoSuchAlgorithmException;
 /**
  * @author by anilkumk.
  */
-public class HashCodeGenerator
-{
-    public static String getHashCode( String value ) throws NoSuchAlgorithmException
-    {
-        byte[] bytesOfMessage = value.getBytes( StandardCharsets.UTF_8 );
-        MessageDigest md = MessageDigest.getInstance( "MD5" );
-        byte[] digest = md.digest( bytesOfMessage );
+public class HashCodeGenerator {
+  public static String getHashCode(String value) throws NoSuchAlgorithmException {
+    byte[] bytesOfMessage = value.getBytes(StandardCharsets.UTF_8);
+    MessageDigest md = MessageDigest.getInstance("MD5");
+    byte[] digest = md.digest(bytesOfMessage);
 
-        StringBuilder hexString = new StringBuilder();
-        for ( byte aDigest : digest )
-        {
-            String hex = Integer.toHexString( 0xFF & aDigest );
-            if ( hex.length() == 1 )
-                hexString.append( '0' );
-            hexString.append( hex );
-        }
-        return hexString.toString();
+    StringBuilder hexString = new StringBuilder();
+    for (byte aDigest : digest) {
+      String hex = Integer.toHexString(0xFF & aDigest);
+      if (hex.length() == 1) hexString.append('0');
+      hexString.append(hex);
     }
+    return hexString.toString();
+  }
 }

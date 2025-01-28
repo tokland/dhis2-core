@@ -1,7 +1,5 @@
-package org.hisp.dhis.minmax;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,42 +25,40 @@ package org.hisp.dhis.minmax;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.minmax;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import java.util.List;
 
-public class MinMaxValueParams
-{
-    private List<String> dataSets;
+@JacksonXmlRootElement
+public class MinMaxValueParams {
+  private List<String> dataSets;
 
-    private String organisationUnit;
+  private String organisationUnit;
 
-    public MinMaxValueParams()
-    {
-    }
+  public MinMaxValueParams() {}
 
-    public MinMaxValueParams( List<String> dataSets, String organisationUnit )
-    {
-        this.dataSets = dataSets;
-        this.organisationUnit = organisationUnit;
-    }
+  public MinMaxValueParams(List<String> dataSets, String organisationUnit) {
+    this.dataSets = dataSets;
+    this.organisationUnit = organisationUnit;
+  }
 
-    public List<String> getDataSets()
-    {
-        return dataSets;
-    }
+  @JsonProperty
+  public List<String> getDataSets() {
+    return dataSets;
+  }
 
-    public void setDataSets( List<String> dataSets )
-    {
-        this.dataSets = dataSets;
-    }
+  public void setDataSets(List<String> dataSets) {
+    this.dataSets = dataSets;
+  }
 
-    public String getOrganisationUnit()
-    {
-        return organisationUnit;
-    }
+  @JsonProperty
+  public String getOrganisationUnit() {
+    return organisationUnit;
+  }
 
-    public void setOrganisationUnit( String organisationUnit )
-    {
-        this.organisationUnit = organisationUnit;
-    }
+  public void setOrganisationUnit(String organisationUnit) {
+    this.organisationUnit = organisationUnit;
+  }
 }

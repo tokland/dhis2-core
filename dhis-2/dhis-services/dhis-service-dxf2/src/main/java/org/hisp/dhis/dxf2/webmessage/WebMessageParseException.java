@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.webmessage;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,28 +25,21 @@ package org.hisp.dhis.dxf2.webmessage;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.webmessage;
 
 import java.io.IOException;
 
-/**
- * Created by vanyas on 5/5/17.
- */
-public class WebMessageParseException
-    extends IOException
-{
-    public WebMessageParseException( String message )
-    {
-        super( message );
-    }
+/** Created by vanyas on 5/5/17. */
+public class WebMessageParseException extends IOException {
+  public WebMessageParseException(String message) {
+    super(message);
+  }
 
-    public WebMessageParseException( Throwable cause )
-    {
-        super( cause );
-    }
+  public WebMessageParseException(Throwable cause) {
+    super(cause);
+  }
 
-    public WebMessageParseException( String message, Throwable cause )
-    {
-        super( message, cause );
-    }
-
+  public WebMessageParseException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

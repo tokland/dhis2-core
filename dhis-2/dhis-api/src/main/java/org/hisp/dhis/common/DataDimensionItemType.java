@@ -1,7 +1,5 @@
-package org.hisp.dhis.common;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,18 +25,22 @@ package org.hisp.dhis.common;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.common;
 
 /**
-* @author Lars Helge Overland
-*/
-public enum DataDimensionItemType
-{
-    INDICATOR, 
-    DATA_ELEMENT, 
-    DATA_ELEMENT_OPERAND, 
-    REPORTING_RATE, 
-    PROGRAM_INDICATOR, 
-    PROGRAM_DATA_ELEMENT, 
-    PROGRAM_ATTRIBUTE,
-    VALIDATION_RULE
+ * @author Lars Helge Overland
+ */
+public enum DataDimensionItemType {
+  INDICATOR,
+  DATA_ELEMENT,
+  DATA_ELEMENT_OPERAND,
+  REPORTING_RATE,
+  PROGRAM_INDICATOR,
+  PROGRAM_DATA_ELEMENT,
+  PROGRAM_DATA_ELEMENT_OPTION,
+  PROGRAM_ATTRIBUTE,
+  PROGRAM_ATTRIBUTE_OPTION,
+  EXPRESSION_DIMENSION_ITEM,
+  SUBEXPRESSION_DIMENSION_ITEM,
+  VALIDATION_RULE
 }

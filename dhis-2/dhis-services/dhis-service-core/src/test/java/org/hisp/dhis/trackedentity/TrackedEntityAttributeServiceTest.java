@@ -1,7 +1,5 @@
-package org.hisp.dhis.trackedentity;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,65 +25,183 @@ package org.hisp.dhis.trackedentity;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.trackedentity;
 
-import org.hisp.dhis.DhisSpringTest;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.util.Arrays;
 import org.hisp.dhis.common.ValueType;
-import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.hisp.dhis.fileresource.FileResourceService;
+import org.hisp.dhis.option.Option;
+import org.hisp.dhis.option.OptionSet;
+import org.hisp.dhis.organisationunit.OrganisationUnit;
+import org.hisp.dhis.organisationunit.OrganisationUnitService;
+import org.hisp.dhis.program.ProgramService;
+import org.hisp.dhis.program.ProgramTrackedEntityAttributeStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.hisp.dhis.user.UserService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * @author Chau Thu Tran
+ * @author David Katuscak
  */
-public class TrackedEntityAttributeServiceTest
-    extends DhisSpringTest
-{
-    @Autowired
-    private TrackedEntityAttributeStore attributeStore;
+@ExtendWith(MockitoExtension.class)
+class TrackedEntityAttributeServiceTest {
 
-    private TrackedEntityAttribute attributeA;
+  @Mock private TrackedEntityAttributeStore trackedEntityAttributeStore;
 
-    private TrackedEntityAttribute attributeB;
+  @Mock private TrackedEntityTypeService trackedEntityTypeService;
 
-    private TrackedEntityAttribute attributeC;
+  @Mock private ProgramService programService;
 
-    @Override
-    public void setUpTest()
-    {
-        attributeA = createTrackedEntityAttribute( 'A' );
-        attributeB = createTrackedEntityAttribute( 'B' );
-        attributeC = createTrackedEntityAttribute( 'C', ValueType.NUMBER );
+  @Mock private AclService aclService;
 
-        List<TrackedEntityAttribute> attributesA = new ArrayList<>();
-        attributesA.add( attributeA );
-        attributesA.add( attributeB );
-    }
+  @Mock private TrackedEntityAttributeStore attributeStore;
 
+  @Mock private FileResourceService fileResourceService;
 
-    @Test
-    public void testGetTrackedEntityAttributesByDisplayOnVisitSchedule()
-    {
-        attributeA.setDisplayOnVisitSchedule( true );
-        attributeB.setDisplayOnVisitSchedule( true );
-        attributeC.setDisplayOnVisitSchedule( false );
+  @Mock private UserService userService;
 
-        attributeStore.save( attributeA );
-        attributeStore.save( attributeB );
-        attributeStore.save( attributeC );
+  @Mock private TrackedEntityTypeAttributeStore entityTypeAttributeStore;
 
-        List<TrackedEntityAttribute> attributes = attributeStore.getByDisplayOnVisitSchedule( true );
-        assertEquals( 2, attributes.size() );
-        assertTrue( attributes.contains( attributeA ) );
-        assertTrue( attributes.contains( attributeB ) );
+  @Mock private ProgramTrackedEntityAttributeStore programAttributeStore;
 
-        attributes = attributeStore.getByDisplayOnVisitSchedule( false );
-        assertEquals( 1, attributes.size() );
-        assertTrue( attributes.contains( attributeC ) );
-    }
+  private TrackedEntityAttributeService trackedEntityAttributeService;
 
+  @Mock private OrganisationUnitService organisationUnitService;
+
+  private TrackedEntity tePassedInPayload;
+
+  private final String identicalTrackedEntityUid = "TrackedEntityUid12345";
+
+  private OrganisationUnit orgUnit;
+
+  private TrackedEntityAttribute tea;
+
+  @BeforeEach
+  public void setUp() {
+    trackedEntityAttributeService =
+        new DefaultTrackedEntityAttributeService(
+            attributeStore,
+            programService,
+            trackedEntityTypeService,
+            fileResourceService,
+            userService,
+            aclService,
+            trackedEntityAttributeStore,
+            entityTypeAttributeStore,
+            programAttributeStore,
+            organisationUnitService);
+
+    orgUnit = new OrganisationUnit("orgUnitA");
+
+    tePassedInPayload = new TrackedEntity();
+    tePassedInPayload.setUid(identicalTrackedEntityUid);
+    tePassedInPayload.setOrganisationUnit(orgUnit);
+
+    tea = new TrackedEntityAttribute();
+    tea.setUid("TeaUid12345");
+    tea.setUnique(true);
+    tea.setValueType(ValueType.TEXT);
+    tea.setOrgunitScope(false);
+  }
+
+  @Test
+  void shouldThrowWhenTeaIsNull() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> trackedEntityAttributeService.validateValueType(null, ""));
+  }
+
+  @Test
+  void wrongValueToValueType() {
+    tea.setValueType(ValueType.NUMBER);
+    String teaValue = "Firstname";
+
+    String result = trackedEntityAttributeService.validateValueType(tea, teaValue);
+    assertNotNull(result);
+
+    tea.setValueType(ValueType.BOOLEAN);
+    result = trackedEntityAttributeService.validateValueType(tea, teaValue);
+    assertNotNull(result);
+  }
+
+  @Test
+  void wrongValueToDateValueType() {
+    tea.setValueType(ValueType.DATE);
+    String teaValue = "Firstname";
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> trackedEntityAttributeService.validateValueType(tea, teaValue));
+  }
+
+  @Test
+  void correctValueToValueType() {
+    String teaValue = "Firstname";
+    tea.setValueType(ValueType.TEXT);
+
+    String result = trackedEntityAttributeService.validateValueType(tea, teaValue);
+    assertNull(result);
+
+    tea.setValueType(ValueType.NUMBER);
+    teaValue = "123";
+    result = trackedEntityAttributeService.validateValueType(tea, teaValue);
+    assertNull(result);
+
+    tea.setValueType(ValueType.BOOLEAN);
+    teaValue = String.valueOf(true);
+    result = trackedEntityAttributeService.validateValueType(tea, teaValue);
+    assertNull(result);
+
+    tea.setValueType(ValueType.DATE);
+    teaValue = "2019-01-01";
+    result = trackedEntityAttributeService.validateValueType(tea, teaValue);
+    assertNull(result);
+  }
+
+  @Test
+  void successWhenTeaOptionValueIsValid() {
+    tea.setUid("uid");
+
+    OptionSet optionSet = new OptionSet();
+    Option option = new Option();
+    option.setCode("CODE");
+
+    Option option1 = new Option();
+    option1.setCode("CODE1");
+
+    optionSet.setOptions(Arrays.asList(null, option, option1));
+    tea.setOptionSet(optionSet);
+
+    assertNull(trackedEntityAttributeService.validateValueType(tea, "CODE"));
+  }
+
+  @Test
+  void failWhenTeaOptionValueIsNotValid() {
+    tea.setUid("uid");
+
+    OptionSet optionSet = new OptionSet();
+    Option option = new Option();
+    option.setCode("CODE");
+
+    Option option1 = new Option();
+    option1.setCode("CODE1");
+
+    optionSet.setOptions(Arrays.asList(option, option1));
+    tea.setOptionSet(optionSet);
+
+    assertNotNull(trackedEntityAttributeService.validateValueType(tea, "COE"));
+  }
+
+  @Test
+  void doNothingWhenTeaOptionValueIsNull() {
+    tea.setUid("uid");
+    assertNull(trackedEntityAttributeService.validateValueType(tea, "COE"));
+  }
 }

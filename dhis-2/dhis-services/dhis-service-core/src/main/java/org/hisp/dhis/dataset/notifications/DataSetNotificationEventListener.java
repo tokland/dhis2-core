@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset.notifications;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,28 +25,31 @@ package org.hisp.dhis.dataset.notifications;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataset.notifications;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import org.hisp.dhis.dataset.CompleteDataSetRegistration;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
 
-/**
- * Created by zubair@dhis2.org on 18.01.18.
- */
+/** Created by zubair@dhis2.org on 18.01.18. */
+@Component("org.hisp.dhis.dataset.notifications.DataSetNotificationEventListener")
+public class DataSetNotificationEventListener {
+  private DataSetNotificationService dataSetNotificationService;
 
-public class DataSetNotificationEventListener
-{
-    @Autowired
-    private DataSetNotificationService dataSetNotificationService;
+  public DataSetNotificationEventListener(DataSetNotificationService dataSetNotificationService) {
+    checkNotNull(dataSetNotificationService);
 
-    @EventListener
-    public void onApplicationEvent( DataSetNotificationEvent event )
-    {
-        CompleteDataSetRegistration registration = event.getRegistration();
+    this.dataSetNotificationService = dataSetNotificationService;
+  }
 
-        if ( registration != null )
-        {
-            dataSetNotificationService.sendCompleteDataSetNotifications( registration );
-        }
+  @EventListener
+  public void onApplicationEvent(DataSetNotificationEvent event) {
+    CompleteDataSetRegistration registration = event.getRegistration();
+
+    if (registration != null) {
+      dataSetNotificationService.sendCompleteDataSetNotifications(registration);
     }
+  }
 }

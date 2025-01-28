@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.objectbundle.feedback;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,138 +25,104 @@ package org.hisp.dhis.dxf2.metadata.objectbundle.feedback;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.objectbundle.feedback;
 
 import com.google.common.base.MoreObjects;
-import com.google.common.collect.Lists;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import org.hisp.dhis.feedback.ErrorCode;
 import org.hisp.dhis.feedback.ErrorReport;
-import org.hisp.dhis.feedback.ObjectReport;
+import org.hisp.dhis.feedback.ErrorReportContainer;
 import org.hisp.dhis.feedback.TypeReport;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class ObjectBundleCommitReport
-{
-    private Map<Class<?>, TypeReport> typeReportMap = new HashMap<>();
+public class ObjectBundleCommitReport implements ErrorReportContainer, Iterable<TypeReport> {
+  private final Map<Class<?>, TypeReport> typeReportMap;
 
-    public ObjectBundleCommitReport()
-    {
+  public ObjectBundleCommitReport() {
+    this(new HashMap<>());
+  }
+
+  public ObjectBundleCommitReport(Map<Class<?>, TypeReport> typeReportMap) {
+    this.typeReportMap = typeReportMap;
+  }
+
+  // -----------------------------------------------------------------------------------
+  // Utility Methods
+  // -----------------------------------------------------------------------------------
+
+  public int getErrorReportsCountByCode(Class<?> klass, ErrorCode errorCode) {
+    TypeReport report = typeReportMap.get(klass);
+    return report == null ? 0 : report.getErrorReportsCount(errorCode);
+  }
+
+  public void addTypeReport(TypeReport report) {
+    if (report == null) {
+      return;
     }
 
-    public ObjectBundleCommitReport( Map<Class<?>, TypeReport> typeReportMap )
-    {
-        this.typeReportMap = typeReportMap;
-    }
+    typeReportMap.compute(
+        report.getKlass(),
+        (key, value) -> {
+          if (value == null) {
+            return report;
+          }
+          value.merge(report);
+          return value;
+        });
+  }
 
-    //-----------------------------------------------------------------------------------
-    // Utility Methods
-    //-----------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------
+  // Getters and Setters
+  // -----------------------------------------------------------------------------------
 
-    public List<ErrorReport> getErrorReportsByCode( Class<?> klass, ErrorCode errorCode )
-    {
-        List<ErrorReport> errorReports = new ArrayList<>();
+  public boolean isEmpty() {
+    return typeReportMap.isEmpty();
+  }
 
-        if ( !typeReportMap.containsKey( klass ) )
-        {
-            return errorReports;
-        }
+  @Override
+  public Iterator<TypeReport> iterator() {
+    return typeReportMap.values().iterator();
+  }
 
-        List<ObjectReport> objectReports = typeReportMap.get( klass ).getObjectReports();
+  public TypeReport getTypeReport(Class<?> klass) {
+    return typeReportMap.get(klass);
+  }
 
-        for ( ObjectReport objectReport : objectReports )
-        {
-            List<ErrorReport> byCode = objectReport.getErrorReportsByCode().get( errorCode );
+  @Override
+  public int getErrorReportsCount() {
+    return typeReportMap.values().stream().mapToInt(TypeReport::getErrorReportsCount).sum();
+  }
 
-            if ( byCode != null )
-            {
-                errorReports.addAll( byCode );
-            }
-        }
+  @Override
+  public int getErrorReportsCount(ErrorCode errorCode) {
+    return typeReportMap.values().stream()
+        .mapToInt(report -> report.getErrorReportsCount(errorCode))
+        .sum();
+  }
 
-        return errorReports;
-    }
+  @Override
+  public boolean hasErrorReports() {
+    return typeReportMap.values().stream().anyMatch(TypeReport::hasErrorReports);
+  }
 
-    public void addTypeReport( TypeReport report )
-    {
-        if ( report == null )
-        {
-            return;
-        }
+  @Override
+  public boolean hasErrorReport(Predicate<ErrorReport> test) {
+    return typeReportMap.values().stream().anyMatch(report -> report.hasErrorReport(test));
+  }
 
-        if ( !typeReportMap.containsKey( report.getKlass() ) )
-        {
-            typeReportMap.put( report.getKlass(), report );
-            return;
-        }
+  @Override
+  public void forEachErrorReport(Consumer<ErrorReport> reportConsumer) {
+    typeReportMap.values().forEach(report -> report.forEachErrorReport(reportConsumer));
+  }
 
-        TypeReport typeReport = typeReportMap.get( report.getKlass() );
-        typeReport.merge( typeReport );
-    }
-
-    //-----------------------------------------------------------------------------------
-    // Getters and Setters
-    //-----------------------------------------------------------------------------------
-
-    public boolean isEmpty()
-    {
-        return typeReportMap.isEmpty();
-    }
-
-    public boolean isEmpty( Class<?> klass )
-    {
-        return typeReportMap.containsKey( klass ) && typeReportMap.get( klass ).getObjectReportMap().isEmpty();
-    }
-
-    public Map<Class<?>, TypeReport> getTypeReportMap()
-    {
-        return typeReportMap;
-    }
-
-    public TypeReport getTypeReportMap( Class<?> klass )
-    {
-        return typeReportMap.get( klass );
-    }
-
-    public List<ObjectReport> getObjectReports( Class<?> klass )
-    {
-        if ( !typeReportMap.containsKey( klass ) )
-        {
-            return Lists.newArrayList();
-        }
-
-        return typeReportMap.get( klass ).getObjectReports();
-    }
-
-    public List<ErrorReport> getErrorReports( Class<?> klass )
-    {
-        if ( !typeReportMap.containsKey( klass ) )
-        {
-            return Lists.newArrayList();
-        }
-
-        return new ArrayList<>( typeReportMap.get( klass ).getErrorReports() );
-    }
-
-    public List<ErrorReport> getErrorReports()
-    {
-        List<ErrorReport> errorReports = new ArrayList<>();
-
-        typeReportMap.values().forEach( typeReport -> errorReports.addAll( typeReport.getErrorReports() ) );
-
-        return errorReports;
-    }
-
-    @Override
-    public String toString()
-    {
-        return MoreObjects.toStringHelper( this )
-            .add( "typeReportMap", typeReportMap )
-            .toString();
-    }
+  @Override
+  public String toString() {
+    return MoreObjects.toStringHelper(this).add("typeReportMap", typeReportMap).toString();
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.commons.timer;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,29 +25,36 @@ package org.hisp.dhis.commons.timer;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.commons.timer;
 
 /**
  * Simple interface that captures time durations and pretty prints it back to you.
  *
  * @author Morten Olav Hansen
  */
-public interface Timer
-{
-    /**
-     * Starts the Timer immediately.
-     * @return this Timer.
-     */
-    Timer start();
+public interface Timer {
+  static Timer startTimer() {
+    return new SystemTimer().start();
+  }
 
-    /**
-     * Stops the Timer immediately.
-     * @return this Timer.
-     */
-    Timer stop();
+  /**
+   * Starts the Timer immediately.
+   *
+   * @return this Timer.
+   */
+  Timer start();
 
-    /**
-     * Returns the elapsed time between {@link #start()} and {@link #stop()} was called.
-     * @return the elapsed time in nanoseconds.
-     */
-    Long duration();
+  /**
+   * Stops the Timer immediately.
+   *
+   * @return this Timer.
+   */
+  Timer stop();
+
+  /**
+   * Returns the elapsed time between {@link #start()} and {@link #stop()} was called.
+   *
+   * @return the elapsed time in nanoseconds.
+   */
+  Long duration();
 }

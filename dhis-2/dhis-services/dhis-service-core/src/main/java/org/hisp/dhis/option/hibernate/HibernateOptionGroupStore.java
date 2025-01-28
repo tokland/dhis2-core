@@ -1,7 +1,5 @@
-package org.hisp.dhis.option.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,37 +25,66 @@ package org.hisp.dhis.option.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.option.hibernate;
 
-import org.hibernate.criterion.Restrictions;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import java.util.List;
 import org.hisp.dhis.common.DataDimensionType;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.option.OptionGroup;
 import org.hisp.dhis.option.OptionGroupSet;
 import org.hisp.dhis.option.OptionGroupStore;
-
-import java.util.List;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Viet Nguyen <viet@dhis2.org>
  */
+@Repository("org.hisp.dhis.option.OptionGroupStore")
+public class HibernateOptionGroupStore extends HibernateIdentifiableObjectStore<OptionGroup>
+    implements OptionGroupStore {
+  public HibernateOptionGroupStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, OptionGroup.class, aclService, true);
+  }
 
-public class HibernateOptionGroupStore
-    extends HibernateIdentifiableObjectStore<OptionGroup>
-    implements OptionGroupStore
-{
-    @Override
-    @SuppressWarnings("unchecked")
-    public List<OptionGroup> getOptionGroups( OptionGroupSet groupSet )
-    {
-        return getSharingDetachedCriteria( Restrictions.eq( "groupSet", groupSet ) ).list();
-    }
+  @Override
+  public List<OptionGroup> getOptionGroups(OptionGroupSet groupSet) {
+    CriteriaBuilder builder = getCriteriaBuilder();
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public List<OptionGroup> getOptionGroupsNoAcl( DataDimensionType dataDimensionType, boolean dataDimension )
-    {
-        return getCriteria(
-            Restrictions.eq( "dataDimensionType", dataDimensionType ),
-            Restrictions.eq( "dataDimension", dataDimension ) ).list();
-    }
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicates(getSharingPredicates(builder))
+            .addPredicate(root -> builder.equal(root.get("groupSet"), groupSet)));
+  }
+
+  @Override
+  public List<OptionGroup> getOptionGroupsByOptionId(String optionId) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicates(getSharingPredicates(builder))
+            .addPredicate(root -> builder.equal(root.join("members").get("uid"), optionId)));
+  }
+
+  @Override
+  public List<OptionGroup> getOptionGroupsNoAcl(
+      DataDimensionType dataDimensionType, boolean dataDimension) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("dataDimensionType"), dataDimension))
+            .addPredicate(root -> builder.equal(root.get("dataDimension"), dataDimension)));
+  }
 }

@@ -1,0 +1,54 @@
+{
+  "importMode": "COMMIT",
+  "idSchemes": {
+    "dataElementIdScheme": {
+      "idScheme": "UID"
+    },
+    "orgUnitIdScheme": {
+      "idScheme": "UID"
+    },
+    "programIdScheme": {
+      "idScheme": "UID"
+    },
+    "programStageIdScheme": {
+      "idScheme": "UID"
+    },
+    "idScheme": {
+      "idScheme": "UID"
+    },
+    "categoryOptionComboIdScheme": {
+      "idScheme": "UID"
+    },
+    "categoryOptionIdScheme": {
+      "idScheme": "UID"
+    }
+  },
+  "importStrategy": "CREATE",
+  "atomicMode": "ALL",
+  "flushMode": "AUTO",
+  "validationMode": "FULL",
+  "skipPatternValidation": false,
+  "skipSideEffects": false,
+  "skipRuleEngine": false,
+  "trackedEntities": [],
+  "enrollments": [],
+  "events": [],
+  "relationships": [
+    {
+      "relationship": "Nva3Xj2j75W",
+      "relationshipType": {
+        "idScheme": "UID",
+        "identifier": "xLmPUYJX8Ks"
+      },
+      "bidirectional": false,
+      "deleted": false,
+      "from": {
+        "trackedEntity": "IOR1AXXl24H"
+      },
+      "to": {
+        "enrollment": "TvctPPhpD8u"
+      }
+    }
+  ],
+  "username": "system-process"
+}

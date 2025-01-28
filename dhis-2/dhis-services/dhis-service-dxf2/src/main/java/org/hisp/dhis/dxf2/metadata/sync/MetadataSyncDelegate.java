@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.sync;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,75 +25,69 @@ package org.hisp.dhis.dxf2.metadata.sync;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+package org.hisp.dhis.dxf2.metadata.sync;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.hisp.dhis.dxf2.metadata.systemsettings.DefaultMetadataSystemSettingService;
 import org.hisp.dhis.render.RenderFormat;
 import org.hisp.dhis.render.RenderService;
 import org.hisp.dhis.system.SystemInfo;
 import org.hisp.dhis.system.SystemService;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
 /**
  * Handling remote calls for metadata sync
  *
  * @author aamerm
  */
-public class MetadataSyncDelegate
-{
-    private static final Log log = LogFactory.getLog( MetadataSyncDelegate.class );
+@Slf4j
+@AllArgsConstructor
+@Component("org.hisp.dhis.dxf2.metadata.sync.MetadataSyncDelegate")
+@Scope("prototype")
+public class MetadataSyncDelegate {
+  private final DefaultMetadataSystemSettingService metadataSystemSettingService;
 
-    @Autowired
-    private DefaultMetadataSystemSettingService metadataSystemSettingService;
+  private final RenderService renderService;
 
-    @Autowired
-    private RenderService renderService;
+  private final SystemService systemService;
 
-    @Autowired
-    private SystemService systemService;
+  public boolean shouldStopSync(String metadataVersionSnapshot) {
+    SystemInfo systemInfo = systemService.getSystemInfo();
+    String systemVersion = systemInfo.getVersion();
 
-    public boolean shouldStopSync( String metadataVersionSnapshot )
-    {
-        SystemInfo systemInfo = systemService.getSystemInfo();
-        String systemVersion = systemInfo.getVersion();
-
-        if ( StringUtils.isEmpty( systemVersion ) || !metadataSystemSettingService.getStopMetadataSyncSetting() )
-        {
-            return false;
-        }
-
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream( metadataVersionSnapshot.getBytes( StandardCharsets.UTF_8 ) );
-        String remoteVersion = "";
-
-        try
-        {
-            JsonNode systemObject = renderService.getSystemObject( byteArrayInputStream, RenderFormat.JSON );
-
-            if ( systemObject == null )
-            {
-                return false;
-            }
-
-            remoteVersion = systemObject.get( "version" ).textValue();
-
-            if ( StringUtils.isEmpty( remoteVersion ) )
-            {
-                return false;
-            }
-        }
-        catch ( IOException e )
-        {
-            log.error( "Exception occurred when parsing the metadata snapshot" + e.getMessage() );
-        }
-
-        return !systemVersion.trim().equals( remoteVersion.trim() );
+    if (StringUtils.isEmpty(systemVersion)
+        || !metadataSystemSettingService.getStopMetadataSyncSetting()) {
+      return false;
     }
+
+    ByteArrayInputStream byteArrayInputStream =
+        new ByteArrayInputStream(metadataVersionSnapshot.getBytes(StandardCharsets.UTF_8));
+    String remoteVersion = "";
+
+    try {
+      JsonNode systemObject =
+          renderService.getSystemObject(byteArrayInputStream, RenderFormat.JSON);
+
+      if (systemObject == null) {
+        return false;
+      }
+
+      remoteVersion = systemObject.get("version").textValue();
+
+      if (StringUtils.isEmpty(remoteVersion)) {
+        return false;
+      }
+    } catch (IOException e) {
+      log.error("Exception occurred when parsing the metadata snapshot" + e.getMessage());
+    }
+
+    return !systemVersion.trim().equals(remoteVersion.trim());
+  }
 }

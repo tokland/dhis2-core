@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.util;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,29 +25,24 @@ package org.hisp.dhis.system.util;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.jfree.chart.ChartUtilities;
-import org.jfree.chart.JFreeChart;
+package org.hisp.dhis.system.util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import org.jfree.chart.JFreeChart;
 
-public class ChartUtils
-{
-    public static byte[] getChartAsPngByteArray( JFreeChart jFreeChart, int width, int height )
-    {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
+public class ChartUtils {
+  public static byte[] getChartAsPngByteArray(JFreeChart jFreeChart, int width, int height) {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        try
-        {
-            ChartUtilities.writeChartAsPNG( out, jFreeChart, width, height );
-            out.flush();
-            return out.toByteArray();
-        }
-        catch ( IOException ex )
-        {
-            throw new UncheckedIOException( ex );
-        }
+    try {
+      org.jfree.chart.ChartUtilities.writeChartAsPNG(out, jFreeChart, width, height);
+      out.flush();
+
+      return out.toByteArray();
+    } catch (IOException ex) {
+      throw new UncheckedIOException(ex);
     }
+  }
 }

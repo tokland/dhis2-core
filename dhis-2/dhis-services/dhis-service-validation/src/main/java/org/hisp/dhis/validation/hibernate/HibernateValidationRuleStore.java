@@ -1,7 +1,5 @@
-package org.hisp.dhis.validation.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,81 +25,95 @@ package org.hisp.dhis.validation.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.validation.hibernate;
 
-import org.hibernate.Criteria;
-import org.hibernate.criterion.Restrictions;
-import org.hisp.dhis.common.IdentifiableObjectUtils;
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import java.util.List;
+import javax.annotation.Nonnull;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
-import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.period.PeriodService;
 import org.hisp.dhis.period.PeriodType;
+import org.hisp.dhis.security.acl.AclService;
 import org.hisp.dhis.validation.ValidationRule;
 import org.hisp.dhis.validation.ValidationRuleStore;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Chau Thu Tran
- * @version HibernateValidationRuleStore.java May 19, 2010 1:48:44 PM
  */
+@Repository("org.hisp.dhis.validation.ValidationRuleStore")
+public class HibernateValidationRuleStore extends HibernateIdentifiableObjectStore<ValidationRule>
+    implements ValidationRuleStore {
+  // -------------------------------------------------------------------------
+  // Dependency
+  // -------------------------------------------------------------------------
 
-public class HibernateValidationRuleStore
-    extends HibernateIdentifiableObjectStore<ValidationRule>
-    implements ValidationRuleStore
-{
-    // -------------------------------------------------------------------------
-    // Dependency
-    // -------------------------------------------------------------------------
+  private final PeriodService periodService;
 
-    private PeriodService periodService;
+  public HibernateValidationRuleStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService,
+      PeriodService periodService) {
+    super(entityManager, jdbcTemplate, publisher, ValidationRule.class, aclService, true);
 
-    public void setPeriodService( PeriodService periodService )
-    {
-        this.periodService = periodService;
-    }
+    checkNotNull(periodService);
 
-    // -------------------------------------------------------------------------
-    // Implementation
-    // -------------------------------------------------------------------------
+    this.periodService = periodService;
+  }
 
-    @Override
-    public void save( ValidationRule validationRule )
-    {
-        PeriodType periodType = periodService.reloadPeriodType( validationRule.getPeriodType() );
+  // -------------------------------------------------------------------------
+  // Implementation
+  // -------------------------------------------------------------------------
 
-        validationRule.setPeriodType( periodType );
+  @Override
+  public void save(@Nonnull ValidationRule validationRule) {
+    PeriodType periodType = periodService.reloadPeriodType(validationRule.getPeriodType());
 
-        super.save( validationRule );
-    }
+    validationRule.setPeriodType(periodType);
 
-    @Override
-    public void update( ValidationRule validationRule )
-    {
-        PeriodType periodType = periodService.reloadPeriodType( validationRule.getPeriodType() );
+    super.save(validationRule);
+  }
 
-        validationRule.setPeriodType( periodType );
+  @Override
+  public void update(@Nonnull ValidationRule validationRule) {
+    PeriodType periodType = periodService.reloadPeriodType(validationRule.getPeriodType());
 
-        super.save( validationRule );
-    }
+    validationRule.setPeriodType(periodType);
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<ValidationRule> getAllFormValidationRules()
-    {
-        Criteria criteria = getSharingCriteria();
-        criteria.add( Restrictions.eq( "skipFormValidation", false ) );
+    super.update(validationRule);
+  }
 
-        return criteria.list();
-    }
+  @Override
+  public List<ValidationRule> getAllFormValidationRules() {
+    CriteriaBuilder builder = getCriteriaBuilder();
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<ValidationRule> getValidationRulesWithNotificationTemplates()
-    {
-        String hql = "select distinct v from ValidationRule v where v.notificationTemplates is not empty";
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicates(getSharingPredicates(builder))
+            .addPredicate(root -> builder.equal(root.get("skipFormValidation"), false)));
+  }
 
-        return getQuery( hql ).list();
-    }
+  @Override
+  public List<ValidationRule> getValidationRulesWithNotificationTemplates() {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.isNotEmpty(root.get("notificationTemplates")))
+            .setUseDistinct(true));
+  }
+
+  @Override
+  public List<ValidationRule> getValidationRulesWithoutGroups() {
+    return getQuery("from ValidationRule vr where size(vr.groups) = 0").list();
+  }
 }

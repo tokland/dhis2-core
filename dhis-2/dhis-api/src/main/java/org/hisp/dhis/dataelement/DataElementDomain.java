@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataelement;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.dataelement;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataelement;
 
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import org.hisp.dhis.common.DxfNamespaces;
@@ -34,33 +33,28 @@ import org.hisp.dhis.common.DxfNamespaces;
 /**
  * @author Chau Thu Tran
  */
-@JacksonXmlRootElement( localName = "dataElementDomain", namespace = DxfNamespaces.DXF_2_0 )
-public enum DataElementDomain
-{
-    AGGREGATE( "aggregate" ), TRACKER( "tracker" );
+@JacksonXmlRootElement(localName = "dataElementDomain", namespace = DxfNamespaces.DXF_2_0)
+public enum DataElementDomain {
+  AGGREGATE("aggregate"),
+  TRACKER("tracker");
 
-    private final String value;
+  private final String value;
 
-    DataElementDomain( String value )
-    {
-        this.value = value;
+  DataElementDomain(String value) {
+    this.value = value;
+  }
+
+  public static DataElementDomain fromValue(String value) {
+    for (DataElementDomain domainType : DataElementDomain.values()) {
+      if (domainType.value.equalsIgnoreCase(value)) {
+        return domainType;
+      }
     }
 
-    public static DataElementDomain fromValue( String value )
-    {
-        for ( DataElementDomain domainType : DataElementDomain.values() )
-        {
-            if ( domainType.value.equalsIgnoreCase( value ) )
-            {
-                return domainType;
-            }
-        }
+    return null;
+  }
 
-        return null;
-    }
-    
-    public String getValue()
-    {
-        return value;
-    }
+  public String getValue() {
+    return value;
+  }
 }

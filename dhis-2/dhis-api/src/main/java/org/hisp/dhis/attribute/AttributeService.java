@@ -1,7 +1,5 @@
-package org.hisp.dhis.attribute;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,124 +25,69 @@ package org.hisp.dhis.attribute;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.attribute;
 
+import java.util.Collection;
+import java.util.List;
 import org.hisp.dhis.attribute.exception.NonUniqueAttributeValueException;
 import org.hisp.dhis.common.IdentifiableObject;
-
-import java.util.List;
-import java.util.Set;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public interface AttributeService
-{
-    String ID = AttributeService.class.getName();
+public interface AttributeService {
 
-    // -------------------------------------------------------------------------
-    // Attribute
-    // -------------------------------------------------------------------------
+  /**
+   * Adds an attribute.
+   *
+   * @param attribute the attribute.
+   */
+  void addAttribute(Attribute attribute);
 
-    /**
-     * Adds an attribute.
-     *
-     * @param attribute the attribute.
-     */
-    void addAttribute( Attribute attribute );
+  /**
+   * Deletes an attribute.
+   *
+   * @param attribute the attribute.
+   */
+  void deleteAttribute(Attribute attribute);
 
-    /**
-     * Updates an attribute.
-     *
-     * @param attribute the attribute.
-     */
-    void updateAttribute( Attribute attribute );
+  /**
+   * Invalidate cached attribute
+   *
+   * @param attributeId
+   */
+  void invalidateCachedAttribute(String attributeId);
 
-    /**
-     * Deletes an attribute.
-     *
-     * @param attribute the attribute.
-     */
-    void deleteAttribute( Attribute attribute );
+  /**
+   * Gets the attribute with the given uid.
+   *
+   * @param uid the attribute uid.
+   * @return the attribute with the given uid.
+   */
+  Attribute getAttribute(String uid);
 
-    /**
-     * Gets the attribute with the given id.
-     *
-     * @param id the attribute id.
-     * @return the attribute with the given id.
-     */
-    Attribute getAttribute( int id );
+  /**
+   * Gets the attribute with the given name.
+   *
+   * @param name the name.
+   * @return the attribute with the given name.
+   */
+  Attribute getAttributeByName(String name);
 
-    /**
-     * Gets the attribute with the given uid.
-     *
-     * @param id the attribute uid.
-     * @return the attribute with the given uid.
-     */
-    Attribute getAttribute( String uid );
+  /**
+   * Gets all attributes.
+   *
+   * @return a list of all attributes in no particular order
+   */
+  List<Attribute> getAllAttributes();
 
-    /**
-     * Gets the attribute with the given name.
-     *
-     * @param name the name.
-     * @return the attribute with the given name.
-     */
-    Attribute getAttributeByName( String name );
+  List<Attribute> getAttributesByIds(Collection<String> ids);
 
-    /**
-     * Gets the attribute with the given code.
-     *
-     * @param code the code.
-     * @return the attribute with the given code.
-     */
-    Attribute getAttributeByCode( String code );
+  // -------------------------------------------------------------------------
+  // AttributeValue
+  // -------------------------------------------------------------------------
 
-    /**
-     * Gets all attributes.
-     *
-     * @return a set of all attributes.
-     */
-    List<Attribute> getAllAttributes();
-
-    List<Attribute> getAttributes( Class<?> klass );
-
-    List<Attribute> getMandatoryAttributes( Class<?> klass );
-
-    List<Attribute> getUniqueAttributes( Class<?> klass );
-
-    // -------------------------------------------------------------------------
-    // AttributeValue
-    // -------------------------------------------------------------------------
-
-    /**
-     * Adds an attribute value.
-     *
-     * @param attributeValue the attribute value.
-     */
-    <T extends IdentifiableObject> void addAttributeValue( T object, AttributeValue attributeValue ) throws NonUniqueAttributeValueException;
-
-    /**
-     * Updates an attribute value.
-     *
-     * @param attributeValue the attribute value.
-     */
-    <T extends IdentifiableObject> void updateAttributeValue( T object, AttributeValue attributeValue ) throws NonUniqueAttributeValueException;
-
-    /**
-     * Deletes an attribute value.
-     *
-     * @param attributeValue the attribute value.
-     */
-    void deleteAttributeValue( AttributeValue attributeValue );
-
-    /**
-     * Gets the attribute value with the given id.
-     *
-     * @param id the id.
-     * @return the attribute value with the given id.
-     */
-    AttributeValue getAttributeValue( int id );
-
-    <T extends IdentifiableObject> void updateAttributeValues( T object, List<String> jsonAttributeValues ) throws Exception;
-
-    <T extends IdentifiableObject> void updateAttributeValues( T object, Set<AttributeValue> attributeValues ) throws Exception;
+  /** Adds an attribute value. */
+  <T extends IdentifiableObject> void addAttributeValue(T object, String attributeId, String value)
+      throws NonUniqueAttributeValueException;
 }

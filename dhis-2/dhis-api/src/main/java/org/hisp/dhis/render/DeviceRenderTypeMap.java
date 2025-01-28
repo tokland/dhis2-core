@@ -1,7 +1,5 @@
-package org.hisp.dhis.render;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,14 +25,17 @@ package org.hisp.dhis.render;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.render;
 
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import java.util.LinkedHashMap;
+import org.hisp.dhis.common.DxfNamespaces;
 
 /**
- * This class represents the relationship between a RenderingType and a RenderDevice. A RenderDevice can have one RenderType.
+ * This class represents the relationship between a RenderingType and a RenderDevice. A RenderDevice
+ * can have one RenderType.
+ *
  * @param <T> an object wrapping an enum representing options for rendering a specific object
  */
-public class DeviceRenderTypeMap<T>
-    extends LinkedHashMap<RenderDevice, T>
-{
-}
+@JacksonXmlRootElement(localName = "renderType", namespace = DxfNamespaces.DXF_2_0)
+public class DeviceRenderTypeMap<T> extends LinkedHashMap<RenderDevice, T> {}

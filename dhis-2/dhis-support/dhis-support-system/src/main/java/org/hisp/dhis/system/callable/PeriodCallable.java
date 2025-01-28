@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.callable;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,38 +25,32 @@ package org.hisp.dhis.system.callable;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.callable;
 
+import java.util.concurrent.ExecutionException;
 import org.hisp.dhis.common.IdScheme;
 import org.hisp.dhis.period.Period;
 import org.hisp.dhis.period.PeriodService;
 
-import java.util.concurrent.ExecutionException;
-
 /**
  * @author Lars Helge Overland
  */
-public class PeriodCallable
-    extends IdentifiableObjectCallable<Period>
-{
-    private PeriodService periodService;
+public class PeriodCallable extends IdentifiableObjectCallable<Period> {
+  private PeriodService periodService;
 
-    public PeriodCallable( PeriodService periodService, IdScheme idScheme, String id )
-    {
-        super( null, Period.class, idScheme, id );
-        this.periodService = periodService;
-    }
+  public PeriodCallable(PeriodService periodService, IdScheme idScheme, String id) {
+    super(null, Period.class, idScheme, id);
+    this.periodService = periodService;
+  }
 
-    @Override
-    public Period call()
-        throws ExecutionException
-    {
-        return periodService.reloadIsoPeriod( id );
-    }
+  @Override
+  public Period call() throws ExecutionException {
+    return periodService.reloadIsoPeriodInStatelessSession(id);
+  }
 
-    @Override
-    public PeriodCallable setId( String id )
-    {
-        this.id = id;
-        return this;
-    }
+  @Override
+  public PeriodCallable setId(String id) {
+    this.id = id;
+    return this;
+  }
 }

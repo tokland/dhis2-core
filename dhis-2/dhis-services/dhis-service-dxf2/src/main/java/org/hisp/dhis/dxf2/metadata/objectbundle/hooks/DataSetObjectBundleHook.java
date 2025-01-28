@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,48 +25,102 @@ package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
 
+import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import org.hisp.dhis.common.IdentifiableObject;
+import org.hisp.dhis.dataelement.DataElement;
+import org.hisp.dhis.dataelement.DataElementOperand;
 import org.hisp.dhis.dataset.DataInputPeriod;
 import org.hisp.dhis.dataset.DataSet;
+import org.hisp.dhis.dataset.Section;
 import org.hisp.dhis.dxf2.metadata.objectbundle.ObjectBundle;
 import org.hisp.dhis.feedback.ErrorCode;
 import org.hisp.dhis.feedback.ErrorReport;
 import org.hisp.dhis.util.ObjectUtils;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Viet Nguyen <viet@dhis2.org>
  */
-public class DataSetObjectBundleHook extends AbstractObjectBundleHook
-{
-    @Override
-    public <T extends IdentifiableObject> List<ErrorReport> validate( T object, ObjectBundle bundle )
-    {
-        if ( object == null || !object.getClass().isAssignableFrom( DataSet.class ) )
-        {
-            return new ArrayList<>();
-        }
+@Component
+public class DataSetObjectBundleHook extends AbstractObjectBundleHook<DataSet> {
+  @Override
+  public void validate(DataSet dataSet, ObjectBundle bundle, Consumer<ErrorReport> addReports) {
+    Set<DataInputPeriod> inputPeriods = dataSet.getDataInputPeriods();
 
-        List<ErrorReport> errors = new ArrayList<>();
-
-        DataSet dataSet = (DataSet) object;
-
-        Set<DataInputPeriod> inputPeriods = dataSet.getDataInputPeriods();
-
-        if ( inputPeriods.size() > 0 )
-        {
-            for ( DataInputPeriod period : inputPeriods )
-            {
-                if ( ObjectUtils.allNonNull( period.getOpeningDate(), period.getClosingDate() ) && period.getOpeningDate().after( period.getClosingDate() ) )
-                {
-                    errors.add( new ErrorReport( DataSet.class, ErrorCode.E4013, period.getClosingDate(), period.getOpeningDate() ) );
-                }
-            }
-        }
-        return errors;
+    for (DataInputPeriod period : inputPeriods) {
+      if (ObjectUtils.allNonNull(period.getOpeningDate(), period.getClosingDate())
+          && period.getOpeningDate().after(period.getClosingDate())) {
+        addReports.accept(
+            new ErrorReport(
+                DataSet.class, ErrorCode.E4013, period.getClosingDate(), period.getOpeningDate()));
+      }
     }
+  }
+
+  @Override
+  public void preUpdate(DataSet object, DataSet persistedObject, ObjectBundle bundle) {
+    if (object == null || !object.getClass().isAssignableFrom(DataSet.class)) return;
+
+    deleteRemovedDataElementFromSection(persistedObject, object);
+    deleteRemovedSection(persistedObject, object, bundle);
+    deleteCompulsoryDataElementOperands(object);
+  }
+
+  /**
+   * Remove the {@link DataSet#getCompulsoryDataElementOperands()} if the referenced {@link
+   * DataElementOperand#getDataElement()} is being removed from DataSet.
+   *
+   * @param importDataSet the {@link DataSet} from import payload.
+   */
+  private void deleteCompulsoryDataElementOperands(DataSet importDataSet) {
+    Set<String> dataElementIds =
+        importDataSet.getDataElements().stream()
+            .map(IdentifiableObject::getUid)
+            .collect(Collectors.toSet());
+
+    importDataSet.setCompulsoryDataElementOperands(
+        importDataSet.getCompulsoryDataElementOperands().stream()
+            .filter(dop -> dataElementIds.contains(dop.getDataElement().getUid()))
+            .collect(Collectors.toSet()));
+  }
+
+  private void deleteRemovedSection(
+      DataSet persistedDataSet, DataSet importDataSet, ObjectBundle bundle) {
+    if (!bundle.isMetadataSyncImport()) return;
+
+    List<String> importIds =
+        importDataSet.getSections().stream()
+            .map(IdentifiableObject::getUid)
+            .collect(Collectors.toList());
+
+    persistedDataSet.getSections().stream()
+        .filter(section -> !importIds.contains(section.getUid()))
+        .forEach(getSession()::delete);
+  }
+
+  private void deleteRemovedDataElementFromSection(
+      DataSet persistedDataSet, DataSet importDataSet) {
+
+    persistedDataSet.getSections().stream()
+        .peek(section -> section.setDataElements(getUpdatedDataElements(importDataSet, section)))
+        .forEach(getSession()::update);
+  }
+
+  private List<DataElement> getUpdatedDataElements(DataSet importDataSet, Section section) {
+    return section.getDataElements().stream()
+        .filter(
+            de -> {
+              Set<String> dataElements =
+                  importDataSet.getDataElements().stream()
+                      .map(IdentifiableObject::getUid)
+                      .collect(Collectors.toSet());
+              return dataElements.contains(de.getUid());
+            })
+        .collect(Collectors.toList());
+  }
 }

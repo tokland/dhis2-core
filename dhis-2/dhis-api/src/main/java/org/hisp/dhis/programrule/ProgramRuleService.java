@@ -1,7 +1,5 @@
-package org.hisp.dhis.programrule;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,88 +25,63 @@ package org.hisp.dhis.programrule;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.programrule;
 
 import java.util.List;
-
+import java.util.Set;
 import org.hisp.dhis.program.Program;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- *
  * @author markusbekken
  */
-public interface ProgramRuleService
-{
-    String ID = ProgramRuleService.class.getName();
+public interface ProgramRuleService {
+  /**
+   * Adds an {@link ProgramRule}
+   *
+   * @param programRule The to ProgramRule add.
+   * @return A generated unique id of the added {@link ProgramRule}.
+   */
+  long addProgramRule(ProgramRule programRule);
 
-    /**
-     * Adds an {@link ProgramRule}
-     *
-     * @param programRule The to ProgramRule add.
-     * @return A generated unique id of the added {@link ProgramRule}.
-     */
-    int addProgramRule( ProgramRule programRule );
+  /**
+   * Deletes a {@link ProgramRule}
+   *
+   * @param programRule The ProgramRule to delete.
+   */
+  void deleteProgramRule(ProgramRule programRule);
 
-    /**
-     * Deletes a {@link ProgramRule}
-     *
-     * @param programRule The ProgramRule to delete.
-     */
-    void deleteProgramRule( ProgramRule programRule );
+  /**
+   * Updates an {@link ProgramRule}.
+   *
+   * @param programRule The ProgramRule to update.
+   */
+  void updateProgramRule(ProgramRule programRule);
 
-    /**
-     * Updates an {@link ProgramRule}.
-     *
-     * @param programRule The ProgramRule to update.
-     */
-    void updateProgramRule( ProgramRule programRule );
+  /**
+   * Returns a {@link ProgramRule}.
+   *
+   * @param id the id of the ProgramRule to return.
+   * @return the ProgramRule with the given id
+   */
+  ProgramRule getProgramRule(long id);
 
-    /**
-     * Returns a {@link ProgramRule}.
-     *
-     * @param id the id of the ProgramRule to return.
-     * @return the ProgramRule with the given id
-     */
-    ProgramRule getProgramRule( int id );
+  @Transactional(readOnly = true)
+  List<String> getDataElementsPresentInProgramRules();
 
-    /**
-     * Returns a {@link ProgramRule}.
-     *
-     * @param uid the uid of the ProgramRule to return.
-     * @return the ProgramRule with the given uid
-     */
-    ProgramRule getProgramRule( String uid );
+  @Transactional(readOnly = true)
+  List<String> getTrackedEntityAttributesPresentInProgramRules();
 
-    /**
-     * Returns a {@link ProgramRule}.
-     *
-     * @param name the name of the ProgramRule to return.
-     * @param program {@link Program}.
-     * @return the ProgramRule with the given name
-     */
-    ProgramRule getProgramRuleByName( String name, Program program );
+  List<ProgramRule> getProgramRulesByActionTypes(Program program, Set<ProgramRuleActionType> types);
 
-    /**
-     * Returns all {@link ProgramRule}.
-     *
-     * @return a collection of all ProgramRule, or an empty collection if
-     * there are no ProgramRules.
-     */
-    List<ProgramRule> getAllProgramRule();
+  List<ProgramRule> getProgramRulesByActionTypes(
+      Program program, Set<ProgramRuleActionType> serverSupportedTypes, String programStageUid);
 
-    /**
-     * Get validation by {@link Program}
-     *
-     * @param program Program
-     * @return ProgramRule list
-     */
-    List<ProgramRule> getProgramRule( Program program );
-
-    /**
-     * Get validation by {@link Program}
-     *
-     * @param program Program
-     * @param key Search Program Rule by key
-     * @return ProgramRule list
-     */
-    List<ProgramRule> getProgramRules( Program program, String key );
+  /**
+   * Get validation by {@link Program}
+   *
+   * @param program Program
+   * @return ProgramRule list
+   */
+  List<ProgramRule> getProgramRule(Program program);
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.program.notification;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,102 +25,86 @@ package org.hisp.dhis.program.notification;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program.notification;
 
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import com.google.common.collect.ImmutableSet;
-import org.hisp.dhis.common.DxfNamespaces;
-
 import java.util.Set;
+import org.hisp.dhis.common.DxfNamespaces;
 
 /**
  * @author Halvdan Hoem Grelland
  */
-@JacksonXmlRootElement( localName = "notificationTrigger", namespace = DxfNamespaces.DXF_2_0 )
-public enum NotificationTrigger
-{
-    /**
-     * Program enrollment.
-     */
-    ENROLLMENT,
+@JacksonXmlRootElement(localName = "notificationTrigger", namespace = DxfNamespaces.DXF_2_0)
+public enum NotificationTrigger {
+  /** Program enrollment. */
+  ENROLLMENT,
 
-    /**
-     * Program or ProgramStage completion.
-     */
-    COMPLETION,
+  /** Program or ProgramStage completion. */
+  COMPLETION,
 
-    /**
-     * Triggered by ProgramRule.
-     */
-    PROGRAM_RULE,
+  /** Triggered by ProgramRule. */
+  PROGRAM_RULE,
 
-    /**
-     * Scheduled days relative to the dueDate of the ProgramStageInstance (event) and DataSet completion.
-     */
-    SCHEDULED_DAYS_DUE_DATE,
+  /** Scheduled days relative to the dueDate of the Event and DataSet completion. */
+  SCHEDULED_DAYS_DUE_DATE,
 
-    /**
-     * Scheduled days relative to the incidentDate of the ProgramInstance (enrollment).
-     */
-    SCHEDULED_DAYS_INCIDENT_DATE,
+  /** Scheduled days relative to the incidentDate of the Enrollment (enrollment). */
+  SCHEDULED_DAYS_INCIDENT_DATE,
 
-    /**
-     * Scheduled days relative to the enrollmentDate of the ProgramInstance (enrollment).
-     */
-    SCHEDULED_DAYS_ENROLLMENT_DATE;
+  /** Scheduled days relative to the enrollmentDate of the Enrollment (enrollment). */
+  SCHEDULED_DAYS_ENROLLMENT_DATE;
 
-    private static final Set<NotificationTrigger> IMMEDIATE_TRIGGERS =
-        new ImmutableSet.Builder<NotificationTrigger>()
-            .add( ENROLLMENT, COMPLETION, PROGRAM_RULE ).build();
+  private static final Set<NotificationTrigger> IMMEDIATE_TRIGGERS =
+      new ImmutableSet.Builder<NotificationTrigger>()
+          .add(ENROLLMENT, COMPLETION, PROGRAM_RULE)
+          .build();
 
-    private static final Set<NotificationTrigger> SCHEDULED_TRIGGERS =
-        new ImmutableSet.Builder<NotificationTrigger>()
-            .add( SCHEDULED_DAYS_DUE_DATE, SCHEDULED_DAYS_INCIDENT_DATE, SCHEDULED_DAYS_ENROLLMENT_DATE ).build();
+  private static final Set<NotificationTrigger> SCHEDULED_TRIGGERS =
+      new ImmutableSet.Builder<NotificationTrigger>()
+          .add(
+              SCHEDULED_DAYS_DUE_DATE, SCHEDULED_DAYS_INCIDENT_DATE, SCHEDULED_DAYS_ENROLLMENT_DATE)
+          .build();
 
-    private static final Set<NotificationTrigger> APPLICABLE_TO_PROGRAM_INSTANCE =
-        new ImmutableSet.Builder<NotificationTrigger>()
-            .add( ENROLLMENT, COMPLETION, SCHEDULED_DAYS_INCIDENT_DATE, SCHEDULED_DAYS_ENROLLMENT_DATE ).build();
+  private static final Set<NotificationTrigger> APPLICABLE_TO_ENROLLMENT =
+      new ImmutableSet.Builder<NotificationTrigger>()
+          .add(ENROLLMENT, COMPLETION, SCHEDULED_DAYS_INCIDENT_DATE, SCHEDULED_DAYS_ENROLLMENT_DATE)
+          .build();
 
-    private static final Set<NotificationTrigger> APPLICABLE_TO_PROGRAM_STAGE_INSTANCE =
-        new ImmutableSet.Builder<NotificationTrigger>()
-            .add( COMPLETION, SCHEDULED_DAYS_DUE_DATE ).build();
-    
-    public boolean isImmediate()
-    {
-        return IMMEDIATE_TRIGGERS.contains( this );
-    }
+  private static final Set<NotificationTrigger> APPLICABLE_TO_EVENT =
+      new ImmutableSet.Builder<NotificationTrigger>()
+          .add(COMPLETION, SCHEDULED_DAYS_DUE_DATE)
+          .build();
 
-    public boolean isScheduled()
-    {
-        return SCHEDULED_TRIGGERS.contains( this );
-    }
+  public boolean isImmediate() {
+    return IMMEDIATE_TRIGGERS.contains(this);
+  }
 
-    public static Set<NotificationTrigger> getAllScheduledTriggers()
-    {
-        return SCHEDULED_TRIGGERS;
-    }
+  public boolean isScheduled() {
+    return SCHEDULED_TRIGGERS.contains(this);
+  }
 
-    public static Set<NotificationTrigger> getAllImmediateTriggers()
-    {
-        return IMMEDIATE_TRIGGERS;
-    }
+  public static Set<NotificationTrigger> getAllScheduledTriggers() {
+    return SCHEDULED_TRIGGERS;
+  }
 
-    public static Set<NotificationTrigger> getAllApplicableToProgramInstance()
-    {
-        return APPLICABLE_TO_PROGRAM_INSTANCE;
-    }
+  public static Set<NotificationTrigger> getAllImmediateTriggers() {
+    return IMMEDIATE_TRIGGERS;
+  }
 
-    public static Set<NotificationTrigger> getAllApplicableToProgramStageInstance()
-    {
-        return APPLICABLE_TO_PROGRAM_STAGE_INSTANCE;
-    }
+  public static Set<NotificationTrigger> getAllApplicableToEnrollment() {
+    return APPLICABLE_TO_ENROLLMENT;
+  }
 
-    public boolean isApplicableToProgramStageInstance()
-    {
-        return APPLICABLE_TO_PROGRAM_STAGE_INSTANCE.contains( this );
-    }
+  public static Set<NotificationTrigger> getAllApplicableToEvent() {
+    return APPLICABLE_TO_EVENT;
+  }
 
-    public boolean isApplicableToProgramInstance()
-    {
-        return APPLICABLE_TO_PROGRAM_INSTANCE.contains( this );
-    }
+  public boolean isApplicableToEvent() {
+    return APPLICABLE_TO_EVENT.contains(this);
+  }
+
+  public boolean isApplicableToEnrollment() {
+    return APPLICABLE_TO_ENROLLMENT.contains(this);
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.objectmapper;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,90 +25,87 @@ package org.hisp.dhis.system.objectmapper;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.objectmapper;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
-
-import org.hisp.quick.mapper.RowMapper;
 import org.hisp.dhis.datavalue.DeflatedDataValue;
+import org.hisp.quick.mapper.RowMapper;
 
 /**
  * RowMapper which expects a result set with the following columns:
- * 
+ *
  * <ul>
- * <li>1: dataelementid - int</li>
- * <li>2: periodid - int</li>
- * <li>3: sourceid - int</li>
- * <li>4: categoryoptioncomboid - int</li>
- * <li>5: categoryoptioncomboid - int</li>
- * <li>6: value - String</li>
- * <li>7: storedby - String</li>
- * <li>8: lastupdated - date</li>
- * <li>9<: comment - String</li>
- * <li>10: followup - Boolean</li>
- * <li>11: minimumvalue - int</li>
- * <li>12: maximumvalue - int</li>
- * <li>13: dataelementname - String</li>
- * <li>14: periodtypename - String</li>
- * <li>15: startdate - String</li>
- * <li>16: enddate - String</li>
- * <li>17: sourcename - String</li>
- * <li>18: categoryoptioncomboname - String</li>
+ *   <li>1: dataelementid - int
+ *   <li>2: periodid - int
+ *   <li>3: sourceid - int
+ *   <li>4: categoryoptioncomboid - int
+ *   <li>5: categoryoptioncomboid - int
+ *   <li>6: value - String
+ *   <li>7: storedby - String
+ *   <li>8: lastupdated - date
+ *   <li>9<: comment - String
+ *   <li>10: followup - Boolean
+ *   <li>11: minimumvalue - int
+ *   <li>12: maximumvalue - int
+ *   <li>13: dataelementname - String
+ *   <li>14: periodtypename - String
+ *   <li>15: startdate - String
+ *   <li>16: enddate - String
+ *   <li>17: sourcename - String
+ *   <li>18: categoryoptioncomboname - String
  * </ul>
- * 
+ *
  * @author Lars Helge Overland
  */
 public class DeflatedDataValueNameMinMaxRowMapper
-    implements RowMapper<DeflatedDataValue>, org.springframework.jdbc.core.RowMapper<DeflatedDataValue>
-{
-    private Map<Integer, Integer> minMap;
-    private Map<Integer, Integer> maxMap;
-    
-    public DeflatedDataValueNameMinMaxRowMapper()
-    {
-    }
-    
-    public DeflatedDataValueNameMinMaxRowMapper( Map<Integer, Integer> minMap, Map<Integer, Integer> maxMap )
-    {
-        this.minMap = minMap;
-        this.maxMap = maxMap;
-    }
-    
-    @Override
-    public DeflatedDataValue mapRow( ResultSet resultSet )
-        throws SQLException
-    {
-        final DeflatedDataValue value = new DeflatedDataValue();
-        
-        value.setDataElementId( resultSet.getInt( "dataelementid" ) );
-        value.setPeriodId( resultSet.getInt( "periodid" ) );
-        value.setSourceId( resultSet.getInt( "sourceid" ) );
-        value.setCategoryOptionComboId( resultSet.getInt( "categoryoptioncomboid" ) );
-        value.setAttributeOptionComboId( resultSet.getInt( "attributeoptioncomboid" ) );
-        value.setValue( resultSet.getString( "value" ) );
-        value.setStoredBy( resultSet.getString( "storedby" ) );
-        value.setCreated( resultSet.getDate( "created" ) );
-        value.setLastUpdated( resultSet.getDate( "lastupdated" ) );
-        value.setComment( resultSet.getString( "comment" ) );
-        value.setFollowup( resultSet.getBoolean( "followup" ) );
-        value.setMin( minMap != null ? minMap.get( value.getSourceId() ) : resultSet.getInt( "minimumvalue" ) );
-        value.setMax( maxMap != null ? maxMap.get( value.getSourceId() ) : resultSet.getInt( "maximumvalue" ) );
-        value.setDataElementName( resultSet.getString( "dataelementname" ) );
-        value.setPeriod( 
-            resultSet.getString( "periodtypename" ), 
-            resultSet.getDate( "startdate" ),
-            resultSet.getDate( "enddate" ) );
-        value.setSourceName( resultSet.getString( "sourcename" ) );
-        value.setCategoryOptionComboName( resultSet.getString( "categoryoptioncomboname" ) );
-        
-        return value;
-    }
+    implements RowMapper<DeflatedDataValue>,
+        org.springframework.jdbc.core.RowMapper<DeflatedDataValue> {
+  private Map<Long, Integer> minMap;
 
-    @Override
-    public DeflatedDataValue mapRow( ResultSet resultSet, int rowNum )
-        throws SQLException
-    {
-        return mapRow( resultSet );
-    }
+  private Map<Long, Integer> maxMap;
+
+  public DeflatedDataValueNameMinMaxRowMapper() {}
+
+  public DeflatedDataValueNameMinMaxRowMapper(
+      Map<Long, Integer> minMap, Map<Long, Integer> maxMap) {
+    this.minMap = minMap;
+    this.maxMap = maxMap;
+  }
+
+  @Override
+  public DeflatedDataValue mapRow(ResultSet resultSet) throws SQLException {
+    final DeflatedDataValue value = new DeflatedDataValue();
+
+    value.setDataElementId(resultSet.getLong("dataelementid"));
+    value.setPeriodId(resultSet.getLong("periodid"));
+    value.setSourceId(resultSet.getLong("sourceid"));
+    value.setCategoryOptionComboId(resultSet.getLong("categoryoptioncomboid"));
+    value.setAttributeOptionComboId(resultSet.getLong("attributeoptioncomboid"));
+    value.setValue(resultSet.getString("value"));
+    value.setStoredBy(resultSet.getString("storedby"));
+    value.setCreated(resultSet.getDate("created"));
+    value.setLastUpdated(resultSet.getDate("lastupdated"));
+    value.setComment(resultSet.getString("comment"));
+    value.setFollowup(resultSet.getBoolean("followup"));
+    value.setMin(
+        minMap != null ? minMap.get(value.getSourceId()) : resultSet.getInt("minimumvalue"));
+    value.setMax(
+        maxMap != null ? maxMap.get(value.getSourceId()) : resultSet.getInt("maximumvalue"));
+    value.setDataElementName(resultSet.getString("dataelementname"));
+    value.setPeriod(
+        resultSet.getString("periodtypename"),
+        resultSet.getDate("startdate"),
+        resultSet.getDate("enddate"));
+    value.setSourceName(resultSet.getString("sourcename"));
+    value.setCategoryOptionComboName(resultSet.getString("categoryoptioncomboname"));
+
+    return value;
+  }
+
+  @Override
+  public DeflatedDataValue mapRow(ResultSet resultSet, int rowNum) throws SQLException {
+    return mapRow(resultSet);
+  }
 }

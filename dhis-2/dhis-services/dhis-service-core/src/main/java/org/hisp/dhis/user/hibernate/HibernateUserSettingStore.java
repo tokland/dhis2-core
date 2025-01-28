@@ -1,7 +1,5 @@
-package org.hisp.dhis.user.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,93 +25,135 @@ package org.hisp.dhis.user.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.user.hibernate;
 
-import java.util.List;
+import static java.util.stream.Collectors.toMap;
 
-import org.hibernate.Query;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hisp.dhis.user.User;
+import jakarta.persistence.EntityManager;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
+import javax.annotation.Nonnull;
+import lombok.extern.slf4j.Slf4j;
+import org.hisp.dhis.HibernateNativeStore;
+import org.hisp.dhis.setting.Settings;
 import org.hisp.dhis.user.UserSetting;
 import org.hisp.dhis.user.UserSettingStore;
+import org.springframework.stereotype.Repository;
 
 /**
- * @author Lars Helge Overland
+ * @author Jan Bernitt (refactored version)
  */
-public class HibernateUserSettingStore
-    implements UserSettingStore
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Slf4j
+@Repository
+public class HibernateUserSettingStore extends HibernateNativeStore<UserSetting>
+    implements UserSettingStore {
 
-    private SessionFactory sessionFactory;
+  public HibernateUserSettingStore(EntityManager em) {
+    super(em, UserSetting.class);
+  }
 
-    public void setSessionFactory( SessionFactory sessionFactory )
-    {
-        this.sessionFactory = sessionFactory;
+  @Nonnull
+  @Override
+  @SuppressWarnings("unchecked")
+  public Map<String, String> getAll(@Nonnull String username) {
+    String sql =
+        """
+      select name, value from usersetting
+      where userinfoid = (select userinfoid from userinfo where username = :user limit 1)""";
+    Stream<Object[]> res = nativeSynchronizedQuery(sql).setParameter("user", username).stream();
+    return res.collect(toMap(row -> (String) row[0], row -> fromBinary((String) row[0], row[1])));
+  }
+
+  @Override
+  public void put(@Nonnull String username, @Nonnull String key, @Nonnull String value) {
+    String sql =
+        """
+      update usersetting set value = :value
+      where name = :key
+      and userinfoid = (select u.userinfoid from userinfo u where u.username = :user limit 1)""";
+    int updated =
+        nativeSynchronizedQuery(sql)
+            .setParameter("user", username)
+            .setParameter("key", key)
+            .setParameter("value", toBinary(value))
+            .executeUpdate();
+    if (updated > 0) return;
+    sql =
+        """
+      insert into usersetting (userinfoid, name, value)
+      (select u.userinfoid, :key, :value from userinfo u where u.username = :user limit 1)""";
+    nativeSynchronizedQuery(sql)
+        .setParameter("user", username)
+        .setParameter("key", key)
+        .setParameter("value", toBinary(value))
+        .executeUpdate();
+  }
+
+  @Override
+  public int delete(@Nonnull String username, @Nonnull Set<String> keys) {
+    if (keys.isEmpty()) return 0;
+    String sql =
+        """
+      delete from usersetting
+        where name in :names
+        and userinfoid = (select userinfoid from userinfo where username = :user limit 1)""";
+    return nativeSynchronizedQuery(sql)
+        .setParameter("user", username)
+        .setParameterList("names", keys)
+        .executeUpdate();
+  }
+
+  @Override
+  public void deleteAll(@Nonnull String username) {
+    String sql =
+        """
+      delete from usersetting
+        where userinfoid = (select userinfoid from userinfo where username = :user limit 1)""";
+    nativeSynchronizedQuery(sql).setParameter("user", username).executeUpdate();
+  }
+
+  /**
+   * ATM values are stored as binary data serialized from {@link java.io.Serializable}. As we are
+   * only dealing with primitive values they all implement {@link Object#toString()} in a way that
+   * yields the proper {@link String} form. This is the 1st step in away from storing binary data by
+   * only using strings outside the store layer. Also, once settings are updated they always are
+   * {@link String}s just still in their binary form.
+   */
+  private static String fromBinary(String key, Object value) {
+    if (value == null) return "";
+    if (value instanceof byte[] binary) {
+      try {
+        ByteArrayInputStream bis = new ByteArrayInputStream(binary);
+        ObjectInputStream ois = new ObjectInputStream(bis);
+        return Settings.valueOf((Serializable) ois.readObject());
+      } catch (Exception ex) {
+        log.warn(
+            "Failed to de-serialize user setting %s from binary representation, using default"
+                .formatted(key));
+        return "";
+      }
     }
+    if (value instanceof Serializable s) return Settings.valueOf(s);
+    log.warn(
+        "Failed to de-serialize user setting %s from unknown source type: %s, using default"
+            .formatted(key, value.getClass()));
+    return "";
+  }
 
-    // -------------------------------------------------------------------------
-    // UserSettingStore implementation
-    // -------------------------------------------------------------------------
-
-    @Override
-    public void addUserSetting( UserSetting userSetting )
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        session.save( userSetting );
+  private static byte[] toBinary(final String value) {
+    try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream out = new ObjectOutputStream(bos)) {
+      out.writeObject(value);
+      out.flush();
+      return bos.toByteArray();
+    } catch (Exception ex) {
+      throw new IllegalArgumentException(ex);
     }
-
-    @Override
-    public void updateUserSetting( UserSetting userSetting )
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        session.update( userSetting );
-    }
-
-    @Override
-    public UserSetting getUserSetting( User user, String name )
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        Query query = session.createQuery( "from UserSetting us where us.user = :user and us.name = :name" );
-
-        query.setEntity( "user", user );
-        query.setString( "name", name );
-        query.setCacheable( true );
-
-        return (UserSetting) query.uniqueResult();
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public List<UserSetting> getAllUserSettings( User user )
-    {
-        Session session = sessionFactory.getCurrentSession();
-        Query query = session.createQuery( "from UserSetting us where us.user = :user" );
-        query.setEntity( "user", user );
-
-        return query.list();
-    }
-
-    @Override
-    public void deleteUserSetting( UserSetting userSetting )
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        session.delete( userSetting );
-    }
-
-    @Override
-    public void removeUserSettings( User user )
-    {
-        Session session = sessionFactory.getCurrentSession();
-        
-        String hql = "delete from UserSetting us where us.user = :user";
-
-        session.createQuery( hql ).setEntity( "user", user ).executeUpdate();
-    }
+  }
 }

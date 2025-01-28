@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,66 +25,52 @@ package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
 
-import org.hisp.dhis.common.IdentifiableObject;
+import java.util.function.Consumer;
 import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.dxf2.metadata.objectbundle.ObjectBundle;
 import org.hisp.dhis.feedback.ErrorCode;
 import org.hisp.dhis.feedback.ErrorReport;
 import org.hisp.dhis.program.ProgramStageDataElement;
 import org.hisp.dhis.render.DeviceRenderTypeMap;
-import org.hisp.dhis.render.RenderDevice;
 import org.hisp.dhis.render.type.ValueTypeRenderingObject;
 import org.hisp.dhis.system.util.ValidationUtils;
+import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
-
+@Component
 public class ProgramStageDataElementObjectBundleHook
-    extends AbstractObjectBundleHook
-{
+    extends AbstractObjectBundleHook<ProgramStageDataElement> {
+  /**
+   * Validate that the RenderType (if any) conforms to the constraints of ValueType or OptionSet.
+   */
+  @Override
+  public void validate(
+      ProgramStageDataElement psda, ObjectBundle bundle, Consumer<ErrorReport> addReports) {
+    DeviceRenderTypeMap<ValueTypeRenderingObject> map = psda.getRenderType();
 
-    @Override
-    public <T extends IdentifiableObject> List<ErrorReport> validate( T object, ObjectBundle bundle )
-    {
-        List<ErrorReport> errorReports = new ArrayList<>();
-
-        /*
-         * Validate that the RenderType (if any) conforms to the constraints of ValueType or OptionSet.
-         */
-        if ( object != null && object.getClass().isAssignableFrom( ProgramStageDataElement.class ) )
-        {
-            ProgramStageDataElement psda = (ProgramStageDataElement) object;
-            DeviceRenderTypeMap<ValueTypeRenderingObject> map = psda.getRenderType();
-
-            if ( map == null )
-            {
-                return errorReports;
-            }
-            for ( RenderDevice device : map.keySet() )
-            {
-
-                DataElement de = psda.getDataElement();
-
-                if ( map.get( device ).getType() == null )
-                {
-                    errorReports
-                        .add( new ErrorReport( ProgramStageDataElement.class, ErrorCode.E4011, "renderType.type" ) );
-                }
-
-                if ( !ValidationUtils
-                    .validateRenderingType( ProgramStageDataElement.class, de.getValueType(), de.hasOptionSet(),
-                        map.get( device ).getType() ) )
-                {
-                    errorReports.add( new ErrorReport( ProgramStageDataElement.class, ErrorCode.E4017,
-                        map.get( device ).getType(), de.getValueType() ) );
-                }
-
-            }
-        }
-
-        return errorReports;
-
+    if (map == null) {
+      return;
     }
+    DataElement de = psda.getDataElement();
+    for (ValueTypeRenderingObject renderingObject : map.values()) {
+      if (renderingObject.getType() == null) {
+        addReports.accept(
+            new ErrorReport(ProgramStageDataElement.class, ErrorCode.E4011, "renderType.type"));
+      }
 
+      if (!ValidationUtils.validateRenderingType(
+          ProgramStageDataElement.class,
+          de.getValueType(),
+          de.hasOptionSet(),
+          renderingObject.getType())) {
+        addReports.accept(
+            new ErrorReport(
+                ProgramStageDataElement.class,
+                ErrorCode.E4017,
+                renderingObject.getType(),
+                de.getValueType()));
+      }
+    }
+  }
 }

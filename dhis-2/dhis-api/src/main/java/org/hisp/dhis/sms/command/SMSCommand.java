@@ -1,7 +1,5 @@
-package org.hisp.dhis.sms.command;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,15 +25,19 @@ package org.hisp.dhis.sms.command;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.sms.command;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import com.google.common.base.MoreObjects;
 import java.util.HashSet;
 import java.util.Set;
-
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.google.common.base.MoreObjects;
+import javax.annotation.Nonnull;
 import org.hisp.dhis.common.BaseIdentifiableObject;
 import org.hisp.dhis.common.DxfNamespaces;
-
 import org.hisp.dhis.common.MetadataObject;
 import org.hisp.dhis.dataset.DataSet;
 import org.hisp.dhis.program.Program;
@@ -44,310 +46,285 @@ import org.hisp.dhis.sms.command.code.SMSCode;
 import org.hisp.dhis.sms.parse.ParserType;
 import org.hisp.dhis.user.UserGroup;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+@JacksonXmlRootElement(localName = "smscommand", namespace = DxfNamespaces.DXF_2_0)
+public class SMSCommand extends BaseIdentifiableObject implements MetadataObject {
+  public static final String WRONG_FORMAT_MESSAGE = "Wrong command format";
 
-@JacksonXmlRootElement( localName = "smscommand", namespace = DxfNamespaces.DXF_2_0 )
-public class SMSCommand extends BaseIdentifiableObject
-    implements MetadataObject
-{
-    public static final String WRONG_FORMAT_MESSAGE = "Wrong command format";
-    public static final String MORE_THAN_ONE_ORGUNIT_MESSAGE = "Found more than one org unit for this number. Please specify one organisation unit";
-    public static final String NO_USER_MESSAGE = "No user associated with this phone number. Please contact your supervisor.";
-    public static final String ALERT_FEEDBACK = "Your alert message sent";
-    public static final String PARAMETER_MISSING = "Mandatory parameter is missing";
-    public static final String SUCCESS_MESSAGE = "Command has been processed successfully";
-    public static final String NO_OU_FOR_PROGRAM = "Program is not assigned to user organisation unit.";
+  public static final String MORE_THAN_ONE_ORGUNIT_MESSAGE =
+      "Found more than one org unit for this number. Please specify one organisation unit";
 
-    private ParserType parserType = ParserType.ALERT_PARSER;
+  public static final String NO_USER_MESSAGE =
+      "No user associated with this phone number. Please contact your supervisor.";
 
-    private DataSet dataset;
+  public static final String ALERT_FEEDBACK = "Your alert message sent";
 
-    private Set<SMSCode> codes = new HashSet<>();
+  public static final String PARAMETER_MISSING = "Mandatory parameter is missing";
 
-    private UserGroup userGroup;
+  public static final String SUCCESS_MESSAGE = "Command has been processed successfully";
 
-    private Program program;
+  public static final String NO_OU_FOR_PROGRAM =
+      "Program is not assigned to user organisation unit.";
 
-    private ProgramStage programStage;
+  private ParserType parserType = ParserType.ALERT_PARSER;
 
-    private Set<SMSSpecialCharacter> specialCharacters = new HashSet<>();
+  private DataSet dataset;
 
-    private boolean currentPeriodUsedForReporting = false;
+  private Set<SMSCode> codes = new HashSet<>();
 
-    private CompletenessMethod completenessMethod = CompletenessMethod.AT_LEAST_ONE_DATAVALUE;
+  private UserGroup userGroup;
 
-    private String defaultMessage;
+  private Program program;
 
-    private String receivedMessage;
+  private ProgramStage programStage;
 
-    private String wrongFormatMessage;
+  private Set<SMSSpecialCharacter> specialCharacters = new HashSet<>();
 
-    private String noUserMessage;
+  private boolean currentPeriodUsedForReporting = false;
 
-    private String moreThanOneOrgUnitMessage;
+  private CompletenessMethod completenessMethod = CompletenessMethod.AT_LEAST_ONE_DATAVALUE;
 
-    private String successMessage;
+  private String defaultMessage;
 
-    private String separator;
+  private String receivedMessage;
 
-    private String codeValueSeparator;
+  private String wrongFormatMessage;
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------
+  private String noUserMessage;
 
-    public SMSCommand( String name, ParserType parserType, String separator, DataSet dataset,
-        Set<SMSCode> codes, String codeSeparator, String defaultMessage, UserGroup userGroup, String receivedMessage,
-        Set<SMSSpecialCharacter> specialCharacters )
-    {
-        super();
-        this.name = name;
-        this.parserType = parserType;
-        this.separator = separator;
-        this.dataset = dataset;
-        this.codes = codes;
-        this.codeValueSeparator = codeSeparator;
-        this.defaultMessage = defaultMessage;
-        this.userGroup = userGroup;
-        this.receivedMessage = receivedMessage;
-        this.specialCharacters = specialCharacters;
-    }
+  private String moreThanOneOrgUnitMessage;
 
-    public SMSCommand()
-    {
+  private String successMessage;
 
-    }
+  private String separator;
 
-    // -------------------------------------------------------------------------
-    // Getters and setters
-    // -------------------------------------------------------------------------
+  private String codeValueSeparator;
 
-    @JsonProperty
-    @JsonSerialize( contentAs = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( localName = "dataset", namespace = DxfNamespaces.DXF_2_0 )
-    public DataSet getDataset()
-    {
-        return dataset;
-    }
+  // -------------------------------------------------------------------------
+  // Constructors
+  // -------------------------------------------------------------------------
 
-    public void setDataset( DataSet dataset )
-    {
-        this.dataset = dataset;
-    }
+  public SMSCommand(
+      String name,
+      ParserType parserType,
+      String separator,
+      DataSet dataset,
+      Set<SMSCode> codes,
+      String codeSeparator,
+      String defaultMessage,
+      UserGroup userGroup,
+      String receivedMessage,
+      Set<SMSSpecialCharacter> specialCharacters) {
+    super();
+    this.name = name;
+    this.parserType = parserType;
+    this.separator = separator;
+    this.dataset = dataset;
+    this.codes = codes;
+    this.codeValueSeparator = codeSeparator;
+    this.defaultMessage = defaultMessage;
+    this.userGroup = userGroup;
+    this.receivedMessage = receivedMessage;
+    this.specialCharacters = specialCharacters;
+  }
 
-    @JsonProperty( value = "smsCodes" )
-    @JacksonXmlElementWrapper( localName = "smsCodes", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "smsCode", namespace = DxfNamespaces.DXF_2_0 )
-    public Set<SMSCode> getCodes()
-    {
-        return codes;
-    }
+  public SMSCommand() {}
 
-    public void setCodes( Set<SMSCode> codes )
-    {
-        this.codes = codes;
-    }
+  // -------------------------------------------------------------------------
+  // Getters and setters
+  // -------------------------------------------------------------------------
 
-    @JsonProperty
-    @JacksonXmlProperty
-    public ParserType getParserType()
-    {
-        return parserType;
-    }
+  @JsonProperty
+  @JsonSerialize(contentAs = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(localName = "dataset", namespace = DxfNamespaces.DXF_2_0)
+  public DataSet getDataset() {
+    return dataset;
+  }
 
-    public void setParserType( ParserType parserType )
-    {
-        this.parserType = parserType;
-    }
+  public void setDataset(DataSet dataset) {
+    this.dataset = dataset;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty
-    public boolean isCurrentPeriodUsedForReporting()
-    {
-        return currentPeriodUsedForReporting;
-    }
+  @JsonProperty(value = "smsCodes")
+  @JacksonXmlElementWrapper(localName = "smsCodes", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "smsCode", namespace = DxfNamespaces.DXF_2_0)
+  public Set<SMSCode> getCodes() {
+    return codes;
+  }
 
-    public void setCurrentPeriodUsedForReporting( Boolean currentPeriodUsedForReporting )
-    {
-        this.currentPeriodUsedForReporting = currentPeriodUsedForReporting;
-    }
+  public void setCodes(Set<SMSCode> codes) {
+    this.codes = codes;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty
-    public String getReceivedMessage()
-    {
-        return receivedMessage != null ? receivedMessage : SUCCESS_MESSAGE;
-    }
+  @JsonProperty
+  @JacksonXmlProperty
+  public ParserType getParserType() {
+    return parserType;
+  }
 
-    public void setReceivedMessage( String receivedMessage )
-    {
-        this.receivedMessage = receivedMessage;
-    }
+  public void setParserType(ParserType parserType) {
+    this.parserType = parserType;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty
-    public String getSeparator()
-    {
-        return separator;
-    }
+  @JsonProperty
+  @JacksonXmlProperty
+  public boolean isCurrentPeriodUsedForReporting() {
+    return currentPeriodUsedForReporting;
+  }
 
-    public void setSeparator( String separator )
-    {
-        this.separator = separator;
-    }
+  public void setCurrentPeriodUsedForReporting(Boolean currentPeriodUsedForReporting) {
+    this.currentPeriodUsedForReporting = currentPeriodUsedForReporting;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty
-    public String getCodeValueSeparator()
-    {
-        return codeValueSeparator;
-    }
+  @JsonProperty
+  @JacksonXmlProperty
+  public String getReceivedMessage() {
+    return receivedMessage != null ? receivedMessage : SUCCESS_MESSAGE;
+  }
 
-    public void setCodeValueSeparator( String codeSeparator )
-    {
-        this.codeValueSeparator = codeSeparator;
-    }
+  public void setReceivedMessage(String receivedMessage) {
+    this.receivedMessage = receivedMessage;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty
-    public String getDefaultMessage()
-    {
-        return defaultMessage;
-    }
+  @JsonProperty
+  @JacksonXmlProperty
+  public String getSeparator() {
+    return separator;
+  }
 
-    public void setDefaultMessage( String defaultMessage )
-    {
-        this.defaultMessage = defaultMessage;
-    }
+  public void setSeparator(String separator) {
+    this.separator = separator;
+  }
 
-    @JsonProperty
-    @JacksonXmlElementWrapper( localName = "specialCharacters", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "specialCharacter", namespace = DxfNamespaces.DXF_2_0 )
-    public Set<SMSSpecialCharacter> getSpecialCharacters()
-    {
-        return specialCharacters;
-    }
+  @JsonProperty
+  @JacksonXmlProperty
+  public String getCodeValueSeparator() {
+    return codeValueSeparator;
+  }
 
-    public void setSpecialCharacters( Set<SMSSpecialCharacter> specialCharacters )
-    {
-        this.specialCharacters = specialCharacters;
-    }
+  public void setCodeValueSeparator(String codeSeparator) {
+    this.codeValueSeparator = codeSeparator;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty
-    public String getWrongFormatMessage()
-    {
-        return wrongFormatMessage != null ? wrongFormatMessage : WRONG_FORMAT_MESSAGE;
-    }
+  @JsonProperty
+  @JacksonXmlProperty
+  public String getDefaultMessage() {
+    return defaultMessage;
+  }
 
-    public void setWrongFormatMessage( String wrongFormatMessage )
-    {
-        this.wrongFormatMessage = wrongFormatMessage;
-    }
+  public void setDefaultMessage(String defaultMessage) {
+    this.defaultMessage = defaultMessage;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty
-    public String getNoUserMessage()
-    {
-        return noUserMessage != null ? noUserMessage : NO_USER_MESSAGE;
-    }
+  @JsonProperty
+  @JacksonXmlElementWrapper(localName = "specialCharacters", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "specialCharacter", namespace = DxfNamespaces.DXF_2_0)
+  public Set<SMSSpecialCharacter> getSpecialCharacters() {
+    return specialCharacters;
+  }
 
-    public void setNoUserMessage( String noUserMessage )
-    {
-        this.noUserMessage = noUserMessage;
-    }
+  public void setSpecialCharacters(Set<SMSSpecialCharacter> specialCharacters) {
+    this.specialCharacters = specialCharacters;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty
-    public String getSuccessMessage()
-    {
-        return successMessage != null ? successMessage : SUCCESS_MESSAGE;
-    }
+  @JsonProperty
+  @JacksonXmlProperty
+  public String getWrongFormatMessage() {
+    return wrongFormatMessage != null ? wrongFormatMessage : WRONG_FORMAT_MESSAGE;
+  }
 
-    public void setSuccessMessage( String successMessage )
-    {
-        this.successMessage = successMessage;
-    }
+  public void setWrongFormatMessage(String wrongFormatMessage) {
+    this.wrongFormatMessage = wrongFormatMessage;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty
-    public String getMoreThanOneOrgUnitMessage()
-    {
-        return moreThanOneOrgUnitMessage != null ? moreThanOneOrgUnitMessage : MORE_THAN_ONE_ORGUNIT_MESSAGE;
-    }
+  @JsonProperty
+  @JacksonXmlProperty
+  @Nonnull
+  public String getNoUserMessage() {
+    return noUserMessage != null ? noUserMessage : NO_USER_MESSAGE;
+  }
 
-    public void setMoreThanOneOrgUnitMessage( String moreThanOneOrgUnitMessage )
-    {
-        this.moreThanOneOrgUnitMessage = moreThanOneOrgUnitMessage;
-    }
+  public void setNoUserMessage(String noUserMessage) {
+    this.noUserMessage = noUserMessage;
+  }
 
-    @JsonProperty
-    @JsonSerialize( contentAs = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( localName = "userGroup", namespace = DxfNamespaces.DXF_2_0 )
-    public UserGroup getUserGroup()
-    {
-        return userGroup;
-    }
+  @JsonProperty
+  @JacksonXmlProperty
+  public @Nonnull String getSuccessMessage() {
+    return successMessage != null ? successMessage : SUCCESS_MESSAGE;
+  }
 
-    public void setUserGroup( UserGroup userGroup )
-    {
-        this.userGroup = userGroup;
-    }
+  public void setSuccessMessage(String successMessage) {
+    this.successMessage = successMessage;
+  }
 
-    @JsonProperty
-    @JsonSerialize( contentAs = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( localName = "program", namespace = DxfNamespaces.DXF_2_0 )
-    public Program getProgram()
-    {
-        return program;
-    }
+  @JsonProperty
+  @JacksonXmlProperty
+  @Nonnull
+  public String getMoreThanOneOrgUnitMessage() {
+    return moreThanOneOrgUnitMessage != null
+        ? moreThanOneOrgUnitMessage
+        : MORE_THAN_ONE_ORGUNIT_MESSAGE;
+  }
 
-    public void setProgram( Program program )
-    {
-        this.program = program;
-    }
+  public void setMoreThanOneOrgUnitMessage(String moreThanOneOrgUnitMessage) {
+    this.moreThanOneOrgUnitMessage = moreThanOneOrgUnitMessage;
+  }
 
-    @JsonProperty
-    @JsonSerialize( contentAs = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( localName = "programStage", namespace = DxfNamespaces.DXF_2_0 )
-    public ProgramStage getProgramStage()
-    {
-        return programStage;
-    }
+  @JsonProperty
+  @JsonSerialize(contentAs = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(localName = "userGroup", namespace = DxfNamespaces.DXF_2_0)
+  public UserGroup getUserGroup() {
+    return userGroup;
+  }
 
-    public void setProgramStage( ProgramStage programStage )
-    {
-        this.programStage = programStage;
-    }
+  public void setUserGroup(UserGroup userGroup) {
+    this.userGroup = userGroup;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty
-    public CompletenessMethod getCompletenessMethod()
-    {
-        return completenessMethod;
-    }
+  @JsonProperty
+  @JsonSerialize(contentAs = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(localName = "program", namespace = DxfNamespaces.DXF_2_0)
+  public Program getProgram() {
+    return program;
+  }
 
-    public void setCompletenessMethod( CompletenessMethod completenessMethod )
-    {
-        this.completenessMethod = completenessMethod;
-    }
+  public void setProgram(Program program) {
+    this.program = program;
+  }
 
-    @Override
-    public String toString()
-    {
-        return MoreObjects.toStringHelper( this )
-                .add( "uid", uid )
-                .add( "name", name )
-                .add( "smscodes", codes )
-                .add( "program", program )
-                .add( "parsertype", parserType )
-                .add( "separator", separator )
-                .add( "dataset", dataset )
-                .add( "usergroup", userGroup )
-                .add( "programstage", programStage )
-                .toString();
-    }
+  @JsonProperty
+  @JsonSerialize(contentAs = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(localName = "programStage", namespace = DxfNamespaces.DXF_2_0)
+  public ProgramStage getProgramStage() {
+    return programStage;
+  }
+
+  public void setProgramStage(ProgramStage programStage) {
+    this.programStage = programStage;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty
+  public CompletenessMethod getCompletenessMethod() {
+    return completenessMethod;
+  }
+
+  public void setCompletenessMethod(CompletenessMethod completenessMethod) {
+    this.completenessMethod = completenessMethod;
+  }
+
+  @Override
+  public String toString() {
+    return MoreObjects.toStringHelper(this)
+        .add("uid", uid)
+        .add("name", name)
+        .add("smscodes", codes)
+        .add("program", program)
+        .add("parsertype", parserType)
+        .add("separator", separator)
+        .add("dataset", dataset)
+        .add("usergroup", userGroup)
+        .add("programstage", programStage)
+        .toString();
+  }
 }

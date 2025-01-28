@@ -1,7 +1,5 @@
-package org.hisp.dhis.sqlview;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,33 +25,33 @@ package org.hisp.dhis.sqlview;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.sqlview;
 
-import org.hisp.dhis.common.IdentifiableObjectStore;
 import org.hisp.dhis.common.Grid;
+import org.hisp.dhis.common.IdentifiableObjectStore;
+import org.hisp.dhis.common.TransactionMode;
 
 /**
  * @author Dang Duy Hieu
  */
-public interface SqlViewStore
-    extends IdentifiableObjectStore<SqlView>
-{
-    String ID = SqlViewStore.class.getName();
+public interface SqlViewStore extends IdentifiableObjectStore<SqlView> {
+  String ID = SqlViewStore.class.getName();
 
-    boolean viewTableExists( String viewTableName );
+  String createViewTable(SqlView sqlView);
 
-    String createViewTable( SqlView sqlView );
+  void dropViewTable(SqlView sqlView);
 
-    void dropViewTable( SqlView sqlView );
+  /**
+   * This method will use the appropriate jdbcTemplate depending how DHIS2 has been setup.<br>
+   *
+   * <p>If DHIS2 has been set up using Postgres read replica, then the readOnlyJdbcTemplate will be
+   * used for the reads, otherwise the normal jdbcTemplate will be used for all reads/writes.
+   *
+   * @param grid the {@link Grid} to populate with the results of the sql query.
+   * @param sql the sql query to execute.
+   * @param transactionMode the {@link TransactionMode} to use for the query.
+   */
+  void populateSqlViewGrid(Grid grid, String sql, TransactionMode transactionMode);
 
-    void populateSqlViewGrid( Grid grid, String sql );
-
-    /**
-     * Tests the given SQL for validity.
-     * 
-     * @param sql the SQL string.
-     * @return a non-null description if invalid, and null if valid.
-     */
-    String testSqlGrammar( String sql );
-    
-    boolean refreshMaterializedView( SqlView sqlView );
+  boolean refreshMaterializedView(SqlView sqlView);
 }

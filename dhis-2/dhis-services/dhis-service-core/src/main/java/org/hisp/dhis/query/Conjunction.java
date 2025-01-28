@@ -1,7 +1,5 @@
-package org.hisp.dhis.query;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,22 +25,20 @@ package org.hisp.dhis.query;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.query;
 
 import org.hisp.dhis.schema.Schema;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class Conjunction extends Junction
-{
-    public Conjunction( Schema schema )
-    {
-        super( schema, Type.AND );
-    }
+public final class Conjunction extends Junction {
+  public Conjunction(Schema schema) {
+    super(schema, Type.AND);
+  }
 
-    @Override
-    public String toString()
-    {
-        return "AND[" + criterions + "]";
-    }
+  @Override
+  public String toString() {
+    return "AND[" + criterions + "]";
+  }
 }

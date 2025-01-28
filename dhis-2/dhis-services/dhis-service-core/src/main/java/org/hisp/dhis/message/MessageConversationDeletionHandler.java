@@ -1,7 +1,5 @@
-package org.hisp.dhis.message;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,40 +25,27 @@ package org.hisp.dhis.message;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.message;
 
+import lombok.RequiredArgsConstructor;
 import org.hisp.dhis.system.deletion.DeletionHandler;
 import org.hisp.dhis.user.User;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
  */
-public class MessageConversationDeletionHandler
-    extends DeletionHandler
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Component
+@RequiredArgsConstructor
+public class MessageConversationDeletionHandler extends DeletionHandler {
+  private final MessageService messageService;
 
-    private MessageService messageService;
+  @Override
+  protected void register() {
+    whenDeleting(User.class, this::deleteUser);
+  }
 
-    public void setMessageService( MessageService messageService )
-    {
-        this.messageService = messageService;
-    }
-
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
-
-    @Override
-    public String getClassName()
-    {
-        return MessageConversation.class.getSimpleName();
-    }
-
-    @Override
-    public void deleteUser( User user )
-    {
-        messageService.deleteMessages( user );
-    }
+  private void deleteUser(User user) {
+    messageService.deleteMessages(user);
+  }
 }

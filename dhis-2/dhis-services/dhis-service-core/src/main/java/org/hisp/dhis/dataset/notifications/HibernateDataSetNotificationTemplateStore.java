@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset.notifications;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,40 +25,57 @@ package org.hisp.dhis.dataset.notifications;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataset.notifications;
 
-import org.hibernate.Criteria;
-import org.hibernate.criterion.Restrictions;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import java.util.List;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.dataset.DataSet;
-import org.hisp.dhis.program.notification.NotificationTrigger;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
-import java.util.List;
-
-/**
- * Created by zubair@dhis2.org on 13.07.17.
- */
+/** Created by zubair@dhis2.org on 13.07.17. */
+@Repository("org.hisp.dhis.dataset.notifications.DataSetNotificationTemplateStore")
 public class HibernateDataSetNotificationTemplateStore
     extends HibernateIdentifiableObjectStore<DataSetNotificationTemplate>
-        implements DataSetNotificationTemplateStore
-{
+    implements DataSetNotificationTemplateStore {
+  public HibernateDataSetNotificationTemplateStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(
+        entityManager,
+        jdbcTemplate,
+        publisher,
+        DataSetNotificationTemplate.class,
+        aclService,
+        true);
+  }
 
-    @Override
-    public List<DataSetNotificationTemplate> getNotificationsByTriggerType( DataSet dataSet, DataSetNotificationTrigger trigger )
-    {
-        Criteria criteria = getCriteria();
-        criteria.createAlias( "dataSets", "dataSet" )
-            .add( Restrictions.eq( "dataSetNotificationTrigger", trigger ) )
-            .add( Restrictions.eq( "dataSet.id", dataSet.getId() ) );
+  @Override
+  public List<DataSetNotificationTemplate> getNotificationsByTriggerType(
+      DataSet dataSet, DataSetNotificationTrigger trigger) {
+    CriteriaBuilder builder = getCriteriaBuilder();
 
-        return criteria.list();
-    }
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("dataSetNotificationTrigger"), trigger))
+            .addPredicate(root -> builder.equal(root.join("dataSets").get("id"), dataSet.getId())));
+  }
 
-    @Override
-    public List<DataSetNotificationTemplate> getScheduledNotifications( NotificationTrigger trigger )
-    {
-        Criteria criteria = getCriteria();
-        criteria.add( Restrictions.eq( "dataSetNotificationTrigger", trigger ) );
+  @Override
+  public List<DataSetNotificationTemplate> getScheduledNotifications(
+      DataSetNotificationTrigger trigger) {
+    CriteriaBuilder builder = getCriteriaBuilder();
 
-        return criteria.list();
-    }
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("dataSetNotificationTrigger"), trigger)));
+  }
 }

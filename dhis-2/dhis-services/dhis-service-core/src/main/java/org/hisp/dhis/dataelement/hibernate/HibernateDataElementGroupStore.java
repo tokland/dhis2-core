@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataelement.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,13 +25,41 @@ package org.hisp.dhis.dataelement.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataelement.hibernate;
 
+import jakarta.persistence.EntityManager;
+import java.util.Collection;
+import java.util.List;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
+import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.dataelement.DataElementGroup;
 import org.hisp.dhis.dataelement.DataElementGroupStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
+@Repository("org.hisp.dhis.dataelement.DataElementGroupStore")
 public class HibernateDataElementGroupStore
-    extends HibernateIdentifiableObjectStore<DataElementGroup>
-    implements DataElementGroupStore
-{
+    extends HibernateIdentifiableObjectStore<DataElementGroup> implements DataElementGroupStore {
+  public HibernateDataElementGroupStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, DataElementGroup.class, aclService, false);
+  }
+
+  @Override
+  public List<DataElementGroup> getByDataElement(Collection<DataElement> dataElements) {
+    return getQuery(
+            """
+              select deg from DataElementGroup deg
+              join deg.members m
+              where m in :dataElements
+              group by deg.id
+            """)
+        .setParameter("dataElements", dataElements)
+        .getResultList();
+  }
 }

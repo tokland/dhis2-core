@@ -1,7 +1,5 @@
-package org.hisp.dhis.outboundmessage;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,44 +25,39 @@ package org.hisp.dhis.outboundmessage;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.outboundmessage;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import com.google.common.base.MoreObjects;
-import org.hisp.dhis.common.DxfNamespaces;
-
 import java.util.List;
+import org.hisp.dhis.common.DxfNamespaces;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
  */
+@JacksonXmlRootElement(localName = "batchResponseStatus", namespace = DxfNamespaces.DXF_2_0)
+public class BatchResponseStatus {
+  private List<OutboundMessageResponseSummary> summaries;
 
-@JacksonXmlRootElement( localName = "batchResponseStatus", namespace = DxfNamespaces.DXF_2_0 )
-public class BatchResponseStatus
-{
-    private List<OutboundMessageResponseSummary> summaries;
-    
-    public BatchResponseStatus( List<OutboundMessageResponseSummary> summaries )
-    {
-        this.summaries = summaries;
-    }
+  public BatchResponseStatus(List<OutboundMessageResponseSummary> summaries) {
+    this.summaries = summaries;
+  }
 
-    public boolean isOk()
-    {
-        return summaries.stream().noneMatch( s -> s.getBatchStatus() != OutboundMessageBatchStatus.COMPLETED );
-    }
+  public boolean isOk() {
+    return summaries.stream()
+        .noneMatch(s -> s.getBatchStatus() != OutboundMessageBatchStatus.COMPLETED);
+  }
 
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    @JsonProperty( value = "summaries" )
-    public List<OutboundMessageResponseSummary> getSummaries()
-    {
-        return summaries;
-    }
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  @JsonProperty(value = "summaries")
+  public List<OutboundMessageResponseSummary> getSummaries() {
+    return summaries;
+  }
 
-    @Override
-    public String toString()
-    {
-        return MoreObjects.toStringHelper( this ).add( "summaries", summaries ).toString();
-    }
+  @Override
+  public String toString() {
+    return MoreObjects.toStringHelper(this).add("summaries", summaries).toString();
+  }
 }

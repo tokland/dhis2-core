@@ -1,7 +1,5 @@
-package org.hisp.dhis.organisationunit;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,37 +25,26 @@ package org.hisp.dhis.organisationunit;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.organisationunit;
 
-import org.hisp.dhis.common.IdentifiableObjectManager;
-import org.hisp.dhis.system.deletion.DeletionHandler;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.hisp.dhis.system.deletion.IdObjectDeletionHandler;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
  */
+@Component
 public class OrganisationUnitGroupDeletionHandler
-    extends DeletionHandler
-{
-    @Autowired
-    private IdentifiableObjectManager idObjectManager;
-    
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
+    extends IdObjectDeletionHandler<OrganisationUnitGroup> {
+  @Override
+  protected void registerHandler() {
+    whenDeleting(OrganisationUnit.class, this::deleteOrganisationUnit);
+  }
 
-    @Override
-    public String getClassName()
-    {
-        return OrganisationUnitGroup.class.getSimpleName();
+  private void deleteOrganisationUnit(OrganisationUnit unit) {
+    for (OrganisationUnitGroup group : unit.getGroups()) {
+      group.getMembers().remove(unit);
+      idObjectManager.updateNoAcl(group);
     }
-    
-    @Override
-    public void deleteOrganisationUnit( OrganisationUnit unit )
-    {
-        for ( OrganisationUnitGroup group : unit.getGroups() )
-        {
-            group.getMembers().remove( unit );
-            idObjectManager.updateNoAcl( group );
-        }
-    }
+  }
 }

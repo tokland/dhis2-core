@@ -1,7 +1,5 @@
-package org.hisp.dhis.predictor;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,49 +25,47 @@ package org.hisp.dhis.predictor;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.predictor;
 
-import org.hisp.dhis.scheduling.AbstractJob;
+import lombok.AllArgsConstructor;
+import org.hisp.dhis.scheduling.Job;
 import org.hisp.dhis.scheduling.JobConfiguration;
+import org.hisp.dhis.scheduling.JobProgress;
 import org.hisp.dhis.scheduling.JobType;
 import org.hisp.dhis.scheduling.parameters.PredictorJobParameters;
-import org.hisp.dhis.system.util.DateUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import java.util.Date;
-import java.util.List;
+import org.hisp.dhis.system.notification.Notifier;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Henning Håkonsen
  */
-public class PredictorJob
-    extends AbstractJob
-{
-    @Autowired
-    private PredictionService predictionService;
+@Component
+@AllArgsConstructor
+public class PredictorJob implements Job {
+  private final PredictionService predictionService;
 
-    @Override
-    public JobType getJobType()
-    {
-        return JobType.PREDICTOR;
+  private final Notifier notifier;
+
+  @Override
+  public JobType getJobType() {
+    return JobType.PREDICTOR;
+  }
+
+  @Override
+  public void execute(JobConfiguration config, JobProgress progress) {
+    PredictorJobParameters params = (PredictorJobParameters) config.getJobParameters();
+
+    if (params == null) {
+      throw new IllegalStateException("No job parameters present in predictor job");
     }
 
-    @Override
-    public void execute( JobConfiguration jobConfiguration )
-        throws Exception
-    {
-        PredictorJobParameters predictorJobParameters = ( PredictorJobParameters ) jobConfiguration.getJobParameters();
-
-        if ( predictorJobParameters == null )
-        {
-            throw new Exception( "No job parameters present in predictor job" );
-        }
-
-        List<String> predictors = predictorJobParameters.getPredictors();
-
-        Date startDate = DateUtils.getDateAfterAddition( new Date(), predictorJobParameters.getRelativeStart() );
-        Date endDate = DateUtils.getDateAfterAddition( new Date(), predictorJobParameters.getRelativeEnd() );
-
-        predictionService.predictPredictors( predictors, startDate, endDate );
+    progress.startingProcess("Making predictions");
+    PredictionSummary summary = predictionService.predictJob(params, progress);
+    notifier.addJobSummary(config, summary, PredictionSummary.class);
+    if (summary.getStatus() == PredictionStatus.SUCCESS) {
+      progress.completedProcess(summary.getDescription());
+    } else {
+      progress.failedProcess(summary.getDescription());
     }
-
+  }
 }

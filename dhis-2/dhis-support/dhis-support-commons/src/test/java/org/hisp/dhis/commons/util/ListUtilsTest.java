@@ -1,7 +1,5 @@
-package org.hisp.dhis.commons.util;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,50 +25,43 @@ package org.hisp.dhis.commons.util;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.commons.util;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import org.hisp.dhis.commons.collection.ListUtils;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Lars Helge Overland
  */
-public class ListUtilsTest
-{
-    @Test
-    public void testRemoveAll()
-    {
-        List<String> list = new ArrayList<>( Arrays.asList( "a", "b", "c", "d", "e", "f", "g", "h" ) );
-        
-        Integer[] indexes = { 0, 2, 5, 7, -1, 78 };
+class ListUtilsTest {
 
-        assertEquals( 8, list.size() );
-        
-        ListUtils.removeAll( list, indexes );
-        
-        assertEquals( 4, list.size() );
-        assertTrue( list.contains( "b" ) );
-        assertTrue( list.contains( "d" ) );
-        assertTrue( list.contains( "e" ) );
-        assertTrue( list.contains( "g" ) );
-    }
-    
-    @Test
-    public void testGetDuplicates()
-    {
-        List<String> list = new ArrayList<>( Arrays.asList( "a", "b", "c", "c", "d", "e", "e", "e", "f" ) );
-        Set<String> expected = new HashSet<>( Arrays.asList( "c", "e" ) );
-        assertEquals( expected, ListUtils.getDuplicates( list ) );
-        
-        list = new ArrayList<>( Arrays.asList( "a", "b", "c", "d", "e", "f", "g", "h" ) );
-        assertEquals( 0, ListUtils.getDuplicates( list ).size() );
-    }
+  @Test
+  void testRemoveAll() {
+    List<String> list = new ArrayList<>(Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h"));
+    Integer[] indexes = {0, 2, 5, 7, -1, 78};
+    assertEquals(8, list.size());
+    ListUtils.removeAll(list, indexes);
+    assertEquals(4, list.size());
+    assertTrue(list.contains("b"));
+    assertTrue(list.contains("d"));
+    assertTrue(list.contains("e"));
+    assertTrue(list.contains("g"));
+  }
+
+  @Test
+  void testGetDuplicates() {
+    List<String> list = new ArrayList<>(Arrays.asList("a", "b", "c", "c", "d", "e", "e", "e", "f"));
+    Set<String> expected = new HashSet<>(Arrays.asList("c", "e"));
+    assertEquals(expected, ListUtils.getDuplicates(list));
+    list = new ArrayList<>(Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h"));
+    assertEquals(0, ListUtils.getDuplicates(list).size());
+  }
 }

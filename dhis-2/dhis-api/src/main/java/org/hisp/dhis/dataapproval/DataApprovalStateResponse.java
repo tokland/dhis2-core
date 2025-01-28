@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataapproval;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,132 +25,88 @@ package org.hisp.dhis.dataapproval;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataapproval;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import java.util.Date;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import org.hisp.dhis.common.BaseIdentifiableObject;
 import org.hisp.dhis.common.DxfNamespaces;
 import org.hisp.dhis.dataset.DataSet;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.period.Period;
 
-import java.util.Date;
+@Builder
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@JacksonXmlRootElement(localName = "dataApprovalStateResponse", namespace = DxfNamespaces.DXF_2_0)
+public class DataApprovalStateResponse {
 
-@JacksonXmlRootElement( localName = "dataApprovalStateResponse", namespace = DxfNamespaces.DXF_2_0 )
-public class DataApprovalStateResponse
-{
-    private DataSet dataSet;
+  private final DataSet dataSet;
 
-    private Period period;
+  private final Period period;
 
-    private OrganisationUnit organisationUnit;
+  private final OrganisationUnit organisationUnit;
 
-    private String state;
+  private final String state;
 
-    private String createdByUsername;
+  private final String createdByUsername;
 
-    private Date createdDate;
+  private final Date createdDate;
 
-    private DataApprovalPermissions permissions;
+  private final DataApprovalPermissions permissions;
 
-    public DataApprovalStateResponse( DataSet dataSet, Period period, OrganisationUnit organisationUnit, String state, Date createdDate, String createdByUsername,
-        DataApprovalPermissions permissions )
-    {
-        this.dataSet = dataSet;
-        this.period = period;
-        this.organisationUnit = organisationUnit;
-        this.state = state;
-        this.createdDate = createdDate;
-        this.createdByUsername = createdByUsername;
-        this.permissions = permissions;
-    }
+  /*
+   * OBS! Getter annotations are needed because of field filtering based on
+   * schema
+   */
 
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public DataSet getDataSet()
-    {
-        return dataSet;
-    }
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public DataSet getDataSet() {
+    return dataSet;
+  }
 
-    public void setDataSet( DataSet dataSet )
-    {
-        this.dataSet = dataSet;
-    }
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public Period getPeriod() {
+    return period;
+  }
 
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public Period getPeriod()
-    {
-        return period;
-    }
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public OrganisationUnit getOrganisationUnit() {
+    return organisationUnit;
+  }
 
-    public void setPeriod( Period period )
-    {
-        this.period = period;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public String getState() {
+    return state;
+  }
 
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public OrganisationUnit getOrganisationUnit()
-    {
-        return organisationUnit;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public String getCreatedByUsername() {
+    return createdByUsername;
+  }
 
-    public void setOrganisationUnit( OrganisationUnit organisationUnit )
-    {
-        this.organisationUnit = organisationUnit;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public Date getCreatedDate() {
+    return createdDate;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public String getState()
-    {
-        return state;
-    }
-
-    public void setState( String state )
-    {
-        this.state = state;
-    }
-
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public DataApprovalPermissions getPermissions()
-    {
-        return permissions;
-    }
-
-    public void setPermissions( DataApprovalPermissions permissions )
-    {
-        this.permissions = permissions;
-    }
-
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public String getCreatedByUsername()
-    {
-        return createdByUsername;
-    }
-
-    public void setCreatedByUsername( String createdByUsername )
-    {
-        this.createdByUsername = createdByUsername;
-    }
-
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public Date getCreatedDate()
-    {
-        return createdDate;
-    }
-
-    public void setCreatedDate( Date createdDate )
-    {
-        this.createdDate = createdDate;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public DataApprovalPermissions getPermissions() {
+    return permissions;
+  }
 }

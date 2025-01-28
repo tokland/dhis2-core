@@ -1,7 +1,5 @@
-package org.hisp.dhis.report.impl;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +25,23 @@ package org.hisp.dhis.report.impl;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.report.impl;
 
+import static org.hisp.dhis.common.IdentifiableObjectUtils.getIdentifiers;
+import static org.hisp.dhis.commons.util.TextUtils.getCommaDelimitedString;
+
+import java.io.OutputStream;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import javax.sql.DataSource;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperFillManager;
 import net.sf.jasperreports.engine.JasperPrint;
@@ -36,8 +50,8 @@ import org.apache.commons.io.IOUtils;
 import org.apache.velocity.VelocityContext;
 import org.hisp.dhis.analytics.AnalyticsFinancialYearStartKey;
 import org.hisp.dhis.calendar.Calendar;
-import org.hisp.dhis.common.IdentifiableObjectStore;
 import org.hisp.dhis.common.Grid;
+import org.hisp.dhis.common.IdentifiableObjectStore;
 import org.hisp.dhis.common.IdentifiableObjectUtils;
 import org.hisp.dhis.commons.util.Encoder;
 import org.hisp.dhis.constant.ConstantService;
@@ -50,329 +64,242 @@ import org.hisp.dhis.period.PeriodService;
 import org.hisp.dhis.period.PeriodType;
 import org.hisp.dhis.report.Report;
 import org.hisp.dhis.report.ReportService;
-import org.hisp.dhis.reporttable.ReportTable;
-import org.hisp.dhis.reporttable.ReportTableService;
-import org.hisp.dhis.setting.SettingKey;
-import org.hisp.dhis.setting.SystemSettingManager;
-import org.hisp.dhis.system.util.DateUtils;
+import org.hisp.dhis.setting.SystemSettingsProvider;
 import org.hisp.dhis.system.util.JRExportUtils;
 import org.hisp.dhis.system.velocity.VelocityManager;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.hisp.dhis.util.DateUtils;
+import org.hisp.dhis.visualization.Visualization;
+import org.hisp.dhis.visualization.VisualizationGridService;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.datasource.DataSourceUtils;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import javax.sql.DataSource;
-import java.io.OutputStream;
-import java.io.Writer;
-import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
-import java.util.*;
-
-import static org.hisp.dhis.common.IdentifiableObjectUtils.getIdentifiers;
-import static org.hisp.dhis.commons.util.TextUtils.getCommaDelimitedString;
 
 /**
  * @author Lars Helge Overland
  */
-@Transactional
-public class DefaultReportService
-    implements ReportService
-{
-    public static final String ORGUNIT_LEVEL_COLUMN_PREFIX = "idlevel";
-    public static final String ORGUNIT_UID_LEVEL_COLUMN_PREFIX = "uidlevel";
+@Slf4j
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.report.ReportService")
+public class DefaultReportService implements ReportService {
+  private static final String ORGUNIT_LEVEL_COLUMN_PREFIX = "idlevel";
 
-    private static final Encoder ENCODER = new Encoder();
+  private static final String ORGUNIT_UID_LEVEL_COLUMN_PREFIX = "uidlevel";
 
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+  private static final Encoder ENCODER = new Encoder();
 
-    private IdentifiableObjectStore<Report> reportStore;
+  // -------------------------------------------------------------------------
+  // Dependencies
+  // -------------------------------------------------------------------------
 
-    public void setReportStore( IdentifiableObjectStore<Report> reportStore )
-    {
-        this.reportStore = reportStore;
+  @Qualifier("org.hisp.dhis.report.ReportStore")
+  private final IdentifiableObjectStore<Report> reportStore;
+
+  private final VisualizationGridService visualizationService;
+
+  private final ConstantService constantService;
+
+  private final OrganisationUnitService organisationUnitService;
+
+  private final PeriodService periodService;
+
+  private final I18nManager i18nManager;
+
+  private final DataSource dataSource;
+
+  private final SystemSettingsProvider settingsProvider;
+
+  @Override
+  @Transactional(readOnly = true)
+  public JasperPrint renderReport(
+      OutputStream out, String reportUid, Period period, String organisationUnitUid, String type) {
+    I18nFormat format = i18nManager.getI18nFormat();
+
+    Report report = getReport(reportUid);
+
+    Map<String, Object> params = new HashMap<>();
+
+    params.putAll(constantService.getConstantParameterMap());
+
+    Date reportDate = new Date();
+
+    if (period != null) {
+      params.put(PARAM_PERIOD_NAME, format.formatPeriod(period));
+
+      reportDate = period.getStartDate();
     }
 
-    private ReportTableService reportTableService;
+    OrganisationUnit orgUnit = organisationUnitService.getOrganisationUnit(organisationUnitUid);
 
-    public void setReportTableService( ReportTableService reportTableService )
-    {
-        this.reportTableService = reportTableService;
+    if (orgUnit != null) {
+      int level = orgUnit.getLevel();
+
+      params.put(PARAM_ORGANISATIONUNIT_COLUMN_NAME, orgUnit.getName());
+      params.put(PARAM_ORGANISATIONUNIT_LEVEL, level);
+      params.put(PARAM_ORGANISATIONUNIT_LEVEL_COLUMN, ORGUNIT_LEVEL_COLUMN_PREFIX + level);
+      params.put(PARAM_ORGANISATIONUNIT_UID_LEVEL_COLUMN, ORGUNIT_UID_LEVEL_COLUMN_PREFIX + level);
     }
 
-    private ConstantService constantService;
+    JasperPrint print;
 
-    public void setConstantService( ConstantService constantService )
-    {
-        this.constantService = constantService;
-    }
+    log.debug(
+        String.format(
+            "Get report for report date: '%s', org unit: '%s'",
+            DateUtils.toMediumDate(reportDate), organisationUnitUid));
 
-    private OrganisationUnitService organisationUnitService;
+    try {
+      JasperReport jasperReport =
+          JasperCompileManager.compileReport(
+              IOUtils.toInputStream(report.getDesignContent(), StandardCharsets.UTF_8));
 
-    public void setOrganisationUnitService( OrganisationUnitService organisationUnitService )
-    {
-        this.organisationUnitService = organisationUnitService;
-    }
+      if (report.hasVisualization()) // Use JR data source
+      {
+        Visualization visualization = report.getVisualization();
 
-    private PeriodService periodService;
+        Grid grid =
+            visualizationService.getVisualizationGrid(
+                visualization.getUid(), reportDate, organisationUnitUid);
 
-    public void setPeriodService( PeriodService periodService )
-    {
-        this.periodService = periodService;
-    }
-    
-    private I18nManager i18nManager;
+        print = JasperFillManager.fillReport(jasperReport, params, grid);
+      } else // Use JDBC data source
+      {
+        if (report.hasRelativePeriods()) {
+          AnalyticsFinancialYearStartKey financialYearStart =
+              settingsProvider.getCurrentSettings().getAnalyticsFinancialYearStart();
 
-    public void setI18nManager( I18nManager i18nManager )
-    {
-        this.i18nManager = i18nManager;
-    }
+          List<Period> relativePeriods =
+              report.getRelatives().getRelativePeriods(reportDate, null, false, financialYearStart);
 
-    private DataSource dataSource;
+          String periodString =
+              getCommaDelimitedString(getIdentifiers(periodService.reloadPeriods(relativePeriods)));
+          String isoPeriodString =
+              getCommaDelimitedString(IdentifiableObjectUtils.getUids(relativePeriods));
 
-    public void setDataSource( DataSource dataSource )
-    {
-        this.dataSource = dataSource;
-    }
-
-    @Autowired
-    private SystemSettingManager systemSettingManager;
-
-    // -------------------------------------------------------------------------
-    // ReportService implementation
-    // -------------------------------------------------------------------------
-
-    @Override
-    public JasperPrint renderReport( OutputStream out, String reportUid, Period period,
-        String organisationUnitUid, String type )
-    {
-        I18nFormat format = i18nManager.getI18nFormat();
-        
-        Report report = getReport( reportUid );
-
-        Map<String, Object> params = new HashMap<>();
-
-        params.putAll( constantService.getConstantParameterMap() );
-
-        Date reportDate = new Date();
-
-        if ( period != null )
-        {
-            params.put( PARAM_PERIOD_NAME, format.formatPeriod( period ) );
-
-            reportDate = period.getStartDate();
+          params.put(PARAM_RELATIVE_PERIODS, periodString);
+          params.put(PARAM_RELATIVE_ISO_PERIODS, isoPeriodString);
         }
 
-        OrganisationUnit orgUnit = organisationUnitService.getOrganisationUnit( organisationUnitUid );
-
-        if ( orgUnit != null )
-        {
-            int level = orgUnit.getLevel();
-
-            params.put( PARAM_ORGANISATIONUNIT_COLUMN_NAME, orgUnit.getName() );
-            params.put( PARAM_ORGANISATIONUNIT_LEVEL, level );
-            params.put( PARAM_ORGANISATIONUNIT_LEVEL_COLUMN, ORGUNIT_LEVEL_COLUMN_PREFIX + level );
-            params.put( PARAM_ORGANISATIONUNIT_UID_LEVEL_COLUMN, ORGUNIT_UID_LEVEL_COLUMN_PREFIX + level );
+        if (report.hasReportParams()
+            && report.getReportParams().isOrganisationUnit()
+            && orgUnit != null) {
+          params.put(PARAM_ORG_UNITS, String.valueOf(orgUnit.getId()));
+          params.put(PARAM_ORG_UNITS_UID, String.valueOf(orgUnit.getUid()));
         }
 
-        JasperPrint print = null;
+        Connection connection = DataSourceUtils.getConnection(dataSource);
 
-        try
-        {
-            JasperReport jasperReport = JasperCompileManager.compileReport( IOUtils.toInputStream( report.getDesignContent(), StandardCharsets.UTF_8 ) );
-
-            if ( report.hasReportTable() ) // Use JR data source
-            {
-                ReportTable reportTable = report.getReportTable();
-
-                Grid grid = reportTableService.getReportTableGrid( reportTable.getUid(), reportDate, organisationUnitUid );
-
-                print = JasperFillManager.fillReport( jasperReport, params, grid );
-            }
-            else // Use JDBC data source
-            {
-                if ( report.hasRelativePeriods() )
-                {
-                    AnalyticsFinancialYearStartKey financialYearStart = (AnalyticsFinancialYearStartKey) systemSettingManager.getSystemSetting( SettingKey.ANALYTICS_FINANCIAL_YEAR_START );
-                    List<Period> relativePeriods = report.getRelatives().getRelativePeriods( reportDate, null, false,
-                        financialYearStart );
-
-                    String periodString = getCommaDelimitedString( getIdentifiers( periodService.reloadPeriods( relativePeriods ) ) );
-                    String isoPeriodString = getCommaDelimitedString( IdentifiableObjectUtils.getUids( relativePeriods ) );
-
-                    params.put( PARAM_RELATIVE_PERIODS, periodString );
-                    params.put( PARAM_RELATIVE_ISO_PERIODS, isoPeriodString );
-                }
-
-                if ( report.hasReportParams() && report.getReportParams().isParamOrganisationUnit() && orgUnit != null )
-                {
-                    params.put( PARAM_ORG_UNITS, String.valueOf( orgUnit.getId() ) );
-                    params.put( PARAM_ORG_UNITS_UID, String.valueOf( orgUnit.getUid() ) );
-                }
-
-                Connection connection = DataSourceUtils.getConnection( dataSource );
-
-                try
-                {
-                    print = JasperFillManager.fillReport( jasperReport, params, connection );
-                }
-                finally
-                {
-                    DataSourceUtils.releaseConnection( connection, dataSource );
-                }
-            }
-
-            if ( print != null )
-            {
-                JRExportUtils.export( type, out, print );
-            }
+        try {
+          print = JasperFillManager.fillReport(jasperReport, params, connection);
+        } finally {
+          DataSourceUtils.releaseConnection(connection, dataSource);
         }
-        catch ( Exception ex )
-        {
-            throw new RuntimeException( "Failed to render report", ex );
+      }
+
+      if (print != null) {
+        JRExportUtils.export(type, out, print);
+      }
+    } catch (Exception ex) {
+      throw new RuntimeException("Failed to render report", ex);
+    }
+
+    return print;
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public void renderHtmlReport(Writer writer, String uid, Date date, String ou) {
+    Report report = getReport(uid);
+    OrganisationUnit organisationUnit = null;
+    List<OrganisationUnit> organisationUnitHierarchy = new ArrayList<>();
+    List<OrganisationUnit> organisationUnitChildren = new ArrayList<>();
+    List<String> periods = new ArrayList<>();
+
+    I18nFormat format = i18nManager.getI18nFormat();
+
+    if (ou != null) {
+      organisationUnit = organisationUnitService.getOrganisationUnit(ou);
+
+      if (organisationUnit != null) {
+        organisationUnitHierarchy.add(organisationUnit);
+
+        OrganisationUnit parent = organisationUnit;
+
+        while (parent.getParent() != null) {
+          parent = parent.getParent();
+          organisationUnitHierarchy.add(parent);
         }
 
-        return print;
+        organisationUnitChildren.addAll(organisationUnit.getChildren());
+      }
     }
 
-    @Override
-    public void renderHtmlReport( Writer writer, String uid, Date date, String ou )
-    {
-        Report report = getReport( uid );
-        OrganisationUnit organisationUnit = null;
-        List<OrganisationUnit> organisationUnitHierarchy = new ArrayList<>();
-        List<OrganisationUnit> organisationUnitChildren = new ArrayList<>();
-        List<String> periods = new ArrayList<>();
-        
-        I18nFormat format = i18nManager.getI18nFormat();
-        
-        if ( ou != null )
-        {
-            organisationUnit = organisationUnitService.getOrganisationUnit( ou );
+    Calendar calendar = PeriodType.getCalendar();
 
-            if ( organisationUnit != null )
-            {
-                organisationUnitHierarchy.add( organisationUnit );
+    if (report != null && report.hasRelativePeriods()) {
+      AnalyticsFinancialYearStartKey financialYearStart =
+          settingsProvider.getCurrentSettings().getAnalyticsFinancialYearStart();
 
-                OrganisationUnit parent = organisationUnit;
-
-                while ( parent.getParent() != null )
-                {
-                    parent = parent.getParent();
-                    organisationUnitHierarchy.add( parent );
-                }
-
-                organisationUnitChildren.addAll( organisationUnit.getChildren() );
-            }
+      if (calendar.isIso8601()) {
+        for (Period period :
+            report.getRelatives().getRelativePeriods(date, format, true, financialYearStart)) {
+          periods.add(period.getIsoDate());
         }
-
-        Calendar calendar = PeriodType.getCalendar();
-
-        if ( report != null && report.hasRelativePeriods() )
-        {
-            AnalyticsFinancialYearStartKey financialYearStart = (AnalyticsFinancialYearStartKey) systemSettingManager.getSystemSetting( SettingKey.ANALYTICS_FINANCIAL_YEAR_START );
-
-            if ( calendar.isIso8601() )
-            {
-                for ( Period period : report.getRelatives().getRelativePeriods( date, format, true,
-                    financialYearStart ) )
-                {
-                    periods.add( period.getIsoDate() );
-                }
-            }
-            else
-            {
-                periods = IdentifiableObjectUtils.getLocalPeriodIdentifiers( report.getRelatives().getRelativePeriods( date, format, true,
-                    financialYearStart ), calendar );
-            }
-        }
-
-        String dateString = DateUtils.getMediumDateString( date );
-
-        if ( date != null && !calendar.isIso8601() )
-        {
-            dateString = calendar.formattedDate( calendar.fromIso( date ) );
-        }
-
-        final VelocityContext context = new VelocityContext();
-        context.put( "report", report );
-        context.put( "organisationUnit", organisationUnit );
-        context.put( "organisationUnitHierarchy", organisationUnitHierarchy );
-        context.put( "organisationUnitChildren", organisationUnitChildren );
-        context.put( "date", dateString );
-        context.put( "periods", periods );
-        context.put( "format", format );
-        context.put( "encoder", ENCODER );
-
-        new VelocityManager().getEngine().getTemplate( "html-report.vm" ).merge( context, writer );
+      } else {
+        periods =
+            IdentifiableObjectUtils.getLocalPeriodIdentifiers(
+                report.getRelatives().getRelativePeriods(date, format, true, financialYearStart),
+                calendar);
+      }
     }
 
-    @Override
-    public int saveReport( Report report )
-    {
-        reportStore.save( report );
+    String dateString = DateUtils.toMediumDate(date);
 
-        return report.getId();
+    if (date != null && !calendar.isIso8601()) {
+      dateString = calendar.formattedDate(calendar.fromIso(date));
     }
 
-    @Override
-    public void deleteReport( Report report )
-    {
-        reportStore.delete( report );
-    }
+    final VelocityContext context = new VelocityContext();
+    context.put("report", report);
+    context.put("organisationUnit", organisationUnit);
+    context.put("organisationUnitHierarchy", organisationUnitHierarchy);
+    context.put("organisationUnitChildren", organisationUnitChildren);
+    context.put("date", dateString);
+    context.put("periods", periods);
+    context.put("format", format);
+    context.put("encoder", ENCODER);
 
-    @Override
-    public List<Report> getAllReports()
-    {
-        return reportStore.getAll();
-    }
+    new VelocityManager().getEngine().getTemplate("html-report.vm").merge(context, writer);
+  }
 
-    @Override
-    public Report getReport( int id )
-    {
-        return reportStore.get( id );
-    }
+  @Override
+  @Transactional
+  public long saveReport(Report report) {
+    reportStore.save(report);
 
-    @Override
-    public Report getReport( String uid )
-    {
-        return reportStore.getByUid( uid );
-    }
+    return report.getId();
+  }
 
-    @Override
-    public int getReportCount()
-    {
-        return reportStore.getCount();
-    }
+  @Override
+  @Transactional
+  public void deleteReport(Report report) {
+    reportStore.delete(report);
+  }
 
-    @Override
-    public int getReportCountByName( String name )
-    {
-        return reportStore.getCountLikeName( name );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<Report> getAllReports() {
+    return reportStore.getAll();
+  }
 
-    @Override
-    public List<Report> getReportsBetween( int first, int max )
-    {
-        return reportStore.getAllOrderedName( first, max );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public Report getReport(long id) {
+    return reportStore.get(id);
+  }
 
-    @Override
-    public List<Report> getReportsBetweenByName( String name, int first, int max )
-    {
-        return reportStore.getAllLikeName( name, first, max );
-    }
-
-    @Override
-    public List<Report> getReportByName( String name )
-    {
-        return reportStore.getAllEqName( name );
-    }
-
-    @Override
-    public List<Report> getReportsByUid( List<String> uids )
-    {
-        return reportStore.getByUid( uids );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public Report getReport(String uid) {
+    return reportStore.getByUid(uid);
+  }
 }

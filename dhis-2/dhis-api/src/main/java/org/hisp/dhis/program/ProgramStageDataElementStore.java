@@ -1,7 +1,5 @@
-package org.hisp.dhis.program;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +25,10 @@ package org.hisp.dhis.program;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program;
 
+import java.util.Collection;
+import java.util.List;
 import org.hisp.dhis.common.IdentifiableObjectStore;
 import org.hisp.dhis.dataelement.DataElement;
 
@@ -35,17 +36,19 @@ import org.hisp.dhis.dataelement.DataElement;
  * @author Viet Nguyen
  */
 public interface ProgramStageDataElementStore
-    extends IdentifiableObjectStore<ProgramStageDataElement>
-{
-    String ID = ProgramStageInstanceStore.class.getName();
+    extends IdentifiableObjectStore<ProgramStageDataElement> {
+  String ID = ProgramStageDataElementStore.class.getName();
 
-    /**
-     * Retrieve ProgramStageDataElement list on a program stage and a data
-     * element
-     *
-     * @param programStage ProgramStage
-     * @param dataElement  DataElement
-     * @return ProgramStageDataElement
-     */
-    ProgramStageDataElement get( ProgramStage programStage, DataElement dataElement );
+  /**
+   * Retrieve ProgramStageDataElement list on a program stage and a data element
+   *
+   * @param programStage ProgramStage
+   * @param dataElement DataElement
+   * @return ProgramStageDataElement
+   */
+  ProgramStageDataElement get(ProgramStage programStage, DataElement dataElement);
+
+  List<ProgramStageDataElement> getProgramStageDataElements(DataElement dataElement);
+
+  List<ProgramStageDataElement> getAllByDataElement(Collection<DataElement> dataElements);
 }

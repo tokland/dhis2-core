@@ -1,7 +1,5 @@
-package org.hisp.dhis.maintenance;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,49 +25,66 @@ package org.hisp.dhis.maintenance;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.maintenance;
+
+import java.util.List;
 
 /**
  * @author Lars Helge Overland
  */
-public interface MaintenanceStore
-{
-    /**
-     * Deletes data values registered with 0 as value and associated with
-     * data elements with sum as aggregation operator.
-     * 
-     * @return the number of deleted data values.
-     */
-    int deleteZeroDataValues();
-    
-    /**
-     * Permanently deletes data values which have been soft deleted, i.e.
-     * data values where the deleted property is true.
-     * 
-     * @return the number of deleted data values.
-     */
-    int deleteSoftDeletedDataValues();
+public interface MaintenanceStore {
+  /**
+   * Deletes data values registered with 0 as value and associated with data elements with sum as
+   * aggregation operator.
+   *
+   * @return the number of deleted data values.
+   */
+  int deleteZeroDataValues();
 
-    /**
-     * Permanently deletes program stage instances which have been soft deleted, i.e.
-     * program stage instances where the deleted property is true.
-     *
-     * @return the number of deleted program stage instances
-     */
-    int deleteSoftDeletedProgramStageInstances();
+  /**
+   * Permanently deletes data values which have been soft deleted, i.e. data values where the
+   * deleted property is true.
+   *
+   * @return the number of deleted data values.
+   */
+  int deleteSoftDeletedDataValues();
 
-    /**
-     * Permanently deletes program instances which have been soft deleted, i.e.
-     * program instances where the deleted property is true.
-     *
-     * @return the number of deleted program instances
-     */
-    int deleteSoftDeletedProgramInstances();
+  /**
+   * Permanently deletes events which have been soft-deleted, i.e. events where the deleted property
+   * is true.
+   *
+   * @return the number of deleted events
+   */
+  int deleteSoftDeletedEvents();
 
-    /**
-     * Permanently deletes tracked entity instances which have been soft deleted, i.e.
-     * tracked entity instances where the deleted property is true.
-     *
-     * @return the number of deleted tracked entity instances
-     */
-    int deleteSoftDeletedTrackedEntityInstances();
+  int hardDeleteEvents(List<String> eventsToDelete, String eventSelect, String eventDeleteQuery);
+
+  /**
+   * Permanently deletes relationships which have been soft deleted, i.e. relationships where the
+   * deleted property is true.
+   *
+   * @return the number of deleted relationships
+   */
+  int deleteSoftDeletedRelationships();
+
+  /**
+   * Permanently deletes Enrollments which have been soft deleted, i.e. Enrollments where the
+   * deleted property is true.
+   *
+   * @return the number of deleted Enrollments
+   */
+  int deleteSoftDeletedEnrollments();
+
+  /**
+   * Permanently deletes tracked entities which have been soft deleted, i.e. tracked entities where
+   * the deleted property is true.
+   *
+   * @return the number of deleted tracked entity
+   */
+  int deleteSoftDeletedTrackedEntities();
+
+  /** Deletes periods which are not associated with any other table. */
+  void prunePeriods();
+
+  List<String> getDeletionEntities(String entitySql);
 }

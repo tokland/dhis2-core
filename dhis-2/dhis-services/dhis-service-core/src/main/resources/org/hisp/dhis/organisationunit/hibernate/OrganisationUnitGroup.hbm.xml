@@ -17,11 +17,15 @@
 
     <property name="name" column="name" not-null="true" unique="true" length="230" />
 
-    <property name="shortName" column="shortname" unique="true" length="50" />
+    <property name="shortName" column="shortname" not-null="true" unique="true" length="50" />
+
+    <property name="description" type="text" />
 
     <property name="symbol" />
     
     <property name="color" />
+
+    <property name="translations" type="jblTranslations"/>
 
     <set name="members" table="orgunitgroupmembers">
       <cache usage="read-write" />
@@ -36,39 +40,15 @@
       <many-to-many class="org.hisp.dhis.organisationunit.OrganisationUnitGroupSet" column="orgunitgroupsetid" />
     </set>
 
-    <property name="coordinates" type="text" />
+    <property name="geometry" />
 
-    <!-- Object Translation -->
-    <set name="translations" table="orgunitgrouptranslations" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="orgunitgroupid" foreign-key="fk_objecttranslation_orgunitgroupid" />
-      <many-to-many class="org.hisp.dhis.translation.ObjectTranslation" column="objecttranslationid" unique="true" />
-    </set>
+    <many-to-one name="createdBy" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_orgunitgroup_userid" />
 
-    <!-- Access properties -->
-    <many-to-one name="user" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_orgunitgroup_userid" />
-
-    <property name="publicAccess" length="8" />
-
-    <set name="userGroupAccesses" table="orgunitgroupusergroupaccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="orgunitgroupid" />
-      <many-to-many class="org.hisp.dhis.user.UserGroupAccess" column="usergroupaccessid" unique="true" />
-    </set>
-
-    <set name="userAccesses" table="orgunitgroupuseraccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="orgunitgroupid" />
-      <many-to-many class="org.hisp.dhis.user.UserAccess" column="useraccessid" unique="true" />
-    </set>
+    <!-- Sharing -->
+    <property name="sharing" type="jsbObjectSharing"/>
 
     <!-- Dynamic attribute values -->
-    <set name="attributeValues" table="orgunitgroupattributevalues" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="orgunitgroupid" />
-      <many-to-many class="org.hisp.dhis.attribute.AttributeValue" column="attributevalueid" unique="true" />
-    </set>
-
+    <property name="attributeValues" type="jsbAttributeValues"/>
   </class>
 
 </hibernate-mapping>

@@ -1,7 +1,5 @@
-package org.hisp.dhis.scheduling.parameters;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,60 +25,48 @@ package org.hisp.dhis.scheduling.parameters;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.scheduling.parameters;
 
-import org.hisp.dhis.analytics.AnalyticsTableType;
-import org.hisp.dhis.feedback.ErrorReport;
-import org.hisp.dhis.scheduling.JobParameters;
-import org.hisp.dhis.schema.annotation.Property;
-
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.HashSet;
 import java.util.Set;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hisp.dhis.analytics.AnalyticsTableType;
+import org.hisp.dhis.common.OpenApi;
+import org.hisp.dhis.common.UID;
+import org.hisp.dhis.program.Program;
+import org.hisp.dhis.scheduling.JobParameters;
 
 /**
  * @author Henning Håkonsen
  */
-public class AnalyticsJobParameters
-    implements JobParameters
-{
-    private static final long serialVersionUID = 4613054056442242637L;
+@Getter
+@Setter
+@NoArgsConstructor
+public class AnalyticsJobParameters implements JobParameters {
+  @JsonProperty private Integer lastYears;
 
-    @Property
-    private Integer lastYears = 0;
+  @JsonProperty private Set<AnalyticsTableType> skipTableTypes = new HashSet<>();
 
-    @Property
-    private Set<AnalyticsTableType> skipTableTypes = new HashSet<>( );
+  @JsonProperty
+  @OpenApi.Property({UID[].class, Program.class})
+  private Set<String> skipPrograms = new HashSet<>();
 
-    @Property
-    private boolean skipResourceTables = false;
+  @JsonProperty private boolean skipResourceTables = false;
+  @JsonProperty private boolean skipOutliers = false;
 
-    public AnalyticsJobParameters()
-    {
-    }
-
-    public AnalyticsJobParameters( Integer lastYears, Set<AnalyticsTableType> skipTableTypes, boolean skipResourceTables )
-    {
-        this.lastYears = lastYears;
-        this.skipTableTypes = skipTableTypes;
-        this.skipResourceTables = skipResourceTables;
-    }
-
-    public Integer getLastYears()
-    {
-        return lastYears;
-    }
-
-    public Set<AnalyticsTableType> getSkipTableTypes()
-    {
-        return skipTableTypes;
-    }
-
-    public boolean isSkipResourceTables()
-    {
-        return skipResourceTables;
-    }
-
-    public ErrorReport validate()
-    {
-        return null;
-    }
+  public AnalyticsJobParameters(
+      Integer lastYears,
+      Set<AnalyticsTableType> skipTableTypes,
+      Set<String> skipPrograms,
+      boolean skipResourceTables,
+      boolean skipOutliers) {
+    this.lastYears = lastYears;
+    this.skipTableTypes = skipTableTypes;
+    this.skipPrograms = skipPrograms;
+    this.skipResourceTables = skipResourceTables;
+    this.skipOutliers = skipOutliers;
+  }
 }

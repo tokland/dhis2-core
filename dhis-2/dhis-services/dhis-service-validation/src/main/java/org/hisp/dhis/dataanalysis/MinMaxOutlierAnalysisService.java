@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataanalysis;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,13 +25,16 @@ package org.hisp.dhis.dataanalysis;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataanalysis;
 
-import com.google.common.collect.Lists;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.hisp.dhis.common.ValueType;
-import org.hisp.dhis.commons.filter.Filter;
-import org.hisp.dhis.commons.filter.FilterUtils;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.hisp.dhis.category.CategoryOptionCombo;
 import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.datavalue.DeflatedDataValue;
@@ -42,127 +43,113 @@ import org.hisp.dhis.minmax.MinMaxDataElement;
 import org.hisp.dhis.minmax.MinMaxDataElementService;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.period.Period;
-import org.hisp.dhis.system.filter.DataElementValueTypesFilter;
 import org.hisp.dhis.system.util.MathUtils;
 import org.hisp.quick.BatchHandler;
 import org.hisp.quick.BatchHandlerFactory;
 import org.joda.time.DateTime;
-
-import java.util.*;
+import org.springframework.stereotype.Service;
 
 /**
  * @author Lars Helge Overland
  */
-public class MinMaxOutlierAnalysisService
-    implements MinMaxDataAnalysisService
-{
-    private static final Log log = LogFactory.getLog( MinMaxOutlierAnalysisService.class );
+@Slf4j
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.dataanalysis.MinMaxOutlierAnalysisService")
+public class MinMaxOutlierAnalysisService implements MinMaxDataAnalysisService {
+  private final DataAnalysisStore dataAnalysisStore;
 
-    private static final Filter<DataElement> DE_NUMERIC_FILTER = new DataElementValueTypesFilter( ValueType.NUMERIC_TYPES );
+  private final MinMaxDataElementService minMaxDataElementService;
 
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+  private final BatchHandlerFactory batchHandlerFactory;
 
-    private DataAnalysisStore dataAnalysisStore;
+  // -------------------------------------------------------------------------
+  // DataAnalysisService implementation
+  // -------------------------------------------------------------------------
 
-    public void setDataAnalysisStore( DataAnalysisStore dataAnalysisStore )
-    {
-        this.dataAnalysisStore = dataAnalysisStore;
+  @Override
+  public List<DeflatedDataValue> analyse(
+      OrganisationUnit orgUnit,
+      Collection<DataElement> dataElements,
+      Collection<Period> periods,
+      Double stdDevFactor,
+      Date from) {
+    Set<DataElement> elements =
+        dataElements.stream()
+            .filter(de -> de.getValueType().isNumeric())
+            .collect(Collectors.toSet());
+    Set<CategoryOptionCombo> categoryOptionCombos = new HashSet<>();
+
+    for (DataElement dataElement : elements) {
+      categoryOptionCombos.addAll(dataElement.getCategoryOptionCombos());
     }
 
-    private MinMaxDataElementService minMaxDataElementService;
+    log.debug("Starting min-max analysis, no of data elements: {}", elements.size());
 
-    public void setMinMaxDataElementService( MinMaxDataElementService minMaxDataElementService )
-    {
-        this.minMaxDataElementService = minMaxDataElementService;
-    }
+    return dataAnalysisStore.getMinMaxViolations(
+        elements, categoryOptionCombos, periods, orgUnit, MAX_OUTLIERS);
+  }
 
-    private BatchHandlerFactory batchHandlerFactory;
+  @Override
+  public void generateMinMaxValues(
+      OrganisationUnit orgUnit, Collection<DataElement> dataElements, Double stdDevFactor) {
+    log.info(
+        "Starting min-max value generation, no of data elements: "
+            + dataElements.size()
+            + ", parent: "
+            + orgUnit.getUid());
 
-    public void setBatchHandlerFactory( BatchHandlerFactory batchHandlerFactory )
-    {
-        this.batchHandlerFactory = batchHandlerFactory;
-    }
+    Date from = new DateTime(1, 1, 1, 1, 1).toDate();
 
-    // -------------------------------------------------------------------------
-    // DataAnalysisService implementation
-    // -------------------------------------------------------------------------
+    minMaxDataElementService.removeMinMaxDataElements(dataElements, orgUnit);
 
-    @Override
-    public List<DeflatedDataValue> analyse( Collection<OrganisationUnit> parents,
-        Collection<DataElement> dataElements, Collection<Period> periods, Double stdDevFactor, Date from )
-    {
-        Set<DataElement> elements = new HashSet<>( dataElements );
+    log.debug("Deleted existing min-max values");
 
-        FilterUtils.filter( elements, DE_NUMERIC_FILTER );
+    BatchHandler<MinMaxDataElement> batchHandler =
+        batchHandlerFactory.createBatchHandler(MinMaxDataElementBatchHandler.class).init();
 
-        Set<CategoryOptionCombo> categoryOptionCombos = new HashSet<>();
+    for (DataElement dataElement : dataElements) {
+      if (dataElement.getValueType().isNumeric()) {
+        Set<CategoryOptionCombo> categoryOptionCombos = dataElement.getCategoryOptionCombos();
 
-        for ( DataElement dataElement : elements )
-        {
-            categoryOptionCombos.addAll( dataElement.getCategoryOptionCombos() );
+        List<DataAnalysisMeasures> measuresList =
+            dataAnalysisStore.getDataAnalysisMeasures(
+                dataElement, categoryOptionCombos, orgUnit, from);
+
+        for (DataAnalysisMeasures measures : measuresList) {
+          int min =
+              (int)
+                  Math.round(
+                      MathUtils.getLowBound(
+                          measures.getStandardDeviation(), stdDevFactor, measures.getAverage()));
+          int max =
+              (int)
+                  Math.round(
+                      MathUtils.getHighBound(
+                          measures.getStandardDeviation(), stdDevFactor, measures.getAverage()));
+
+          switch (dataElement.getValueType()) {
+            case INTEGER_POSITIVE:
+            case INTEGER_ZERO_OR_POSITIVE:
+              min = Math.max(0, min); // Cannot be < 0
+              break;
+            case INTEGER_NEGATIVE:
+              max = Math.min(0, max); // Cannot be > 0
+              break;
+          }
+
+          OrganisationUnit ou = new OrganisationUnit();
+          ou.setId(measures.getOrgUnitId());
+
+          CategoryOptionCombo coc = new CategoryOptionCombo();
+          coc.setId(measures.getCategoryOptionComboId());
+
+          batchHandler.addObject(new MinMaxDataElement(dataElement, ou, coc, min, max, true));
         }
-
-        log.debug( "Starting min-max analysis, no of data elements: " + elements.size() + ", no of parent org units: " + parents.size() );
-
-        return dataAnalysisStore.getMinMaxViolations( elements, categoryOptionCombos, periods, parents, MAX_OUTLIERS );
+      }
     }
 
-    @Override
-    public void generateMinMaxValues( OrganisationUnit parent, Collection<DataElement> dataElements, Double stdDevFactor )
-    {
-        log.info( "Starting min-max value generation, no of data elements: " + dataElements.size() + ", parent: " + parent.getUid() );
+    log.info("Min-max value generation done");
 
-        //Set<Integer> orgUnitIds = new HashSet<>( IdentifiableObjectUtils.getIdentifiers( organisationUnits ) );
-
-        Date from = new DateTime( 1, 1, 1, 1, 1 ).toDate();
-
-        minMaxDataElementService.removeMinMaxDataElements( dataElements, parent );
-
-        log.debug( "Deleted existing min-max values" );
-
-        List<String> parentPaths = Lists.newArrayList( parent.getPath() );
-
-        BatchHandler<MinMaxDataElement> batchHandler = batchHandlerFactory.createBatchHandler( MinMaxDataElementBatchHandler.class ).init();
-
-        for ( DataElement dataElement : dataElements )
-        {
-            if ( dataElement.getValueType().isNumeric() )
-            {
-                Set<CategoryOptionCombo> categoryOptionCombos = dataElement.getCategoryOptionCombos();
-
-                List<DataAnalysisMeasures> measuresList = dataAnalysisStore.getDataAnalysisMeasures( dataElement, categoryOptionCombos, parentPaths, from );
-
-                for ( DataAnalysisMeasures measures : measuresList )
-                {
-                    int min = (int) Math.round( MathUtils.getLowBound( measures.getStandardDeviation(), stdDevFactor, measures.getAverage() ) );
-                    int max = (int) Math.round( MathUtils.getHighBound( measures.getStandardDeviation(), stdDevFactor, measures.getAverage() ) );
-
-                    switch ( dataElement.getValueType() )
-                    {
-                        case INTEGER_POSITIVE:
-                        case INTEGER_ZERO_OR_POSITIVE:
-                            min = Math.max( 0, min ); // Cannot be < 0
-                            break;
-                        case INTEGER_NEGATIVE:
-                            max = Math.min( 0, max ); // Cannot be > 0
-                            break;
-                    }
-
-                    OrganisationUnit orgUnit = new OrganisationUnit();
-                    orgUnit.setId( measures.getOrgUnitId() );
-
-                    CategoryOptionCombo categoryOptionCombo = new CategoryOptionCombo();
-                    categoryOptionCombo.setId( measures.getCategoryOptionComboId() );
-
-                    batchHandler.addObject( new MinMaxDataElement( orgUnit, dataElement, categoryOptionCombo, min, max, true ) );
-                }
-            }
-        }
-
-        log.info( "Min-max value generation done" );
-
-        batchHandler.flush();
-    }
+    batchHandler.flush();
+  }
 }

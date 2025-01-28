@@ -1,7 +1,5 @@
-package org.hisp.dhis.report;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,49 +25,35 @@ package org.hisp.dhis.report;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.report;
 
-import org.hisp.dhis.reporttable.ReportTable;
+import static org.hisp.dhis.system.deletion.DeletionVeto.ACCEPT;
+
+import lombok.RequiredArgsConstructor;
 import org.hisp.dhis.system.deletion.DeletionHandler;
+import org.hisp.dhis.system.deletion.DeletionVeto;
+import org.hisp.dhis.visualization.Visualization;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
- * @version $Id$
  */
-public class ReportDeletionHandler
-    extends DeletionHandler
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Component
+@RequiredArgsConstructor
+public class ReportDeletionHandler extends DeletionHandler {
+  private final ReportService reportService;
 
-    private ReportService reportService;
+  @Override
+  protected void register() {
+    whenVetoing(Visualization.class, this::allowDeleteVisualization);
+  }
 
-    public void setReportService( ReportService reportService )
-    {
-        this.reportService = reportService;
+  private DeletionVeto allowDeleteVisualization(Visualization visualization) {
+    for (Report report : reportService.getAllReports()) {
+      if (report.getVisualization() != null && report.getVisualization().equals(visualization)) {
+        return new DeletionVeto(Visualization.class, report.getName());
+      }
     }
-
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
-
-    @Override
-    public String getClassName()
-    {
-        return ReportTable.class.getSimpleName();
-    }
-
-    @Override
-    public String allowDeleteReportTable( ReportTable reportTable )
-    {
-        for ( Report report : reportService.getAllReports() )
-        {
-            if ( report.getReportTable() != null && report.getReportTable().equals( reportTable ) )
-            {
-                return report.getName();
-            }
-        }
-
-        return null;
-    }
+    return ACCEPT;
+  }
 }

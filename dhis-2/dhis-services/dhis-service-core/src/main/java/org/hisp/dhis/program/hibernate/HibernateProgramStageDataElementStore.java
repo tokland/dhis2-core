@@ -1,7 +1,5 @@
-package org.hisp.dhis.program.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,29 +25,65 @@ package org.hisp.dhis.program.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program.hibernate;
 
-import org.hibernate.Criteria;
-import org.hibernate.criterion.Restrictions;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import java.util.Collection;
+import java.util.List;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.program.ProgramStage;
 import org.hisp.dhis.program.ProgramStageDataElement;
 import org.hisp.dhis.program.ProgramStageDataElementStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Viet Nguyen
  */
+@Repository("org.hisp.dhis.program.ProgramStageDataElementStore")
 public class HibernateProgramStageDataElementStore
     extends HibernateIdentifiableObjectStore<ProgramStageDataElement>
-    implements ProgramStageDataElementStore
-{
-    @Override
-    public ProgramStageDataElement get( ProgramStage programStage, DataElement dataElement )
-    {
-        Criteria criteria = getCriteria( 
-            Restrictions.eq( "programStage", programStage ),
-            Restrictions.eq( "dataElement", dataElement ) );
+    implements ProgramStageDataElementStore {
+  public HibernateProgramStageDataElementStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, ProgramStageDataElement.class, aclService, false);
+  }
 
-        return (ProgramStageDataElement) criteria.uniqueResult();
-    }
+  @Override
+  public ProgramStageDataElement get(ProgramStage programStage, DataElement dataElement) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getSingleResult(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("programStage"), programStage))
+            .addPredicate(root -> builder.equal(root.get("dataElement"), dataElement)));
+  }
+
+  @Override
+  public List<ProgramStageDataElement> getProgramStageDataElements(DataElement dataElement) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.equal(root.get("dataElement"), dataElement)));
+  }
+
+  @Override
+  public List<ProgramStageDataElement> getAllByDataElement(Collection<DataElement> dataElements) {
+    return getQuery(
+            """
+            from ProgramStageDataElement psde
+            where psde.dataElement in :dataElements
+            """)
+        .setParameter("dataElements", dataElements)
+        .list();
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.mapping;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,92 +25,86 @@ package org.hisp.dhis.mapping;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.common.AnalyticalObjectService;
-import org.hisp.dhis.organisationunit.OrganisationUnitGroupSet;
+package org.hisp.dhis.mapping;
 
 import java.util.List;
+import org.hisp.dhis.common.AnalyticalObjectService;
+import org.hisp.dhis.organisationunit.OrganisationUnitGroupSet;
+import org.hisp.dhis.program.Program;
 
 /**
  * @author Jan Henrik Overland
  */
-public interface MappingService
-    extends AnalyticalObjectService<MapView>
-{
-    String GEOJSON_DIR = "geojson";
+public interface MappingService extends AnalyticalObjectService<MapView> {
+  String GEOJSON_DIR = "geojson";
 
-    String MAP_LEGEND_SYMBOLIZER_COLOR = "color";
-    String MAP_LEGEND_SYMBOLIZER_IMAGE = "image";
+  String MAP_LEGEND_SYMBOLIZER_COLOR = "color";
 
-    String KEY_MAP_DATE_TYPE = "dateType";
+  String MAP_LEGEND_SYMBOLIZER_IMAGE = "image";
 
-    String MAP_DATE_TYPE_FIXED = "fixed";
-    String MAP_DATE_TYPE_START_END = "start-end";
+  String KEY_MAP_DATE_TYPE = "dateType";
 
-    String ORGANISATION_UNIT_SELECTION_TYPE_PARENT = "parent";
-    String ORGANISATION_UNIT_SELECTION_TYPE_LEVEL = "level";
+  String MAP_DATE_TYPE_FIXED = "fixed";
 
-    String MAP_LAYER_TYPE_BASELAYER = "baselayer";
-    String MAP_LAYER_TYPE_OVERLAY = "overlay";
+  String MAP_DATE_TYPE_START_END = "start-end";
 
-    // -------------------------------------------------------------------------
-    // Map
-    // -------------------------------------------------------------------------
+  String ORGANISATION_UNIT_SELECTION_TYPE_PARENT = "parent";
 
-    int addMap( Map map );
+  String ORGANISATION_UNIT_SELECTION_TYPE_LEVEL = "level";
 
-    void updateMap( Map map );
+  String MAP_LAYER_TYPE_BASELAYER = "baselayer";
 
-    Map getMap( int id );
+  String MAP_LAYER_TYPE_OVERLAY = "overlay";
 
-    Map getMap( String uid );
+  // -------------------------------------------------------------------------
+  // Map
+  // -------------------------------------------------------------------------
 
-    Map getMapNoAcl( String uid );
+  long addMap(Map map);
 
-    void deleteMap( Map map );
+  void updateMap(Map map);
 
-    List<Map> getAllMaps();
+  Map getMap(long id);
 
-    // -------------------------------------------------------------------------
-    // MapView
-    // -------------------------------------------------------------------------
+  Map getMap(String uid);
 
-    int addMapView( MapView mapView );
+  Map getMapNoAcl(String uid);
 
-    void updateMapView( MapView mapView );
+  void deleteMap(Map map);
 
-    void deleteMapView( MapView view );
+  // -------------------------------------------------------------------------
+  // MapView
+  // -------------------------------------------------------------------------
 
-    MapView getMapView( int id );
+  long addMapView(MapView mapView);
 
-    MapView getMapView( String uid );
+  void updateMapView(MapView mapView);
 
-    MapView getMapViewByName( String name );
+  void deleteMapView(MapView view);
 
-    MapView getIndicatorLastYearMapView( String indicatorUid, String organisationUnitUid, int level );
+  MapView getMapView(long id);
 
-    List<MapView> getMapViewsByOrganisationUnitGroupSet( OrganisationUnitGroupSet groupSet );
-    
-    List<MapView> getAllMapViews();
+  MapView getMapView(String uid);
 
-    int countMapViewMaps( MapView mapView );
+  MapView getIndicatorLastYearMapView(String indicatorUid, String organisationUnitUid, int level);
 
-    // -------------------------------------------------------------------------
-    // ExternalMapLayer
-    // -------------------------------------------------------------------------
+  List<MapView> getMapViewsByOrganisationUnitGroupSet(OrganisationUnitGroupSet groupSet);
 
-    int addExternalMapLayer( ExternalMapLayer mapLayer );
+  int countMapViewMaps(MapView mapView);
 
-    void updateExternalMapLayer( ExternalMapLayer mapLayer );
+  List<MapView> findByProgram(Program program);
 
-    void deleteExternalMapLayer( ExternalMapLayer mapLayer );
+  // -------------------------------------------------------------------------
+  // ExternalMapLayer
+  // -------------------------------------------------------------------------
 
-    ExternalMapLayer getExternalMapLayer( int id );
+  long addExternalMapLayer(ExternalMapLayer mapLayer);
 
-    ExternalMapLayer getExternalMapLayer( String uid );
+  void updateExternalMapLayer(ExternalMapLayer mapLayer);
 
-    ExternalMapLayer getExternalMapLayerByName( String name );
+  void deleteExternalMapLayer(ExternalMapLayer mapLayer);
 
-    List<ExternalMapLayer> getAllExternalMapLayers();
+  ExternalMapLayer getExternalMapLayer(long id);
 
+  ExternalMapLayer getExternalMapLayer(String uid);
 }

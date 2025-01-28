@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,58 +25,45 @@ package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
 
-import org.hisp.dhis.common.IdentifiableObject;
+import java.util.HashSet;
+import java.util.Set;
 import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.dataelement.DataElementOperand;
 import org.hisp.dhis.dataset.Section;
 import org.hisp.dhis.dxf2.metadata.objectbundle.ObjectBundle;
 import org.hisp.dhis.util.ObjectUtils;
-
-import java.util.HashSet;
-import java.util.Set;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Viet Nguyen <viet@dhis2.org>
  */
-public class SectionObjectBundleHook extends AbstractObjectBundleHook
-{
-    @Override
-    public void preUpdate( IdentifiableObject object, IdentifiableObject persistedObject, ObjectBundle bundle  )
-    {
-        if ( !Section.class.isInstance( persistedObject ) )
-        {
-            return;
+@Component
+public class SectionObjectBundleHook extends AbstractObjectBundleHook<Section> {
+  @Override
+  public void preUpdate(Section section, Section persistedObject, ObjectBundle bundle) {
+    Set<DataElementOperand> returnGreyFields = new HashSet<>();
+
+    for (DataElementOperand greyField : section.getGreyedFields()) {
+      boolean exist = false;
+
+      for (DataElement de : section.getDataElements()) {
+        if (!ObjectUtils.allNonNull(de.getUid(), greyField.getDataElement())) {
+          continue;
         }
 
-        Section section = ( Section ) object;
-
-        Set<DataElementOperand> returnGreyFields = new HashSet<>();
-
-        for ( DataElementOperand greyField : section.getGreyedFields() )
-        {
-            boolean exist = false;
-
-            for ( DataElement de : section.getDataElements() )
-            {
-                if ( !ObjectUtils.allNonNull( de.getUid(), greyField.getDataElement() ) )
-                {
-                    continue;
-                }
-
-                if ( de.getUid().equals( greyField.getDataElement().getUid() ) )
-                {
-                    exist = true;
-                    break;
-                }
-            }
-
-            if ( exist )
-            {
-                returnGreyFields.add( greyField );
-            }
+        if (de.getUid().equals(greyField.getDataElement().getUid())) {
+          exist = true;
+          break;
         }
+      }
 
-        section.setGreyedFields( returnGreyFields );
+      if (exist) {
+        returnGreyFields.add(greyField);
+      }
     }
+
+    section.setGreyedFields(returnGreyFields);
+  }
 }

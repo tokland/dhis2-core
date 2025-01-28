@@ -1,7 +1,5 @@
-package org.hisp.dhis.user;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,37 +25,27 @@ package org.hisp.dhis.user;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.user;
 
-import org.apache.commons.lang.StringUtils;
+import static java.util.Arrays.asList;
+import static org.apache.commons.lang3.StringUtils.containsIgnoreCase;
+import static org.hisp.dhis.user.PasswordValidationError.PASSWORD_CONTAINS_RESERVED_WORD;
 
-import java.util.Arrays;
 import java.util.List;
 
-/**
- * Created by zubair on 16.03.17.
- */
-public class PasswordDictionaryValidationRule
-        implements PasswordValidationRule
-{
-    List<String> dictionary = Arrays.asList( "user", "admin", "system", "administrator", "username", "password", "login", "manager");
+/** Created by zubair on 16.03.17. */
+public class PasswordDictionaryValidationRule implements PasswordValidationRule {
+  private static final List<String> DICTIONARY =
+      asList(
+          "user", "admin", "system", "administrator", "username", "password", "login", "manager");
 
-    @Override
-    public boolean isRuleApplicable( CredentialsInfo credentialsInfo )
-    {
-        return true;
+  @Override
+  public PasswordValidationResult validate(CredentialsInfo credentials) {
+    for (String reserved : DICTIONARY) {
+      if (containsIgnoreCase(credentials.getPassword(), reserved)) {
+        return new PasswordValidationResult(PASSWORD_CONTAINS_RESERVED_WORD);
+      }
     }
-
-    @Override
-    public PasswordValidationResult validate( CredentialsInfo credentialsInfo )
-    {
-        for ( String reserved : dictionary )
-        {
-            if ( StringUtils.containsIgnoreCase( credentialsInfo.getPassword(), reserved ) )
-            {
-                return new PasswordValidationResult( "Password must not have any generic word", "password_dictionary_validation", false );
-            }
-        }
-
-        return new PasswordValidationResult( true );
-    }
+    return PasswordValidationResult.VALID;
+  }
 }

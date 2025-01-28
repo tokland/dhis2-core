@@ -1,7 +1,5 @@
-package org.hisp.dhis.sms.config;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,85 +25,30 @@ package org.hisp.dhis.sms.config;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import java.io.Serializable;
+package org.hisp.dhis.sms.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.Serial;
+import java.io.Serializable;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
  */
-public class GenericGatewayParameter
-    implements Serializable
-{
-    private static final long serialVersionUID = -863990758156009672L;
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+public class GenericGatewayParameter implements Serializable {
 
-    private boolean header;
+  @Serial private static final long serialVersionUID = -863990758156009672L;
 
-    private String key;
-
-    private String value;
-
-    private boolean classified;
-
-    public GenericGatewayParameter()
-    {
-    }
-
-    public GenericGatewayParameter( String key, String value, boolean classified )
-    {
-        super();
-        this.key = key;
-        this.value = value;
-        this.classified = classified;
-    }
-
-    @JsonProperty( value = "key" )
-    public String getKey()
-    {
-        return key;
-    }
-
-    public void setKey( String key )
-    {
-        this.key = key;
-    }
-
-    public String getValue()
-    {
-        return value;
-    }
-
-    @JsonProperty( value = "value" )
-    public String getValueFilterIfClassified()
-    {
-        return classified ? "" : value;
-    }
-
-    public void setValue( String value )
-    {
-        this.value = value;
-    }
-
-    @JsonProperty( value = "classified" )
-    public boolean isClassified()
-    {
-        return classified;
-    }
-
-    public void setClassified( boolean classified )
-    {
-        this.classified = classified;
-    }
-
-    @JsonProperty
-    public boolean isHeader()
-    {
-        return header;
-    }
-
-    public void setHeader( boolean header )
-    {
-        this.header = header;
-    }
+  @JsonProperty private String key;
+  @JsonProperty private String value;
+  @JsonProperty private boolean header;
+  @JsonProperty private boolean encode;
+  @JsonProperty private boolean confidential;
 }

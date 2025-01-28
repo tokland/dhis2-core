@@ -1,7 +1,5 @@
-package org.hisp.dhis.i18n;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,27 +25,26 @@ package org.hisp.dhis.i18n;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.i18n;
 
 import java.util.Locale;
 
 /**
  * @author Pham Thi Thuy
  * @author Nguyen Dang Quang
- * @version $Id: I18nManager.java 6335 2008-11-20 11:11:26Z larshelg $
  */
-public interface I18nManager
-{
-    String ID = I18nManager.class.getName();
+public interface I18nManager {
+  String ID = I18nManager.class.getName();
 
-    I18n getI18n();
-    
-    I18n getI18n( Locale locale );
+  I18n getI18n();
 
-    I18n getI18n( Class<?> clazz );
+  I18n getI18n(Locale locale);
 
-    I18n getI18n( Class<?> clazz, Locale locale );
+  I18n getI18n(Class<?> clazz);
 
-    I18n getI18n( String clazzName );
+  I18n getI18n(Class<?> clazz, Locale locale);
 
-    I18nFormat getI18nFormat();
+  I18n getI18n(String clazzName);
+
+  I18nFormat getI18nFormat();
 }

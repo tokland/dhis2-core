@@ -1,7 +1,5 @@
-package org.hisp.dhis.jdbc.batchhandler;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,120 +25,111 @@ package org.hisp.dhis.jdbc.batchhandler;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.jdbc.batchhandler;
 
-import org.hisp.dhis.common.AuditType;
-import org.hisp.dhis.datavalue.DataValueAudit;
-import org.hisp.quick.JdbcConfiguration;
-import org.hisp.quick.batchhandler.AbstractBatchHandler;
+import static org.hisp.dhis.util.DateUtils.toLongDate;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-
-import static org.hisp.dhis.system.util.DateUtils.getLongDateString;
+import org.hisp.dhis.audit.AuditOperationType;
+import org.hisp.dhis.datavalue.DataValueAudit;
+import org.hisp.quick.JdbcConfiguration;
+import org.hisp.quick.batchhandler.AbstractBatchHandler;
 
 /**
  * @author Lars Helge Overland
  */
-public class DataValueAuditBatchHandler
-    extends AbstractBatchHandler<DataValueAudit>
-{
-    // -------------------------------------------------------------------------
-    // Constructor
-    // -------------------------------------------------------------------------
- 
-    public DataValueAuditBatchHandler( JdbcConfiguration config )
-    {
-        super( config );
-    }
+public class DataValueAuditBatchHandler extends AbstractBatchHandler<DataValueAudit> {
+  // -------------------------------------------------------------------------
+  // Constructor
+  // -------------------------------------------------------------------------
 
-    // -------------------------------------------------------------------------
-    // AbstractBatchHandler implementation
-    // -------------------------------------------------------------------------
+  public DataValueAuditBatchHandler(JdbcConfiguration config) {
+    super(config);
+  }
 
-    @Override
-    public String getTableName()
-    {
-        return "datavalueaudit";
-    }
+  // -------------------------------------------------------------------------
+  // AbstractBatchHandler implementation
+  // -------------------------------------------------------------------------
 
-    @Override
-    public String getAutoIncrementColumn()
-    {
-        return "datavalueauditid";
-    }
+  @Override
+  public String getTableName() {
+    return "datavalueaudit";
+  }
 
-    @Override
-    public boolean isInclusiveUniqueColumns()
-    {
-        return true;
-    }
-    
-    @Override
-    public List<String> getIdentifierColumns()
-    {
-        return getStringList( "datavalueauditid" );
-    }
+  @Override
+  public String getAutoIncrementColumn() {
+    return "datavalueauditid";
+  }
 
-    @Override
-    public List<Object> getIdentifierValues( DataValueAudit dataValueAudit )
-    {        
-        return getObjectList( dataValueAudit.getId() );
-    }
+  @Override
+  public boolean isInclusiveUniqueColumns() {
+    return true;
+  }
 
-    @Override
-    public List<String> getUniqueColumns()
-    {
-        return getStringList();
-    }
-    
-    @Override
-    public List<Object> getUniqueValues( DataValueAudit dataValueAudit )
-    {
-        return getObjectList();
-    }
-    
-    @Override
-    public List<String> getColumns()
-    {
-        return getStringList( 
-            "dataelementid", 
-            "periodid", 
-            "organisationunitid", 
-            "categoryoptioncomboid", 
-            "attributeoptioncomboid", 
-            "value", 
-            "modifiedby", 
-            "created", 
-            "audittype" );
-    }
+  @Override
+  public List<String> getIdentifierColumns() {
+    return getStringList("datavalueauditid");
+  }
 
-    @Override
-    public List<Object> getValues( DataValueAudit dataValueAudit )
-    {
-        return getObjectList( 
-            dataValueAudit.getDataElement().getId(),
-            dataValueAudit.getPeriod().getId(),
-            dataValueAudit.getOrganisationUnit().getId(),
-            dataValueAudit.getCategoryOptionCombo().getId(),
-            dataValueAudit.getAttributeOptionCombo().getId(),
-            dataValueAudit.getValue(),
-            dataValueAudit.getModifiedBy(),
-            getLongDateString( dataValueAudit.getCreated() ),
-            dataValueAudit.getAuditType().toString() );
-    }
+  @Override
+  public List<Object> getIdentifierValues(DataValueAudit dataValueAudit) {
+    return getObjectList(dataValueAudit.getId());
+  }
 
-    @Override
-    public DataValueAudit mapRow( ResultSet resultSet )
-        throws SQLException
-    {
-        DataValueAudit dva = new DataValueAudit();
-        
-        dva.setValue( resultSet.getString( "value" ) );
-        dva.setModifiedBy( resultSet.getString( "modifiedby" ) );
-        dva.setCreated( resultSet.getDate( "created" ) );
-        dva.setAuditType( AuditType.valueOf( resultSet.getString( "audittype" ) ) );
-        
-        return dva;
-    }
+  @Override
+  public List<String> getUniqueColumns() {
+    return getStringList();
+  }
+
+  @Override
+  public List<Object> getUniqueValues(DataValueAudit dataValueAudit) {
+    return getObjectList();
+  }
+
+  @Override
+  public List<String> getColumns() {
+    return getStringList(
+        "dataelementid",
+        "periodid",
+        "organisationunitid",
+        "categoryoptioncomboid",
+        "attributeoptioncomboid",
+        "value",
+        "modifiedby",
+        "created",
+        "audittype");
+  }
+
+  @Override
+  public List<Object> getValues(DataValueAudit dataValueAudit) {
+    return getObjectList(
+        dataValueAudit.getDataElement().getId(),
+        dataValueAudit.getPeriod().getId(),
+        dataValueAudit.getOrganisationUnit().getId(),
+        dataValueAudit.getCategoryOptionCombo().getId(),
+        dataValueAudit.getAttributeOptionCombo().getId(),
+        dataValueAudit.getValue(),
+        dataValueAudit.getModifiedBy(),
+        toLongDate(dataValueAudit.getCreated()),
+        dataValueAudit.getAuditType().toString());
+  }
+
+  @Override
+  public DataValueAudit mapRow(ResultSet resultSet) throws SQLException {
+    DataValueAudit dva = new DataValueAudit();
+
+    dva.setValue(resultSet.getString("value"));
+    dva.setModifiedBy(resultSet.getString("modifiedby"));
+    dva.setCreated(resultSet.getDate("created"));
+    dva.setAuditType(AuditOperationType.valueOf(resultSet.getString("audittype")));
+
+    return dva;
+  }
+
+  @Override
+  public String getIdSequenceName() {
+    return "datavalueaudit_sequence";
+  }
 }

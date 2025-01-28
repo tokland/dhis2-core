@@ -1,7 +1,5 @@
-package org.hisp.dhis.common;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,59 +25,55 @@ package org.hisp.dhis.common;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.common;
 
-import javassist.util.proxy.ProxyFactory;
-import org.apache.commons.logging.Log;
+import org.hisp.dhis.hibernate.HibernateProxyUtils;
+import org.hisp.dhis.user.CurrentUserUtil;
+import org.slf4j.Logger;
 
-public class AuditLogUtil
-{
-    public static final String ACTION_CREATE = "create";
-    public static final String ACTION_READ = "read";
-    public static final String ACTION_UPDATE = "update";
-    public static final String ACTION_DELETE = "delete";
+public class AuditLogUtil {
+  public static final String ACTION_CREATE = "create";
 
-    public static final String ACTION_CREATE_DENIED = "create denied";
-    public static final String ACTION_READ_DENIED = "read denied";
-    public static final String ACTION_UPDATE_DENIED = "update denied";
-    public static final String ACTION_DELETE_DENIED = "delete denied";
+  public static final String ACTION_READ = "read";
 
-    public static void infoWrapper( Log log, Object object, String action )
-    {
-        infoWrapper( log, UserContext.getUsername(), object, action );
-    }
-    
-    public static void infoWrapper( Log log, String username, Object object, String action )
-    {
-        if ( log.isInfoEnabled() )
-        {
-            if ( username != null && object != null && IdentifiableObject.class.isInstance( object ) )
-            {
-                IdentifiableObject idObject = (IdentifiableObject) object;
-                StringBuilder builder = new StringBuilder();
+  public static final String ACTION_UPDATE = "update";
 
-                builder.append( "'" ).append( username ).append( "' " ).append( action );
+  public static final String ACTION_DELETE = "delete";
 
-                if ( !ProxyFactory.isProxyClass( object.getClass() ) )
-                {
-                    builder.append( " " ).append( object.getClass().getName() );
-                }
-                else
-                {
-                    builder.append( " " ).append( object.getClass().getSuperclass().getName() );
-                }
+  public static final String ACTION_CREATE_DENIED = "create denied";
 
-                if ( idObject.getName() != null && !idObject.getName().isEmpty() )
-                {
-                    builder.append( ", name: " ).append( idObject.getName() );
-                }
+  public static final String ACTION_READ_DENIED = "read denied";
 
-                if ( idObject.getUid() != null && !idObject.getUid().isEmpty() )
-                {
-                    builder.append( ", uid: " ).append( idObject.getUid() );
-                }
+  public static final String ACTION_UPDATE_DENIED = "update denied";
 
-                log.info( builder.toString() );
-            }
+  public static final String ACTION_DELETE_DENIED = "delete denied";
+
+  public static void infoWrapper(Logger log, Object object, String action) {
+    infoWrapper(log, CurrentUserUtil.getCurrentUsername(), object, action);
+  }
+
+  public static void infoWrapper(Logger log, String username, Object object, String action) {
+    if (log.isInfoEnabled()) {
+      if (username != null && object instanceof IdentifiableObject) {
+        IdentifiableObject idObject = (IdentifiableObject) object;
+        StringBuilder builder = new StringBuilder();
+
+        builder.append("'").append(username).append("' ").append(action);
+
+        Class<?> klass = HibernateProxyUtils.getRealClass(object);
+
+        builder.append(" ").append(klass.getName());
+
+        if (idObject.getName() != null && !idObject.getName().isEmpty()) {
+          builder.append(", name: ").append(idObject.getName());
         }
+
+        if (idObject.getUid() != null && !idObject.getUid().isEmpty()) {
+          builder.append(", uid: ").append(idObject.getUid());
+        }
+
+        log.debug(builder.toString());
+      }
     }
+  }
 }

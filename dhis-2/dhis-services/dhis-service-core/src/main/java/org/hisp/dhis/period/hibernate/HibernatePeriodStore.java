@@ -1,7 +1,5 @@
-package org.hisp.dhis.period.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,235 +25,258 @@ package org.hisp.dhis.period.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.period.hibernate;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
-
-import org.hibernate.Criteria;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Session;
-import org.hibernate.criterion.Restrictions;
+import org.hibernate.StatelessSession;
+import org.hibernate.query.Query;
+import org.hisp.dhis.cache.Cache;
+import org.hisp.dhis.cache.CacheProvider;
 import org.hisp.dhis.common.exception.InvalidIdentifierReferenceException;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
+import org.hisp.dhis.commons.util.DebugUtils;
+import org.hisp.dhis.dbms.DbmsUtils;
 import org.hisp.dhis.period.Period;
 import org.hisp.dhis.period.PeriodStore;
 import org.hisp.dhis.period.PeriodType;
 import org.hisp.dhis.period.RelativePeriods;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * Implements the PeriodStore interface.
- * 
+ *
  * @author Torgeir Lorange Ostby
- * @version $Id: HibernatePeriodStore.java 5983 2008-10-17 17:42:44Z larshelg $
  */
-public class HibernatePeriodStore
-    extends HibernateIdentifiableObjectStore<Period>
-    implements PeriodStore
-{
-    // -------------------------------------------------------------------------
-    // Period
-    // -------------------------------------------------------------------------
+@Repository("org.hisp.dhis.period.PeriodStore")
+@Slf4j
+public class HibernatePeriodStore extends HibernateIdentifiableObjectStore<Period>
+    implements PeriodStore {
+  private final Cache<Long> periodIdCache;
 
-    @Override
-    public void addPeriod( Period period )
-    {
-        period.setPeriodType( reloadPeriodType( period.getPeriodType() ) );
+  public HibernatePeriodStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService,
+      CacheProvider cacheProvider) {
+    super(entityManager, jdbcTemplate, publisher, Period.class, aclService, true);
 
-        save( period );
+    transientIdentifiableProperties = true;
+    this.periodIdCache = cacheProvider.createPeriodIdCache();
+  }
+
+  // -------------------------------------------------------------------------
+  // Period
+  // -------------------------------------------------------------------------
+
+  @Override
+  public void addPeriod(Period period) {
+    period.setPeriodType(reloadPeriodType(period.getPeriodType()));
+
+    save(period);
+  }
+
+  @Override
+  public Period getPeriod(Date startDate, Date endDate, PeriodType periodType) {
+    String query =
+        "from Period p where p.startDate =:startDate and p.endDate =:endDate and p.periodType =:periodType";
+
+    return getSingleResult(
+        getQuery(query)
+            .setParameter("startDate", startDate)
+            .setParameter("endDate", endDate)
+            .setParameter("periodType", reloadPeriodType(periodType)));
+  }
+
+  @Override
+  public List<Period> getPeriodsBetweenDates(Date startDate, Date endDate) {
+    String query = "from Period p where p.startDate >=:startDate and p.endDate <=:endDate";
+
+    Query<Period> typedQuery =
+        getQuery(query).setParameter("startDate", startDate).setParameter("endDate", endDate);
+    return getList(typedQuery);
+  }
+
+  @Override
+  public List<Period> getPeriodsBetweenDates(PeriodType periodType, Date startDate, Date endDate) {
+    String query =
+        "from Period p where p.startDate >=:startDate and p.endDate <=:endDate and p.periodType.id =:periodType";
+
+    Query<Period> typedQuery =
+        getQuery(query)
+            .setParameter("startDate", startDate)
+            .setParameter("endDate", endDate)
+            .setParameter("periodType", reloadPeriodType(periodType).getId());
+    return getList(typedQuery);
+  }
+
+  @Override
+  public List<Period> getPeriodsBetweenOrSpanningDates(Date startDate, Date endDate) {
+    String hql =
+        "from Period p where ( p.startDate >= :startDate and p.endDate <= :endDate ) or ( p.startDate <= :startDate and p.endDate >= :endDate )";
+
+    return getQuery(hql)
+        .setParameter("startDate", startDate)
+        .setParameter("endDate", endDate)
+        .list();
+  }
+
+  @Override
+  public List<Period> getIntersectingPeriods(Date startDate, Date endDate) {
+    String query = "from Period p where p.startDate <=:endDate and p.endDate >=:startDate";
+
+    Query<Period> typedQuery =
+        getQuery(query).setParameter("startDate", startDate).setParameter("endDate", endDate);
+    return getList(typedQuery);
+  }
+
+  @Override
+  public List<Period> getPeriodsByPeriodType(PeriodType periodType) {
+    String query = "from Period p where p.periodType.id =:periodType";
+
+    Query<Period> typedQuery =
+        getQuery(query).setParameter("periodType", reloadPeriodType(periodType).getId());
+    return getList(typedQuery);
+  }
+
+  @Override
+  public Period getPeriodFromDates(Date startDate, Date endDate, PeriodType periodType) {
+    String query =
+        "from Period p where p.startDate =:startDate and p.endDate =:endDate and p.periodType.id =:periodType";
+
+    Query<Period> typedQuery =
+        getQuery(query)
+            .setParameter("startDate", startDate)
+            .setParameter("endDate", endDate)
+            .setParameter("periodType", reloadPeriodType(periodType).getId());
+    return getSingleResult(typedQuery);
+  }
+
+  @Override
+  public Period reloadPeriod(Period period) {
+    Session session = getSession();
+
+    if (session.contains(period)) {
+      return period; // Already in session, no reload needed
     }
 
-    @Override
-    public Period getPeriod( Date startDate, Date endDate, PeriodType periodType )
-    {
-        Criteria criteria = getCriteria();
-        criteria.add( Restrictions.eq( "startDate", startDate ) );
-        criteria.add( Restrictions.eq( "endDate", endDate ) );
-        criteria.add( Restrictions.eq( "periodType", reloadPeriodType( periodType ) ) );
+    Long id =
+        periodIdCache.get(
+            period.getCacheKey(),
+            key -> getPeriodId(period.getStartDate(), period.getEndDate(), period.getPeriodType()));
 
-        return (Period) criteria.uniqueResult();
+    Period storedPeriod = id != null ? getSession().get(Period.class, id) : null;
+
+    return storedPeriod != null ? storedPeriod.copyTransientProperties(period) : null;
+  }
+
+  private Long getPeriodId(Date startDate, Date endDate, PeriodType periodType) {
+    Period period = getPeriod(startDate, endDate, periodType);
+
+    return period != null ? period.getId() : null;
+  }
+
+  @Override
+  public Period reloadForceAddPeriod(Period period) {
+    Period storedPeriod = reloadPeriod(period);
+
+    if (storedPeriod == null) {
+      addPeriod(period);
+
+      return period;
     }
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<Period> getPeriodsBetweenDates( Date startDate, Date endDate )
-    {
-        Criteria criteria = getCriteria();
-        criteria.add( Restrictions.ge( "startDate", startDate ) );
-        criteria.add( Restrictions.le( "endDate", endDate ) );
-        criteria.setCacheable( true );
+    return storedPeriod;
+  }
 
-        return criteria.list();
+  // -------------------------------------------------------------------------
+  // PeriodType (do not use generic store which is linked to Period)
+  // -------------------------------------------------------------------------
+
+  @Override
+  public int addPeriodType(PeriodType periodType) {
+    return (Integer) getSession().save(periodType);
+  }
+
+  @Override
+  public void deletePeriodType(PeriodType periodType) {
+    getSession().delete(periodType);
+  }
+
+  @Override
+  public PeriodType getPeriodType(int id) {
+    return getSession().get(PeriodType.class, id);
+  }
+
+  @Override
+  public PeriodType getPeriodType(Class<? extends PeriodType> periodType) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    CriteriaQuery<PeriodType> query = builder.createQuery(PeriodType.class);
+    query.select(query.from(periodType));
+
+    return getSession().createQuery(query).setCacheable(true).uniqueResult();
+  }
+
+  @Override
+  public List<PeriodType> getAllPeriodTypes() {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    CriteriaQuery<PeriodType> query = builder.createQuery(PeriodType.class);
+    query.select(query.from(PeriodType.class));
+
+    return getSession().createQuery(query).setCacheable(true).getResultList();
+  }
+
+  @Override
+  public PeriodType reloadPeriodType(PeriodType periodType) {
+    if (periodType == null || getSession().contains(periodType)) {
+      return periodType;
     }
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<Period> getPeriodsBetweenDates( PeriodType periodType, Date startDate, Date endDate )
-    {
-        Criteria criteria = getCriteria();
-        criteria.add( Restrictions.eq( "periodType", reloadPeriodType( periodType ) ) );
-        criteria.add( Restrictions.ge( "startDate", startDate ) );
-        criteria.add( Restrictions.le( "endDate", endDate ) );
+    PeriodType reloadedPeriodType = getPeriodType(periodType.getClass());
 
-        return criteria.list();
+    if (reloadedPeriodType == null) {
+      throw new InvalidIdentifierReferenceException(
+          "The PeriodType referenced by the Period is not in database: " + periodType.getName());
     }
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<Period> getPeriodsBetweenOrSpanningDates( Date startDate, Date endDate )
-    {
-        String hql = "from Period p where ( p.startDate >= :startDate and p.endDate <= :endDate ) or ( p.startDate <= :startDate and p.endDate >= :endDate )";
-        
-        return getQuery( hql ).setDate( "startDate", startDate ).setDate( "endDate", endDate ).list();
-    }
-    
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<Period> getIntersectingPeriodsByPeriodType( PeriodType periodType, Date startDate, Date endDate )
-    {
-        Criteria criteria = getCriteria();
-        criteria.add( Restrictions.eq( "periodType", reloadPeriodType( periodType ) ) );
-        criteria.add( Restrictions.ge( "endDate", startDate ) );
-        criteria.add( Restrictions.le( "startDate", endDate ) );
+    return reloadedPeriodType;
+  }
 
-        return criteria.list();
+  @Override
+  public Period insertIsoPeriodInStatelessSession(Period period) {
+    StatelessSession session = getSession().getSessionFactory().openStatelessSession();
+    try {
+      Serializable id = session.insert(period);
+      periodIdCache.put(period.getCacheKey(), (Long) id);
+
+      return period;
+    } catch (Exception exception) {
+      log.error(DebugUtils.getStackTrace(exception));
+    } finally {
+      DbmsUtils.closeStatelessSession(session);
     }
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<Period> getIntersectingPeriods( Date startDate, Date endDate )
-    {
-        Criteria criteria = getCriteria();
-        criteria.add( Restrictions.ge( "endDate", startDate ) );
-        criteria.add( Restrictions.le( "startDate", endDate ) );
-        
-        return criteria.list();
-    }
+    return null;
+  }
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<Period> getPeriodsByPeriodType( PeriodType periodType )
-    {
-        Criteria criteria = getCriteria();
-        criteria.add( Restrictions.eq( "periodType", reloadPeriodType( periodType ) ) );
+  // -------------------------------------------------------------------------
+  // RelativePeriods (do not use generic store which is linked to Period)
+  // -------------------------------------------------------------------------
 
-        return criteria.list();
-    }
-
-    @Override
-    public Period getPeriodFromDates( Date startDate, Date endDate, PeriodType periodType )
-    {
-        Criteria criteria = getCriteria();
-        criteria.add( Restrictions.eq( "startDate", startDate ) );
-        criteria.add( Restrictions.eq( "endDate", endDate ) );
-        criteria.add( Restrictions.eq( "periodType", periodType ) );
-
-        return (Period) criteria.uniqueResult();
-    }
-
-    @Override
-    public Period reloadPeriod( Period period )
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        if ( session.contains( period ) )
-        {
-            return period; // Already in session, no reload needed
-        }
-
-        Period storedPeriod = getPeriod( period.getStartDate(), period.getEndDate(), period.getPeriodType() );
-        
-        return storedPeriod != null ? storedPeriod.copyTransientProperties( period ) : null;
-    }
-
-    @Override
-    public Period reloadForceAddPeriod( Period period )
-    {
-        Period storedPeriod = reloadPeriod( period );
-
-        if ( storedPeriod == null )
-        {
-            addPeriod( period );
-
-            return period;
-        }
-
-        return storedPeriod;
-    }
-
-    // -------------------------------------------------------------------------
-    // PeriodType (do not use generic store which is linked to Period)
-    // -------------------------------------------------------------------------
-
-    @Override
-    public int addPeriodType( PeriodType periodType )
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        return (Integer) session.save( periodType );
-    }
-
-    @Override
-    public void deletePeriodType( PeriodType periodType )
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        session.delete( periodType );
-    }
-
-    @Override
-    public PeriodType getPeriodType( int id )
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        return (PeriodType) session.get( PeriodType.class, id );
-    }
-
-    @Override
-    public PeriodType getPeriodType( Class<? extends PeriodType> periodType )
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        Criteria criteria = session.createCriteria( periodType );
-
-        return (PeriodType) criteria.setCacheable( true ).uniqueResult();
-    }
-
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<PeriodType> getAllPeriodTypes()
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        return session.createCriteria( PeriodType.class ).setCacheable( true ).list();
-    }
-
-    @Override
-    public PeriodType reloadPeriodType( PeriodType periodType )
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        if ( periodType == null || session.contains( periodType ) )
-        {
-            return periodType;
-        }
-
-        PeriodType reloadedPeriodType = getPeriodType( periodType.getClass() );
-
-        if ( reloadedPeriodType == null )
-        {
-            throw new InvalidIdentifierReferenceException( "The PeriodType referenced by the Period is not in database: "
-                + periodType.getName() );
-        }
-
-        return reloadedPeriodType;
-    }
-
-    // -------------------------------------------------------------------------
-    // RelativePeriods (do not use generic store which is linked to Period)
-    // -------------------------------------------------------------------------
-
-    @Override
-    public void deleteRelativePeriods( RelativePeriods relativePeriods )
-    {
-        sessionFactory.getCurrentSession().delete( relativePeriods );
-    }
+  @Override
+  public void deleteRelativePeriods(RelativePeriods relativePeriods) {
+    getSession().delete(relativePeriods);
+  }
 }

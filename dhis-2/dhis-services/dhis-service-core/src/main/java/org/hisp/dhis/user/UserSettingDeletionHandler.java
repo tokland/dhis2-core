@@ -1,7 +1,5 @@
-package org.hisp.dhis.user;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,45 +25,27 @@ package org.hisp.dhis.user;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.user;
 
-import java.util.Iterator;
-
+import lombok.AllArgsConstructor;
 import org.hisp.dhis.system.deletion.DeletionHandler;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
  */
-public class UserSettingDeletionHandler
-    extends DeletionHandler
-{   
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Component
+@AllArgsConstructor
+public class UserSettingDeletionHandler extends DeletionHandler {
 
-    @Autowired
-    private UserSettingService userSettingService;
-    
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
+  private final UserSettingsService userSettingsService;
 
-    @Override
-    public String getClassName()
-    {
-        return User.class.getSimpleName();
-    }
-    
-    @Override
-    public void deleteUser( User user )
-    {
-        Iterator<UserSetting> settings = userSettingService.getUserSettings( user ).iterator();
-        
-        while ( settings.hasNext() )
-        {
-            UserSetting setting = settings.next();
-            settings.remove();
-            userSettingService.deleteUserSetting( setting );
-        }
-    }
+  @Override
+  protected void register() {
+    whenDeleting(User.class, this::deleteUser);
+  }
+
+  private void deleteUser(User user) {
+    userSettingsService.deleteAll(user.getUsername());
+  }
 }

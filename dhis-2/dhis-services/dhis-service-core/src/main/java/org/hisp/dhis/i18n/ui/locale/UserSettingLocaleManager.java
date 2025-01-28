@@ -1,7 +1,5 @@
-package org.hisp.dhis.i18n.ui.locale;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,102 +25,87 @@ package org.hisp.dhis.i18n.ui.locale;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.i18n.ui.locale;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-
+import javax.annotation.CheckForNull;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.feedback.BadRequestException;
+import org.hisp.dhis.feedback.NotFoundException;
 import org.hisp.dhis.i18n.locale.LocaleManager;
 import org.hisp.dhis.i18n.ui.resourcebundle.ResourceBundleManager;
 import org.hisp.dhis.i18n.ui.resourcebundle.ResourceBundleManagerException;
-import org.hisp.dhis.user.UserSettingKey;
-import org.hisp.dhis.user.UserSettingService;
+import org.hisp.dhis.setting.UserSettings;
+import org.hisp.dhis.user.CurrentUserUtil;
+import org.hisp.dhis.user.UserSettingsService;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Torgeir Lorange Ostby
  */
-public class UserSettingLocaleManager
-    implements LocaleManager
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Component("org.hisp.dhis.i18n.locale.LocaleManager")
+@RequiredArgsConstructor
+public class UserSettingLocaleManager implements LocaleManager {
 
-    private UserSettingService userSettingService;
+  private final UserSettingsService userSettingsService;
+  private final ResourceBundleManager resourceBundleManager;
 
-    public void setUserSettingService( UserSettingService userSettingService )
-    {
-        this.userSettingService = userSettingService;
-    }
-    
-    private ResourceBundleManager resourceBundleManager;
+  @Override
+  public Locale getCurrentLocale() {
 
-    public void setResourceBundleManager( ResourceBundleManager resourceBundleManager )
-    {
-        this.resourceBundleManager = resourceBundleManager;
+    // TODO: MAS: Called by interceptor for old web ui only
+    if (CurrentUserUtil.hasCurrentUser()) {
+      Locale locale = getUserSelectedLocale();
+
+      if (locale != null) {
+        return locale;
+      }
     }
 
-    // -------------------------------------------------------------------------
-    // LocaleManager implementation
-    // -------------------------------------------------------------------------
+    return DEFAULT_LOCALE;
+  }
 
-    @Override
-    public Locale getCurrentLocale()
-    {
-        Locale locale = getUserSelectedLocale();
+  @Override
+  public void setCurrentLocale(Locale locale) {
+    try {
+      userSettingsService.put("keyUiLocale", locale);
+    } catch (NotFoundException | BadRequestException ex) {
+      // this should never happen as this key-value combination is valid
+      throw new IllegalArgumentException(ex);
+    }
+  }
 
-        if ( locale != null )
-        {
-            return locale;
-        }
+  @Override
+  public List<Locale> getLocalesOrderedByPriority() {
+    List<Locale> locales = new ArrayList<>();
+    Locale userLocale = getUserSelectedLocale();
 
-        return DEFAULT_LOCALE;
+    if (userLocale != null) {
+      locales.add(userLocale);
     }
 
-    @Override
-    public void setCurrentLocale( Locale locale )
-    {
-        userSettingService.saveUserSetting( UserSettingKey.UI_LOCALE, locale );
+    locales.add(DEFAULT_LOCALE);
+    return locales;
+  }
+
+  @CheckForNull
+  public Locale getUserSelectedLocale() {
+    return UserSettings.getCurrentSettings().getUserUiLocale();
+  }
+
+  @Override
+  public Locale getFallbackLocale() {
+    return DEFAULT_LOCALE;
+  }
+
+  @Override
+  public List<Locale> getAvailableLocales() {
+    try {
+      return resourceBundleManager.getAvailableLocales();
+    } catch (ResourceBundleManagerException ex) {
+      throw new RuntimeException(ex);
     }
-
-    @Override
-    public List<Locale> getLocalesOrderedByPriority()
-    {
-        List<Locale> locales = new ArrayList<>();
-
-        Locale userLocale = getUserSelectedLocale();
-
-        if ( userLocale != null )
-        {
-            locales.add( userLocale );
-        }
-
-        locales.add( DEFAULT_LOCALE );
-
-        return locales;
-    }
-
-    private Locale getUserSelectedLocale()
-    {
-        return (Locale) userSettingService.getUserSetting( UserSettingKey.UI_LOCALE );
-    }
-
-    @Override
-    public Locale getFallbackLocale()
-    {
-        return DEFAULT_LOCALE;
-    }
-    
-    @Override
-    public List<Locale> getAvailableLocales()
-    {
-        try
-        {
-            return resourceBundleManager.getAvailableLocales();
-        }
-        catch ( ResourceBundleManagerException ex )
-        {
-            throw new RuntimeException( ex );
-        }
-    }
+  }
 }

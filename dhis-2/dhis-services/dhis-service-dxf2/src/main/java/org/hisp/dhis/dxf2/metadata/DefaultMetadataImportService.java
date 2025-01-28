@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata;
-
-    /*
- * Copyright (c) 2004-2018, University of Oslo
+/*
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,15 +25,21 @@ package org.hisp.dhis.dxf2.metadata;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata;
 
-import com.google.api.client.util.Lists;
+import static org.hisp.dhis.dxf2.metadata.objectbundle.EventReportCompatibilityGuard.handleDeprecationIfEventReport;
+
 import com.google.common.base.Enums;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import java.util.List;
+import java.util.Map;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.hisp.dhis.common.BaseIdentifiableObject;
 import org.hisp.dhis.common.IdentifiableObject;
-import org.hisp.dhis.common.IdentifiableObjectManager;
-import org.hisp.dhis.common.MergeMode;
+import org.hisp.dhis.common.UID;
 import org.hisp.dhis.commons.timer.SystemTimer;
 import org.hisp.dhis.commons.timer.Timer;
 import org.hisp.dhis.dxf2.metadata.feedback.ImportReport;
@@ -48,266 +52,257 @@ import org.hisp.dhis.dxf2.metadata.objectbundle.ObjectBundleValidationService;
 import org.hisp.dhis.dxf2.metadata.objectbundle.feedback.ObjectBundleCommitReport;
 import org.hisp.dhis.dxf2.metadata.objectbundle.feedback.ObjectBundleValidationReport;
 import org.hisp.dhis.feedback.Status;
-import org.hisp.dhis.feedback.TypeReport;
 import org.hisp.dhis.importexport.ImportStrategy;
 import org.hisp.dhis.preheat.PreheatIdentifier;
 import org.hisp.dhis.preheat.PreheatMode;
-import org.hisp.dhis.scheduling.JobConfiguration;
-import org.hisp.dhis.scheduling.JobType;
+import org.hisp.dhis.scheduling.JobProgress;
+import org.hisp.dhis.scheduling.RecordingJobProgress;
 import org.hisp.dhis.security.acl.AclService;
-import org.hisp.dhis.system.notification.NotificationLevel;
-import org.hisp.dhis.system.notification.Notifier;
-import org.hisp.dhis.user.CurrentUserService;
+import org.hisp.dhis.user.CurrentUserUtil;
 import org.hisp.dhis.user.User;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import org.hisp.dhis.user.UserService;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-@Component
-@Transactional
-public class DefaultMetadataImportService implements MetadataImportService
-{
-    private static final Log log = LogFactory.getLog( DefaultMetadataImportService.class );
+@Slf4j
+@RequiredArgsConstructor
+@Service
+public class DefaultMetadataImportService implements MetadataImportService {
 
-    @Autowired
-    private CurrentUserService currentUserService;
+  private final ObjectBundleService objectBundleService;
+  private final ObjectBundleValidationService objectBundleValidationService;
+  private final UserService userService;
+  private final AclService aclService;
 
-    @Autowired
-    private ObjectBundleService objectBundleService;
+  @Override
+  @Transactional
+  public ImportReport importMetadata(
+      @Nonnull MetadataImportParams params, @Nonnull MetadataObjects objects) {
+    return importMetadata(params, objects, RecordingJobProgress.transitory());
+  }
 
-    @Autowired
-    private ObjectBundleValidationService objectBundleValidationService;
+  @Override
+  @Transactional
+  public ImportReport importMetadata(
+      @Nonnull MetadataImportParams params,
+      @Nonnull MetadataObjects objects,
+      @Nonnull JobProgress progress) {
 
-    @Autowired
-    private IdentifiableObjectManager manager;
+    ObjectBundleParams bundleParams = toObjectBundleParams(params);
+    bundleParams.setObjects(objects.getObjects());
 
-    @Autowired
-    private AclService aclService;
+    progress.startingStage("Running preCreateBundle");
+    progress.runStage(() -> preCreateBundle(bundleParams));
+    handleDeprecationIfEventReport(bundleParams);
 
-    @Autowired
-    private Notifier notifier;
+    progress.startingStage("Creating bundle");
+    ObjectBundle bundle =
+        progress.nonNullStagePostCondition(
+            progress.runStage(() -> objectBundleService.create(bundleParams)));
 
-    @Override
-    public ImportReport importMetadata( MetadataImportParams params )
-    {
-        Timer timer = new SystemTimer().start();
+    progress.startingStage("Running postCreateBundle");
+    progress.runStage(() -> postCreateBundle(bundle, bundleParams));
 
-        ImportReport importReport = new ImportReport();
-        importReport.setImportParams( params );
-        importReport.setStatus( Status.OK );
+    progress.startingStage("Validating bundle");
+    ObjectBundleValidationReport validationReport =
+        progress.nonNullStagePostCondition(
+            progress.runStage(() -> objectBundleValidationService.validate(bundle)));
+    ImportReport report = new ImportReport();
+    report.setImportParams(params);
+    report.setStatus(Status.OK);
+    report.addTypeReports(validationReport);
 
-        if ( params.getUser() == null )
-        {
-            params.setUser( currentUserService.getCurrentUser() );
-        }
+    if (!validationReport.hasErrorReports() || AtomicMode.NONE == bundle.getAtomicMode()) {
+      Timer commitTimer = new SystemTimer().start();
 
-        if ( params.getUserOverrideMode() == UserOverrideMode.CURRENT )
-        {
-            params.setOverrideUser( currentUserService.getCurrentUser() );
-        }
+      ObjectBundleCommitReport commitReport = objectBundleService.commit(bundle, progress);
+      report.addTypeReports(commitReport);
 
-        String message = "(" + params.getUsername() + ") Import:Start";
-        log.info( message );
+      if (report.hasErrorReports()) {
+        report.setStatus(Status.WARNING);
+      }
 
-        if ( params.hasJobId() )
-        {
-            notifier.notify( params.getId(), message );
-        }
-
-        ObjectBundleParams bundleParams = params.toObjectBundleParams();
-        ObjectBundle bundle = objectBundleService.create( bundleParams );
-
-        prepareBundle( bundle, bundleParams );
-
-        ObjectBundleValidationReport validationReport = objectBundleValidationService.validate( bundle );
-        importReport.addTypeReports( validationReport.getTypeReportMap() );
-
-        if ( !(!validationReport.getErrorReports().isEmpty() && AtomicMode.ALL == bundle.getAtomicMode()) )
-        {
-            Timer commitTimer = new SystemTimer().start();
-
-            ObjectBundleCommitReport commitReport = objectBundleService.commit( bundle );
-            importReport.addTypeReports( commitReport.getTypeReportMap() );
-
-            if ( !importReport.getErrorReports().isEmpty() )
-            {
-                importReport.setStatus( Status.WARNING );
-            }
-
-            log.info( "(" + bundle.getUsername() + ") Import:Commit took " + commitTimer.toString() );
-        }
-        else
-        {
-            importReport.getStats().ignored();
-            importReport.getTypeReports().forEach( tr -> tr.getStats().ignored() );
-
-            importReport.setStatus( Status.ERROR );
-        }
-
-        message = "(" + bundle.getUsername() + ") Import:Done took " + timer.toString();
-
-        log.info( message );
-
-        if ( bundle.hasJobId() )
-        {
-            notifier.notify( bundle.getJobId(), NotificationLevel.INFO, message, true )
-                .addJobSummary( bundle.getJobId(), importReport );
-        }
-
-        if ( ObjectBundleMode.VALIDATE == params.getImportMode() )
-        {
-            return importReport;
-        }
-
-        Lists.newArrayList( importReport.getTypeReportMap().keySet() ).forEach( typeReportKey ->
-        {
-            if ( importReport.getTypeReportMap().get( typeReportKey ).getStats().getTotal() == 0 )
-            {
-                importReport.getTypeReportMap().remove( typeReportKey );
-                return;
-            }
-
-            TypeReport typeReport = importReport.getTypeReportMap().get( typeReportKey );
-
-            if ( ImportReportMode.ERRORS == params.getImportReportMode() )
-            {
-                Lists.newArrayList( typeReport.getObjectReportMap().keySet() ).forEach( objectReportKey ->
-                {
-                    if ( typeReport.getObjectReportMap().get( objectReportKey ).getErrorReportsByCode().isEmpty() )
-                    {
-                        typeReport.getObjectReportMap().remove( objectReportKey );
-                    }
-                } );
-            }
-
-            if ( ImportReportMode.DEBUG != params.getImportReportMode() )
-            {
-                typeReport.getObjectReports().forEach( objectReport -> objectReport.setDisplayName( null ) );
-            }
-        } );
-
-        return importReport;
+      log.info("(" + bundle.getUsername() + ") Import:Commit took " + commitTimer.toString());
+    } else {
+      report.getStats().ignored();
+      report.getTypeReports().forEach(tr -> tr.getStats().ignored());
+      report.setStatus(Status.ERROR);
     }
 
-    @Override
-    public MetadataImportParams getParamsFromMap( Map<String, List<String>> parameters )
-    {
-        MetadataImportParams params = new MetadataImportParams();
-
-        if ( params.getUser() == null )
-        {
-            params.setUser( currentUserService.getCurrentUser() );
-        }
-
-        params.setSkipSharing( getBooleanWithDefault( parameters, "skipSharing", false ) );
-        params.setSkipValidation( getBooleanWithDefault( parameters, "skipValidation", false ) );
-        params.setUserOverrideMode( getEnumWithDefault( UserOverrideMode.class, parameters, "userOverrideMode", UserOverrideMode.NONE ) );
-        params.setImportMode( getEnumWithDefault( ObjectBundleMode.class, parameters, "importMode", ObjectBundleMode.COMMIT ) );
-        params.setPreheatMode( getEnumWithDefault( PreheatMode.class, parameters, "preheatMode", PreheatMode.REFERENCE ) );
-        params.setIdentifier( getEnumWithDefault( PreheatIdentifier.class, parameters, "identifier", PreheatIdentifier.UID ) );
-        params.setImportStrategy( getEnumWithDefault( ImportStrategy.class, parameters, "importStrategy", ImportStrategy.CREATE_AND_UPDATE ) );
-        params.setAtomicMode( getEnumWithDefault( AtomicMode.class, parameters, "atomicMode", AtomicMode.ALL ) );
-        params.setMergeMode( getEnumWithDefault( MergeMode.class, parameters, "mergeMode", MergeMode.REPLACE ) );
-        params.setFlushMode( getEnumWithDefault( FlushMode.class, parameters, "flushMode", FlushMode.AUTO ) );
-        params.setImportReportMode( getEnumWithDefault( ImportReportMode.class, parameters, "importReportMode", ImportReportMode.ERRORS ) );
-
-        if ( getBooleanWithDefault( parameters, "async", false ) )
-        {
-            JobConfiguration jobId = new JobConfiguration( "metadataImport", JobType.METADATA_IMPORT, params.getUser().getUid(), true );
-            notifier.clear( jobId );
-            params.setId( jobId );
-        }
-
-        if ( params.getUserOverrideMode() == UserOverrideMode.SELECTED )
-        {
-            User overrideUser = null;
-
-            if ( parameters.containsKey( "overrideUser" ) )
-            {
-                List<String> overrideUsers = parameters.get( "overrideUser" );
-                overrideUser = manager.get( User.class, overrideUsers.get( 0 ) );
-            }
-
-            if ( overrideUser == null )
-            {
-                throw new MetadataImportException( "UserOverrideMode.SELECTED is enabled, but overrideUser parameter does not point to a valid user." );
-            }
-        }
-
-        return params;
+    if (ObjectBundleMode.VALIDATE == bundleParams.getObjectBundleMode()) {
+      return report;
     }
 
-    //-----------------------------------------------------------------------------------
-    // Utility Methods
-    //-----------------------------------------------------------------------------------
+    report.clean();
+    report.forEachTypeReport(
+        typeReport -> {
+          ImportReportMode mode = params.getImportReportMode();
+          if (ImportReportMode.ERRORS == mode) {
+            typeReport.clean();
+          }
+          if (ImportReportMode.DEBUG != mode) {
+            typeReport
+                .getObjectReports()
+                .forEach(objectReport -> objectReport.setDisplayName(null));
+          }
+        });
 
-    private boolean getBooleanWithDefault( Map<String, List<String>> parameters, String key, boolean defaultValue )
-    {
-        if ( parameters == null || parameters.get( key ) == null || parameters.get( key ).isEmpty() )
-        {
-            return defaultValue;
-        }
+    return report;
+  }
 
-        String value = String.valueOf( parameters.get( key ).get( 0 ) );
+  @Override
+  public MetadataImportParams getParamsFromMap(Map<String, List<String>> parameters) {
+    MetadataImportParams params = new MetadataImportParams();
+    params.setSkipSharing(getBooleanWithDefault(parameters, "skipSharing", false));
+    params.setSkipTranslation(getBooleanWithDefault(parameters, "skipTranslation", false));
+    params.setSkipValidation(getBooleanWithDefault(parameters, "skipValidation", false));
+    params.setUserOverrideMode(
+        getEnumWithDefault(
+            UserOverrideMode.class, parameters, "userOverrideMode", UserOverrideMode.NONE));
+    params.setImportMode(
+        getEnumWithDefault(
+            ObjectBundleMode.class, parameters, "importMode", ObjectBundleMode.COMMIT));
+    params.setPreheatMode(
+        getEnumWithDefault(PreheatMode.class, parameters, "preheatMode", PreheatMode.REFERENCE));
+    params.setIdentifier(
+        getEnumWithDefault(
+            PreheatIdentifier.class, parameters, "identifier", PreheatIdentifier.UID));
+    params.setImportStrategy(
+        getEnumWithDefault(
+            ImportStrategy.class, parameters, "importStrategy", ImportStrategy.CREATE_AND_UPDATE));
+    params.setAtomicMode(
+        getEnumWithDefault(AtomicMode.class, parameters, "atomicMode", AtomicMode.ALL));
+    params.setFlushMode(
+        getEnumWithDefault(FlushMode.class, parameters, "flushMode", FlushMode.AUTO));
+    params.setImportReportMode(
+        getEnumWithDefault(
+            ImportReportMode.class, parameters, "importReportMode", ImportReportMode.ERRORS));
+    params.setFirstRowIsHeader(getBooleanWithDefault(parameters, "firstRowIsHeader", true));
+    params.setAsync(getBooleanWithDefault(parameters, "async", false));
 
-        return "true".equals( value.toLowerCase() );
+    if (params.getUserOverrideMode() == UserOverrideMode.SELECTED) {
+      UID overrideUser = null;
+
+      if (parameters.containsKey("overrideUser")) {
+        List<String> overrideUsers = parameters.get("overrideUser");
+        overrideUser = UID.of(overrideUsers.get(0));
+      }
+
+      if (overrideUser == null) {
+        throw new MetadataImportException(
+            "UserOverrideMode.SELECTED is enabled, but overrideUser parameter does not point to a valid user.");
+      }
+      params.setOverrideUser(overrideUser);
     }
 
-    private <T extends Enum<T>> T getEnumWithDefault( Class<T> enumKlass, Map<String, List<String>> parameters, String key, T defaultValue )
-    {
-        if ( parameters == null || parameters.get( key ) == null || parameters.get( key ).isEmpty() )
-        {
-            return defaultValue;
-        }
+    return params;
+  }
 
-        String value = String.valueOf( parameters.get( key ).get( 0 ) );
+  // -----------------------------------------------------------------------------------
+  // Utility Methods
+  // -----------------------------------------------------------------------------------
 
-        return Enums.getIfPresent( enumKlass, value ).or( defaultValue );
+  public ObjectBundleParams toObjectBundleParams(MetadataImportParams importParams) {
+    User currentUser = userService.getUserByUsername(CurrentUserUtil.getCurrentUsername());
+    // TODO: MAS: Refactor to use userDetails
+
+    ObjectBundleParams params = new ObjectBundleParams();
+    params.setUserOverrideMode(importParams.getUserOverrideMode());
+    params.setSkipSharing(importParams.isSkipSharing());
+    params.setSkipTranslation(importParams.isSkipTranslation());
+    params.setSkipValidation(importParams.isSkipValidation());
+    params.setImportStrategy(importParams.getImportStrategy());
+    params.setAtomicMode(importParams.getAtomicMode());
+    params.setPreheatIdentifier(importParams.getIdentifier());
+    params.setPreheatMode(importParams.getPreheatMode());
+    params.setObjectBundleMode(importParams.getImportMode());
+    params.setFlushMode(importParams.getFlushMode());
+    params.setImportReportMode(importParams.getImportReportMode());
+    params.setMetadataSyncImport(importParams.isMetadataSyncImport());
+    params.setUser(
+        importParams.getUser() == null
+            ? currentUser
+            : userService.getUser(importParams.getUser().getValue()));
+    params.setOverrideUser(
+        importParams.getOverrideUser() == null
+            ? null
+            : userService.getUser(importParams.getOverrideUser().getValue()));
+    if (params.getUserOverrideMode() == UserOverrideMode.CURRENT) {
+      params.setOverrideUser(currentUser);
+    }
+    return params;
+  }
+
+  private boolean getBooleanWithDefault(
+      Map<String, List<String>> parameters, String key, boolean defaultValue) {
+    if (parameters == null || parameters.get(key) == null || parameters.get(key).isEmpty()) {
+      return defaultValue;
     }
 
-    private void prepareBundle( ObjectBundle bundle, ObjectBundleParams params )
-    {
-        if ( bundle.getUser() == null )
-        {
-            return;
-        }
+    String value = String.valueOf(parameters.get(key).get(0));
 
-        for ( Class<? extends IdentifiableObject> klass : bundle.getObjectMap().keySet() )
-        {
-            bundle.getObjectMap().get( klass ).forEach( o -> prepareObject( (BaseIdentifiableObject) o, bundle, params ) );
-        }
+    return "true".equalsIgnoreCase(value);
+  }
+
+  private <T extends Enum<T>> T getEnumWithDefault(
+      Class<T> enumKlass, Map<String, List<String>> parameters, String key, T defaultValue) {
+    if (parameters == null || parameters.get(key) == null || parameters.get(key).isEmpty()) {
+      return defaultValue;
     }
 
-    private void prepareObject( BaseIdentifiableObject object, ObjectBundle bundle, ObjectBundleParams params )
-    {
-        if ( StringUtils.isEmpty( object.getPublicAccess() ) )
-        {
-            aclService.resetSharing( object, bundle.getUser() );
-        }
+    String value = String.valueOf(parameters.get(key).get(0));
 
-        if ( object.getUser() == null || manager.get( object.getUser().getUid() ) == null )
-        {
-            object.setUser( bundle.getUser() );
-        }
+    return Enums.getIfPresent(enumKlass, value).or(defaultValue);
+  }
 
-        if ( object.getUserAccesses() == null )
-        {
-            object.setUserAccesses( new HashSet<>() );
-        }
-
-        if ( object.getUserGroupAccesses() == null )
-        {
-            object.setUserGroupAccesses( new HashSet<>() );
-        }
-
-        object.setLastUpdatedBy( bundle.getUser() );
+  private void preCreateBundle(ObjectBundleParams params) {
+    if (params.getUser() == null) {
+      return;
     }
+
+    for (Class<? extends IdentifiableObject> klass : params.getObjects().keySet()) {
+      params
+          .getObjects()
+          .get(klass)
+          .forEach(o -> preCreateBundleObject((BaseIdentifiableObject) o, params));
+    }
+  }
+
+  private void preCreateBundleObject(BaseIdentifiableObject object, ObjectBundleParams params) {
+    if (StringUtils.isEmpty(object.getSharing().getPublicAccess())) {
+      aclService.resetSharing(object, params.getUser());
+    }
+
+    object.setLastUpdatedBy(params.getUser());
+  }
+
+  private void postCreateBundle(@CheckForNull ObjectBundle bundle, ObjectBundleParams params) {
+    if (bundle == null || bundle.getUser() == null) {
+      return;
+    }
+
+    bundle.forEach(object -> postCreateBundleObject(object, bundle, params));
+  }
+
+  private void postCreateBundleObject(
+      IdentifiableObject object, ObjectBundle bundle, ObjectBundleParams params) {
+    if (object.getCreatedBy() == null) {
+      return;
+    }
+
+    IdentifiableObject userByReference =
+        bundle
+            .getPreheat()
+            .get(
+                params.getPreheatIdentifier(),
+                User.class,
+                params.getPreheatIdentifier().getIdentifier(object.getCreatedBy()));
+
+    if (userByReference != null) {
+      object.setCreatedBy((User) userByReference);
+    }
+  }
 }

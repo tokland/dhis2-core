@@ -1,7 +1,5 @@
-package org.hisp.dhis.analytics.table;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,136 +25,146 @@ package org.hisp.dhis.analytics.table;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.analytics.table;
+
+import static org.hisp.dhis.analytics.table.model.AnalyticsValueType.FACT;
+import static org.hisp.dhis.commons.util.TextUtils.replace;
+import static org.hisp.dhis.db.model.DataType.CHARACTER_11;
+import static org.hisp.dhis.db.model.DataType.DOUBLE;
+import static org.hisp.dhis.db.model.constraint.Nullable.NOT_NULL;
+import static org.hisp.dhis.db.model.constraint.Nullable.NULL;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Future;
-
-import org.hisp.dhis.analytics.AnalyticsTable;
-import org.hisp.dhis.analytics.AnalyticsTableColumn;
-import org.hisp.dhis.analytics.AnalyticsTablePartition;
+import org.hisp.dhis.analytics.AnalyticsTableHookService;
 import org.hisp.dhis.analytics.AnalyticsTableType;
-import org.hisp.dhis.commons.collection.ListUtils;
-import org.hisp.dhis.commons.util.ConcurrentUtils;
-import org.hisp.dhis.commons.util.TextUtils;
-import org.hisp.dhis.organisationunit.OrganisationUnitLevel;
-import org.springframework.scheduling.annotation.Async;
+import org.hisp.dhis.analytics.AnalyticsTableUpdateParams;
+import org.hisp.dhis.analytics.partition.PartitionManager;
+import org.hisp.dhis.analytics.table.model.AnalyticsTable;
+import org.hisp.dhis.analytics.table.model.AnalyticsTableColumn;
+import org.hisp.dhis.analytics.table.model.AnalyticsTablePartition;
+import org.hisp.dhis.analytics.table.setting.AnalyticsTableSettings;
+import org.hisp.dhis.category.CategoryService;
+import org.hisp.dhis.common.IdentifiableObjectManager;
+import org.hisp.dhis.dataapproval.DataApprovalLevelService;
+import org.hisp.dhis.db.model.Logged;
+import org.hisp.dhis.db.sql.SqlBuilder;
+import org.hisp.dhis.organisationunit.OrganisationUnitService;
+import org.hisp.dhis.period.PeriodDataProvider;
+import org.hisp.dhis.resourcetable.ResourceTableService;
+import org.hisp.dhis.setting.SystemSettingsProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 /**
  * @author Lars Helge Overland
  */
-public class JdbcOrgUnitTargetTableManager
-    extends AbstractJdbcTableManager
-{
-    @Override
-    public AnalyticsTableType getAnalyticsTableType()
-    {
-        return AnalyticsTableType.ORG_UNIT_TARGET;
-    }
-    
-    @Override
-    @Transactional
-    public List<AnalyticsTable> getAnalyticsTables( Date earliest )
-    {
-        return Lists.newArrayList( new AnalyticsTable( getTableName(), getDimensionColumns(), getValueColumns() ) );
-    }
+@Service("org.hisp.dhis.analytics.OrgUnitTargetTableManager")
+public class JdbcOrgUnitTargetTableManager extends AbstractJdbcTableManager {
+  private static final List<AnalyticsTableColumn> FIXED_COLS =
+      List.of(
+          AnalyticsTableColumn.builder()
+              .name("oug")
+              .dataType(CHARACTER_11)
+              .nullable(NOT_NULL)
+              .selectExpression("oug.uid")
+              .build());
 
-    @Override
-    public Set<String> getExistingDatabaseTables()
-    {
-        return Sets.newHashSet( getTableName() );
-    }
-    
-    @Override
-    public String validState()
-    {
-        return null;
-    }
+  private static final List<String> SORT_KEY = List.of("oug");
 
-    @Override
-    protected List<String> getPartitionChecks( AnalyticsTablePartition partition )
-    {
-        return Lists.newArrayList();
-    }
-        
-    @Override
-    protected void populateTable( AnalyticsTablePartition partition )
-    {
-        final String tableName = partition.getTempTableName();
+  public JdbcOrgUnitTargetTableManager(
+      IdentifiableObjectManager idObjectManager,
+      OrganisationUnitService organisationUnitService,
+      CategoryService categoryService,
+      SystemSettingsProvider settingsProvider,
+      DataApprovalLevelService dataApprovalLevelService,
+      ResourceTableService resourceTableService,
+      AnalyticsTableHookService tableHookService,
+      PartitionManager partitionManager,
+      @Qualifier("analyticsJdbcTemplate") JdbcTemplate jdbcTemplate,
+      AnalyticsTableSettings analyticsTableSettings,
+      PeriodDataProvider periodDataProvider,
+      SqlBuilder sqlBuilder) {
+    super(
+        idObjectManager,
+        organisationUnitService,
+        categoryService,
+        settingsProvider,
+        dataApprovalLevelService,
+        resourceTableService,
+        tableHookService,
+        partitionManager,
+        jdbcTemplate,
+        analyticsTableSettings,
+        periodDataProvider,
+        sqlBuilder);
+  }
 
-        String sql = "insert into " + partition.getTempTableName() + " (";
+  @Override
+  public AnalyticsTableType getAnalyticsTableType() {
+    return AnalyticsTableType.ORG_UNIT_TARGET;
+  }
 
-        List<AnalyticsTableColumn> columns = partition.getMasterTable().getDimensionColumns();
-        List<AnalyticsTableColumn> values = partition.getMasterTable().getValueColumns();
-        
-        validateDimensionColumns( columns );
-        
-        for ( AnalyticsTableColumn col : ListUtils.union( columns, values ) )
-        {
-            sql += col.getName() + ",";
-        }
+  @Override
+  @Transactional
+  public List<AnalyticsTable> getAnalyticsTables(AnalyticsTableUpdateParams params) {
+    Logged logged = analyticsTableSettings.getTableLogged();
+    return params.isLatestUpdate()
+        ? List.of()
+        : List.of(new AnalyticsTable(getAnalyticsTableType(), getColumns(), SORT_KEY, logged));
+  }
 
-        sql = TextUtils.removeLastComma( sql ) + ") select ";
+  @Override
+  public Set<String> getExistingDatabaseTables() {
+    return Set.of(getTableName());
+  }
 
-        for ( AnalyticsTableColumn col : columns )
-        {
-            sql += col.getAlias() + ",";
-        }
-        
-        sql +=
-            "1 as value " +
-            "from orgunitgroupmembers ougm " +
-            "inner join orgunitgroup oug on ougm.orgunitgroupid=oug.orgunitgroupid " +
-            "left join _orgunitstructure ous on ougm.organisationunitid=ous.organisationunitid " +
-            "left join _organisationunitgroupsetstructure ougs on ougm.organisationunitid=ougs.organisationunitid";            
+  @Override
+  protected List<String> getPartitionChecks(Integer year, Date endDate) {
+    return List.of();
+  }
 
-        populateAndLog( sql, tableName );
-    }
+  @Override
+  public void populateTable(AnalyticsTableUpdateParams params, AnalyticsTablePartition partition) {
+    String tableName = partition.getName();
 
-    private List<AnalyticsTableColumn> getDimensionColumns()
-    {
-        List<AnalyticsTableColumn> columns = new ArrayList<>();
+    List<AnalyticsTableColumn> columns = partition.getMasterTable().getAnalyticsTableColumns();
 
-        List<OrganisationUnitLevel> levels =
-            organisationUnitService.getFilledOrganisationUnitLevels();
-                
-        for ( OrganisationUnitLevel level : levels )
-        {
-            String column = quote( PREFIX_ORGUNITLEVEL + level.getLevel() );
-            columns.add( new AnalyticsTableColumn( column, "character(11)", "ous." + column, level.getCreated() ) );
-        }
+    String sql = replace("insert into ${tableName} (", Map.of("tableName", quote(tableName)));
+    sql += toCommaSeparated(columns, col -> quote(col.getName()));
+    sql += ") select ";
+    sql += toCommaSeparated(columns, AnalyticsTableColumn::getSelectExpression);
+    sql += " ";
 
-        columns.add( new AnalyticsTableColumn( quote( "oug" ), "character(11) not null", "oug.uid" ) );
-        
-        return filterDimensionColumns( columns );
-    }
-    
-    private List<AnalyticsTableColumn> getValueColumns()
-    {
-        final String dbl = statementBuilder.getDoubleColumnType();
-        
-        return Lists.newArrayList( new AnalyticsTableColumn( quote( "value" ), dbl, "value" ) );
-    }
-    
-    @Override
-    @Async
-    public Future<?> applyAggregationLevels( ConcurrentLinkedQueue<AnalyticsTablePartition> partitions, Collection<String> dataElements, int aggregationLevel )
-    {
-        return ConcurrentUtils.getImmediateFuture();
-    }
+    sql +=
+        qualifyVariables(
+            """
+            from ${orgunitgroupmembers} ougm \
+            inner join ${orgunitgroup} oug on ougm.orgunitgroupid=oug.orgunitgroupid \
+            left join analytics_rs_orgunitstructure ous on ougm.organisationunitid=ous.organisationunitid \
+            left join analytics_rs_organisationunitgroupsetstructure ougs on ougm.organisationunitid=ougs.organisationunitid""");
 
-    @Override
-    @Async
-    public Future<?> vacuumTablesAsync( ConcurrentLinkedQueue<AnalyticsTablePartition> partitions )
-    {
-        return ConcurrentUtils.getImmediateFuture();
-    }
+    invokeTimeAndLog(sql, "Populating table: '{}'", tableName);
+  }
+
+  private List<AnalyticsTableColumn> getColumns() {
+    List<AnalyticsTableColumn> columns = new ArrayList<>();
+    columns.addAll(FIXED_COLS);
+    columns.addAll(getOrganisationUnitLevelColumns());
+    columns.add(
+        AnalyticsTableColumn.builder()
+            .name("value")
+            .dataType(DOUBLE)
+            .nullable(NULL)
+            .valueType(FACT)
+            .selectExpression("1 as value")
+            .build());
+
+    return filterDimensionColumns(columns);
+  }
 }

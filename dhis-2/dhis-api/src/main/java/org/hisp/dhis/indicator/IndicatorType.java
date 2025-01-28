@@ -1,7 +1,5 @@
-package org.hisp.dhis.indicator;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.indicator;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.indicator;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
@@ -38,55 +37,45 @@ import org.hisp.dhis.common.MetadataObject;
 /**
  * @author Lars Helge Overland
  */
-@JacksonXmlRootElement( localName = "indicatorType", namespace = DxfNamespaces.DXF_2_0 )
-public class IndicatorType
-    extends BaseIdentifiableObject implements MetadataObject
-{
-    private int factor;
+@JacksonXmlRootElement(localName = "indicatorType", namespace = DxfNamespaces.DXF_2_0)
+public class IndicatorType extends BaseIdentifiableObject implements MetadataObject {
+  private int factor;
 
-    private boolean number;
+  private boolean number;
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Constructors
+  // -------------------------------------------------------------------------
 
-    public IndicatorType()
-    {
+  public IndicatorType() {}
 
-    }
+  public IndicatorType(String name, int factor, Boolean number) {
+    this.name = name;
+    this.factor = factor;
+    this.number = number;
+  }
 
-    public IndicatorType( String name, int factor, Boolean number )
-    {
-        this.name = name;
-        this.factor = factor;
-        this.number = number;
-    }
+  // -------------------------------------------------------------------------
+  // Getters and setters
+  // -------------------------------------------------------------------------
 
-    // -------------------------------------------------------------------------
-    // Getters and setters
-    // -------------------------------------------------------------------------
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public int getFactor() {
+    return factor;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public int getFactor()
-    {
-        return factor;
-    }
+  public void setFactor(int factor) {
+    this.factor = factor;
+  }
 
-    public void setFactor( int factor )
-    {
-        this.factor = factor;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public boolean isNumber() {
+    return number;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public boolean isNumber()
-    {
-        return number;
-    }
-
-    public void setNumber( boolean number )
-    {
-        this.number = number;
-    }
+  public void setNumber(boolean number) {
+    this.number = number;
+  }
 }

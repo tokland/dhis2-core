@@ -1,7 +1,5 @@
-package org.hisp.dhis.user;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,54 +25,40 @@ package org.hisp.dhis.user;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.user;
 
-import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import javax.annotation.Nonnull;
 
-public interface UserSettingStore
-{
-    /**
-     * Adds a UserSetting.
-     *
-     * @param userSetting the UserSetting to add.
-     */
-    void addUserSetting( UserSetting userSetting );
+public interface UserSettingStore {
 
-    /**
-     * Updates a UserSetting.
-     *
-     * @param userSetting the UserSetting to update.
-     */
-    void updateUserSetting( UserSetting userSetting );
+  /**
+   * @return a map of all settings keys and values, all values are as stored in database
+   */
+  @Nonnull
+  Map<String, String> getAll(@Nonnull String username);
 
-    /**
-     * Retrieves the UserSetting associated with the given User for the given
-     * UserSetting name.
-     *
-     * @param user the User.
-     * @param name the name of the UserSetting.
-     * @return the UserSetting.
-     */
-    UserSetting getUserSetting( User user, String name );
+  /**
+   * Update or insert a key-value pair for a user.
+   *
+   * @param username of the user whose settings add updated
+   * @param key name of the setting
+   * @param value value of the setting
+   */
+  void put(@Nonnull String username, @Nonnull String key, @Nonnull String value);
 
-    /**
-     * Retrieves all UserSettings for the given User.
-     *
-     * @param user the User.
-     * @return a List of UserSettings.
-     */
-    List<UserSetting> getAllUserSettings( User user );
+  /**
+   * @param username of the user whose settings are deleted
+   * @param keys the setting to delete
+   * @return number of settings that were deleted
+   */
+  int delete(@Nonnull String username, @Nonnull Set<String> keys);
 
-    /**
-     * Deletes a UserSetting.
-     *
-     * @param userSetting the UserSetting to delete.
-     */
-    void deleteUserSetting( UserSetting userSetting );
-
-    /**
-     * Removes all user settings associated with the given user.
-     * 
-     * @param user the user.
-     */
-    void removeUserSettings( User user );
+  /**
+   * Deletes all user settings
+   *
+   * @param username of the user whose settings are deleted
+   */
+  void deleteAll(@Nonnull String username);
 }

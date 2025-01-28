@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.util;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,79 +25,78 @@ package org.hisp.dhis.system.util;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.util;
 
-import org.hisp.dhis.analytics.AggregationType;
-import org.hisp.dhis.dataelement.DataElement;
-import org.junit.Before;
-import org.junit.Test;
+import static org.hisp.dhis.system.util.ReflectionUtils.getClassName;
+import static org.hisp.dhis.system.util.ReflectionUtils.getId;
+import static org.hisp.dhis.system.util.ReflectionUtils.getProperty;
+import static org.hisp.dhis.system.util.ReflectionUtils.isCollection;
+import static org.hisp.dhis.system.util.ReflectionUtils.setProperty;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-
-import static org.hisp.dhis.system.util.ReflectionUtils.*;
-import static org.junit.Assert.*;
+import org.hisp.dhis.analytics.AggregationType;
+import org.hisp.dhis.dataelement.DataElement;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Lars Helge Overland
  */
-public class ReflectionUtilsTest
-{
-    private DataElement dataElementA;
+class ReflectionUtilsTest {
+  private DataElement dataElementA;
 
-    @Before
-    public void before()
-    {
-        dataElementA = new DataElement();
-        dataElementA.setId( 8 );
-        dataElementA.setName( "NameA" );
-        dataElementA.setAggregationType( AggregationType.SUM );
-    }
+  @BeforeEach
+  void before() {
+    dataElementA = new DataElement();
+    dataElementA.setId(8);
+    dataElementA.setName("NameA");
+    dataElementA.setAggregationType(AggregationType.SUM);
+  }
 
-    @Test
-    public void testGetId()
-    {
-        assertEquals( 8, getId( dataElementA ) );
-    }
+  @Test
+  void testGetId() {
+    assertEquals(8, getId(dataElementA));
+  }
 
-    @Test
-    public void testGetProperty()
-    {
-        assertEquals( "NameA", getProperty( dataElementA, "name" ) );
-        assertNull( getProperty( dataElementA, "color" ) );
-    }
+  @Test
+  void testGetProperty() {
+    assertEquals("NameA", getProperty(dataElementA, "name"));
+    assertNull(getProperty(dataElementA, "color"));
+  }
 
-    @Test
-    public void testSetProperty()
-    {
-        setProperty( dataElementA, "shortName", "ShortNameA" );
+  @Test
+  void testSetProperty() {
+    setProperty(dataElementA, "shortName", "ShortNameA");
+    assertEquals("ShortNameA", dataElementA.getShortName());
+  }
 
-        assertEquals( "ShortNameA", dataElementA.getShortName() );
-    }
+  @Test
+  void testSetPropertyException() {
+    assertThrows(
+        UnsupportedOperationException.class, () -> setProperty(dataElementA, "color", "Blue"));
+  }
 
-    @Test( expected = UnsupportedOperationException.class )
-    public void testSetPropertyException()
-    {
-        setProperty( dataElementA, "color", "Blue" );
-    }
+  @Test
+  void testGetClassName() {
+    assertEquals("DataElement", getClassName(dataElementA));
+  }
 
-    @Test
-    public void testGetClassName()
-    {
-        assertEquals( "DataElement", getClassName( dataElementA ) );
-    }
-
-    @Test
-    public void testIsCollection()
-    {
-        List<Object> colA = new ArrayList<>();
-        Collection<DataElement> colB = new HashSet<>();
-        Collection<DataElement> colC = new ArrayList<>();
-
-        assertTrue( isCollection( colA ) );
-        assertTrue( isCollection( colB ) );
-        assertTrue( isCollection( colC ) );
-        assertFalse( isCollection( dataElementA ) );
-    }
+  @Test
+  void testIsCollection() {
+    List<Object> colA = new ArrayList<>();
+    Collection<DataElement> colB = new HashSet<>();
+    Collection<DataElement> colC = new ArrayList<>();
+    assertTrue(isCollection(colA));
+    assertTrue(isCollection(colB));
+    assertTrue(isCollection(colC));
+    assertFalse(isCollection(dataElementA));
+  }
 }

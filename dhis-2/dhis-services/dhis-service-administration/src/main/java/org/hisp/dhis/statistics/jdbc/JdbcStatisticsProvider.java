@@ -1,7 +1,5 @@
-package org.hisp.dhis.statistics.jdbc;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,64 +25,88 @@ package org.hisp.dhis.statistics.jdbc;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.common.Objects;
-import org.hisp.dhis.statistics.StatisticsProvider;
-import org.springframework.jdbc.core.JdbcTemplate;
+package org.hisp.dhis.statistics.jdbc;
 
 import java.util.HashMap;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.common.Objects;
+import org.hisp.dhis.statistics.StatisticsProvider;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
 
 /**
  * @author Lars Helge Overland
- * @version $Id$
  */
-public class JdbcStatisticsProvider
-    implements StatisticsProvider
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.statistics.StatisticsProvider")
+public class JdbcStatisticsProvider implements StatisticsProvider {
+  private final JdbcTemplate jdbcTemplate;
 
-    /**
-     * Read only JDBC template.
-     */
-    private JdbcTemplate jdbcTemplate;
+  // -------------------------------------------------------------------------
+  // StatisticsProvider implementation
+  // -------------------------------------------------------------------------
 
-    public void setJdbcTemplate( JdbcTemplate jdbcTemplate )
-    {
-        this.jdbcTemplate = jdbcTemplate;
-    }
+  @Override
+  public Map<Objects, Long> getObjectCounts() {
+    final Map<Objects, Long> map = new HashMap<>();
 
-    // -------------------------------------------------------------------------
-    // StatisticsProvider implementation
-    // -------------------------------------------------------------------------
-    
-    @Override
-    public Map<Objects, Integer> getObjectCounts()
-    {
-        final Map<Objects, Integer> objectCounts = new HashMap<>();
-        
-        objectCounts.put( Objects.DATAELEMENT, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM dataelement", Integer.class ) );
-        objectCounts.put( Objects.DATAELEMENTGROUP, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM dataelementgroup", Integer.class ) );
-        objectCounts.put( Objects.INDICATORTYPE, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM indicatortype", Integer.class ) );
-        objectCounts.put( Objects.INDICATOR, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM indicator", Integer.class ) );
-        objectCounts.put( Objects.INDICATORGROUP, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM indicatorgroup", Integer.class ) );
-        objectCounts.put( Objects.DATASET, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM dataset", Integer.class ) );
-        objectCounts.put( Objects.ORGANISATIONUNIT, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM organisationunit", Integer.class ) );
-        objectCounts.put( Objects.ORGANISATIONUNITGROUP, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM orgunitgroup", Integer.class ) );
-        objectCounts.put( Objects.VALIDATIONRULE, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM validationrule", Integer.class ) );
-        objectCounts.put( Objects.PERIOD, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM period", Integer.class ) );
-        objectCounts.put( Objects.USER, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM users", Integer.class ) );
-        objectCounts.put( Objects.USERGROUP, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM usergroup", Integer.class ) );
-        objectCounts.put( Objects.REPORTTABLE, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM reporttable", Integer.class ) );
-        objectCounts.put( Objects.CHART, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM chart", Integer.class ) );
-        objectCounts.put( Objects.MAP, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM map", Integer.class ) );
-        objectCounts.put( Objects.DASHBOARD, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM dashboard", Integer.class ) );        
-        objectCounts.put( Objects.DATAVALUE, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM datavalue dv where dv.deleted is false", Integer.class ) );
-        objectCounts.put( Objects.PROGRAM, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM program", Integer.class ) );
-        objectCounts.put( Objects.PROGRAMSTAGEINSTANCE, jdbcTemplate.queryForObject( "SELECT COUNT(*) FROM programstageinstance psi where psi.deleted is false", Integer.class ) );
-        
-        return objectCounts;
-    }
+    // Metadata, use exact counts
+
+    map.put(Objects.DATAELEMENT, query("select count(*) from dataelement;"));
+    map.put(Objects.DATAELEMENTGROUP, query("select count(*) from dataelementgroup;"));
+    map.put(Objects.INDICATORTYPE, query("select count(*) from indicatortype;"));
+    map.put(Objects.INDICATOR, query("select count(*) from indicator;"));
+    map.put(Objects.INDICATORGROUP, query("select count(*) from indicatorgroup;"));
+    map.put(Objects.DATASET, query("select count(*) from dataset;"));
+    map.put(Objects.ORGANISATIONUNIT, query("select count(*) from organisationunit;"));
+    map.put(Objects.ORGANISATIONUNITGROUP, query("select count(*) from orgunitgroup;"));
+    map.put(Objects.VALIDATIONRULE, query("select count(*) from validationrule;"));
+    map.put(Objects.PROGRAM, query("select count(*) from program;"));
+    map.put(Objects.PERIOD, query("select count(*) from period;"));
+    map.put(Objects.USER, query("select count(*) from userinfo;"));
+    map.put(Objects.USERGROUP, query("select count(*) from usergroup;"));
+    map.put(Objects.VISUALIZATION, query("select count(*) from visualization;"));
+    map.put(Objects.EVENTVISUALIZATION, query("select count(*) from eventvisualization;"));
+    map.put(Objects.MAP, query("select count(*) from map;"));
+    map.put(Objects.DASHBOARD, query("select count(*) from dashboard;"));
+
+    // Data, use approximate counts
+
+    map.put(Objects.DATAVALUE, approximateCount("datavalue"));
+
+    Long trackedEntities = approximateCount("trackedentity");
+    map.put(Objects.TRACKEDENTITY, trackedEntities);
+    map.put(Objects.TRACKEDENTITYINSTANCE, trackedEntities);
+    Long enrollments = approximateCount("enrollment");
+    map.put(Objects.ENROLLMENT, enrollments);
+    map.put(Objects.PROGRAMINSTANCE, enrollments);
+    Long events = approximateCount("event");
+    map.put(Objects.EVENT, events);
+    map.put(Objects.PROGRAMSTAGEINSTANCE, events);
+
+    return map;
+  }
+
+  /**
+   * Returns the response of the given SQL query as a long value.
+   *
+   * @param sql the SQL query.
+   * @return the response of the given SQL query as a long value.
+   */
+  private Long query(final String sql) {
+    return jdbcTemplate.queryForObject(sql, Long.class);
+  }
+
+  /**
+   * Returns the approximate count of rows in the given table.
+   *
+   * @param table the table name.
+   * @return the approximate count of rows in the given table.
+   */
+  private Long approximateCount(final String table) {
+    final String sql = "select reltuples::bigint from pg_class where relname = '%s';";
+
+    return jdbcTemplate.queryForObject(String.format(sql, table), Long.class);
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.webmessage;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,195 +25,191 @@ package org.hisp.dhis.dxf2.webmessage;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.webmessage;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import com.google.common.base.MoreObjects;
+import javax.annotation.Nonnull;
+import lombok.Getter;
 import org.hisp.dhis.common.DxfNamespaces;
+import org.hisp.dhis.common.OpenApi;
+import org.hisp.dhis.dxf2.common.ImportTypeSummary;
+import org.hisp.dhis.dxf2.geojson.GeoJsonImportReport;
+import org.hisp.dhis.dxf2.importsummary.ImportSummaries;
+import org.hisp.dhis.dxf2.importsummary.ImportSummary;
+import org.hisp.dhis.dxf2.metadata.sync.MetadataSyncSummary;
+import org.hisp.dhis.dxf2.scheduling.JobConfigurationWebMessageResponse;
+import org.hisp.dhis.dxf2.webmessage.responses.ApiTokenCreationResponse;
+import org.hisp.dhis.dxf2.webmessage.responses.ErrorReportsWebMessageResponse;
+import org.hisp.dhis.dxf2.webmessage.responses.FileResourceWebMessageResponse;
+import org.hisp.dhis.dxf2.webmessage.responses.ImportCountWebMessageResponse;
+import org.hisp.dhis.dxf2.webmessage.responses.ImportReportWebMessageResponse;
+import org.hisp.dhis.dxf2.webmessage.responses.MergeWebResponse;
+import org.hisp.dhis.dxf2.webmessage.responses.ObjectReportWebMessageResponse;
+import org.hisp.dhis.dxf2.webmessage.responses.SoftwareUpdateResponse;
+import org.hisp.dhis.feedback.ErrorCode;
 import org.hisp.dhis.feedback.Status;
+import org.hisp.dhis.predictor.PredictionSummary;
+import org.hisp.dhis.webapi.controller.tracker.imports.TrackerJobWebMessageResponse;
+import org.hisp.dhis.webmessage.WebMessageResponse;
+import org.hisp.dhis.webmessage.WebResponse;
 import org.springframework.http.HttpStatus;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-@JacksonXmlRootElement( localName = "webMessage", namespace = DxfNamespaces.DXF_2_0 )
-@JsonPropertyOrder( {
-    "httpStatus", "httpStatusCode", "status", "code", "message", "devMessage", "response"
-} )
-public class WebMessage
-{
-    /**
-     * Message status, currently two statuses are available: OK, ERROR. Default
-     * value is OK.
-     *
-     * @see Status
-     */
-    protected Status status = Status.OK;
+@JacksonXmlRootElement(localName = "webMessage", namespace = DxfNamespaces.DXF_2_0)
+@JsonPropertyOrder({
+  "httpStatus",
+  "httpStatusCode",
+  "status",
+  "code",
+  "message",
+  "devMessage",
+  "response"
+})
+public class WebMessage extends WebResponse {
 
-    /**
-     * Internal code for this message. Should be used to help with third party clients which
-     * should not have to resort to string parsing of message to know what is happening.
-     */
-    protected Integer code;
+  /** HTTP status. */
+  private HttpStatus httpStatus = HttpStatus.OK;
 
-    /**
-     * HTTP status.
-     */
-    protected HttpStatus httpStatus = HttpStatus.OK;
+  /**
+   * Technical message that should explain as much details as possible, mainly to be used for
+   * debugging.
+   */
+  private String devMessage;
 
-    /**
-     * Non-technical message, should be simple and could possibly be used to display message
-     * to an end-user.
-     */
-    protected String message;
+  /**
+   * When a simple text feedback is not enough, you can use this interface to implement your own
+   * response payload object.
+   */
+  @OpenApi.Property({
+    ApiTokenCreationResponse.class,
+    ErrorReportsWebMessageResponse.class,
+    FileResourceWebMessageResponse.class,
+    GeoJsonImportReport.class,
+    ImportCountWebMessageResponse.class,
+    ImportReportWebMessageResponse.class,
+    ImportSummaries.class,
+    ImportSummary.class,
+    ImportTypeSummary.class,
+    JobConfigurationWebMessageResponse.class,
+    MergeWebResponse.class,
+    MetadataSyncSummary.class,
+    ObjectReportWebMessageResponse.class,
+    PredictionSummary.class,
+    SoftwareUpdateResponse.class,
+    TrackerJobWebMessageResponse.class,
+    TrackerJobWebMessageResponse.class
+  })
+  private WebMessageResponse response;
 
-    /**
-     * Technical message that should explain as much details as possible, mainly to be used
-     * for debugging.
-     */
-    protected String devMessage;
+  @Getter private String location;
 
-    /**
-     * When a simple text feedback is not enough, you can use this interface to implement your
-     * own message responses.
-     *
-     * @see WebMessageResponse
-     */
-    protected WebMessageResponse response;
+  // -------------------------------------------------------------------------
+  // Constructors
+  // -------------------------------------------------------------------------
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------     
+  /** Only for deserialisation */
+  public WebMessage() {}
 
-    public WebMessage()
-    {
-    }
+  public WebMessage(Status status, HttpStatus httpStatus) {
+    this.status = status;
+    this.httpStatus = httpStatus;
+  }
 
-    public WebMessage( Status status )
-    {
-        this.status = status;
-    }
+  // -------------------------------------------------------------------------
+  // Logic
+  // -------------------------------------------------------------------------
 
-    public WebMessage( Status status, HttpStatus httpStatus )
-    {
-        this.status = status;
-        this.httpStatus = httpStatus;
-    }
+  public boolean isOk() {
+    return Status.OK == status;
+  }
 
-    // -------------------------------------------------------------------------
-    // Logic
-    // -------------------------------------------------------------------------     
+  public boolean isWarning() {
+    return Status.WARNING == status;
+  }
 
-    public boolean isOk()
-    {
-        return Status.OK == status;
-    }
+  public boolean isError() {
+    return Status.ERROR == status;
+  }
 
-    public boolean isWarning()
-    {
-        return Status.WARNING == status;
-    }
+  // -------------------------------------------------------------------------
+  // Get and set methods
+  // -------------------------------------------------------------------------
 
-    public boolean isError()
-    {
-        return Status.ERROR == status;
-    }
+  public WebMessage setStatus(Status status) {
+    this.status = status;
+    return this;
+  }
 
-    // -------------------------------------------------------------------------
-    // Get and set methods
-    // -------------------------------------------------------------------------     
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  public String getHttpStatus() {
+    return httpStatus.getReasonPhrase();
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public Status getStatus()
-    {
-        return status;
-    }
+  public WebMessage setHttpStatus(HttpStatus httpStatus) {
+    this.httpStatus = httpStatus;
+    return this;
+  }
 
-    public void setStatus( Status status )
-    {
-        this.status = status;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(isAttribute = true)
+  @Nonnull
+  public Integer getHttpStatusCode() {
+    return httpStatus.value();
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public Integer getCode()
-    {
-        return code;
-    }
+  public WebMessage setErrorCode(ErrorCode errorCode) {
+    this.errorCode = errorCode;
+    return this;
+  }
 
-    public void setCode( Integer code )
-    {
-        this.code = code;
-    }
+  public WebMessage setMessage(String message) {
+    this.message = message;
+    return this;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public String getHttpStatus()
-    {
-        return httpStatus.getReasonPhrase();
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public String getDevMessage() {
+    return devMessage;
+  }
 
-    public void setHttpStatus( HttpStatus httpStatus )
-    {
-        this.httpStatus = httpStatus;
-    }
+  public WebMessage setDevMessage(String devMessage) {
+    this.devMessage = devMessage;
+    return this;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( isAttribute = true )
-    public Integer getHttpStatusCode()
-    {
-        return httpStatus.value();
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public WebMessageResponse getResponse() {
+    return response;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public String getMessage()
-    {
-        return message;
-    }
+  public WebMessage setResponse(WebMessageResponse response) {
+    this.response = response;
+    return this;
+  }
 
-    public void setMessage( String message )
-    {
-        this.message = message;
-    }
+  public WebMessage setLocation(String location) {
+    this.location = location;
+    return this;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public String getDevMessage()
-    {
-        return devMessage;
-    }
-
-    public void setDevMessage( String devMessage )
-    {
-        this.devMessage = devMessage;
-    }
-
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public WebMessageResponse getResponse()
-    {
-        return response;
-    }
-
-    public void setResponse( WebMessageResponse response )
-    {
-        this.response = response;
-    }
-
-    @Override
-    public String toString()
-    {
-        return MoreObjects.toStringHelper( this )
-            .add( "status", status )
-            .add( "code", code )
-            .add( "httpStatus", httpStatus )
-            .add( "message", message )
-            .add( "devMessage", devMessage )
-            .add( "response", response )
-            .toString();
-    }
+  @Override
+  public String toString() {
+    return MoreObjects.toStringHelper(this)
+        .add("status", status)
+        .add("code", code)
+        .add("httpStatus", httpStatus)
+        .add("message", message)
+        .add("devMessage", devMessage)
+        .add("response", response)
+        .toString();
+  }
 }

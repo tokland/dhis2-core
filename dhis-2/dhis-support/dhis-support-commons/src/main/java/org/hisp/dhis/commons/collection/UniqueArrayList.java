@@ -1,7 +1,5 @@
-package org.hisp.dhis.commons.collection;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,82 +25,51 @@ package org.hisp.dhis.commons.collection;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.commons.collection;
 
 import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * List implementation that will only add items which are not already present in
- * the list.
- * 
+ * List implementation that will only add items which are not already present in the list.
+ *
  * @author Lars Helge Overland
  */
-public class UniqueArrayList<E>
-    extends ArrayList<E>
-{
-    public UniqueArrayList()
-    {
-        super();
+public class UniqueArrayList<E> extends ArrayList<E> {
+  public UniqueArrayList() {
+    super();
+  }
+
+  public UniqueArrayList(Collection<? extends E> collection) {
+    super();
+    addAll(collection);
+  }
+
+  @Override
+  public boolean add(E element) {
+    return super.contains(element) ? false : super.add(element);
+  }
+
+  @Override
+  public void add(int index, E element) {
+    if (!super.contains(element)) {
+      super.add(index, element);
     }
-    
-    public UniqueArrayList( Collection<? extends E> c )
-    {
-        super();
-        addAll( c );
-    }
-    
-    @Override
-    public boolean add( E e )
-    {
-        return super.contains( e ) ? false : super.add( e );
-    }
-    
-    @Override
-    public void add( int index, E e )
-    {
-        if ( !super.contains( e ) )
-        {
-            super.add( index, e );
+  }
+
+  @Override
+  public boolean addAll(Collection<? extends E> collection) {
+    boolean modified = false;
+
+    if (collection != null) {
+      for (E element : collection) {
+        if (!super.contains(element)) {
+          super.add(element);
+          modified = true;
         }
+      }
     }
-    
-    @Override
-    public boolean addAll( Collection<? extends E> c )
-    {
-        boolean modified = false;
-        
-        if ( c != null )
-        {        
-            for ( E e : c )
-            {
-                if ( !super.contains( e ) )
-                {
-                    super.add( e );
-                    modified = true;
-                }
-            }
-        }
-        
-        return modified;
-    }
-    
-    @Override
-    public boolean addAll( int index, Collection<? extends E> c )
-    {
-        boolean modified = false;
-        
-        if ( c != null )
-        {        
-            for ( E e : c )
-            {
-                if ( !super.contains( e ) )
-                {
-                    super.add( index++, e );
-                    modified = true;
-                }
-            }
-        }
-        
-        return modified;
-    }
+
+    return modified;
+  }
 }

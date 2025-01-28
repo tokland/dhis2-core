@@ -1,7 +1,5 @@
-package org.hisp.dhis.mapping;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,13 +25,16 @@ package org.hisp.dhis.mapping;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.mapping;
 
 /**
  * @author Viet Nguyen <viet@dhis2.org>
  */
-public enum MapService
-{
-    WMS,
-    TMS,
-    XYZ
+public enum MapService {
+  WMS,
+  TMS,
+  XYZ,
+  VECTOR_STYLE,
+  GEOJSON_URL,
+  ARCGIS_FEATURE
 }

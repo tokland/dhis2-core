@@ -1,7 +1,5 @@
-package org.hisp.dhis.fileresource;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,411 +25,252 @@ package org.hisp.dhis.fileresource;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.fileresource;
 
 import com.google.common.hash.HashCode;
-import com.google.common.io.ByteSource;
-import org.apache.commons.io.input.NullInputStream;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.hisp.dhis.external.conf.ConfigurationKey;
-import org.hisp.dhis.external.conf.DhisConfigurationProvider;
-import org.hisp.dhis.external.location.LocationManager;
-import org.jclouds.ContextBuilder;
-import org.jclouds.blobstore.BlobRequestSigner;
-import org.jclouds.blobstore.BlobStore;
-import org.jclouds.blobstore.BlobStoreContext;
-import org.jclouds.blobstore.LocalBlobRequestSigner;
-import org.jclouds.blobstore.domain.Blob;
-import org.jclouds.blobstore.internal.RequestSigningUnsupported;
-import org.jclouds.domain.Credentials;
-import org.jclouds.domain.Location;
-import org.jclouds.domain.LocationBuilder;
-import org.jclouds.domain.LocationScope;
-import org.jclouds.filesystem.reference.FilesystemConstants;
-import org.jclouds.http.HttpRequest;
-import org.jclouds.http.HttpResponseException;
-import org.jclouds.rest.AuthorizationException;
-import org.jclouds.s3.reference.S3Constants;
-import org.joda.time.Minutes;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
+import com.google.common.hash.Hashing;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Properties;
-import java.util.regex.Pattern;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.hisp.dhis.jclouds.JCloudsStore;
+import org.jclouds.blobstore.BlobRequestSigner;
+import org.jclouds.blobstore.ContainerNotFoundException;
+import org.jclouds.blobstore.LocalBlobRequestSigner;
+import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.internal.RequestSigningUnsupported;
+import org.jclouds.http.HttpRequest;
+import org.joda.time.Minutes;
+import org.springframework.stereotype.Service;
 
 /**
  * @author Halvdan Hoem Grelland
  */
-public class JCloudsFileResourceContentStore
-    implements FileResourceContentStore
-{
-    private static final Log log = LogFactory.getLog( JCloudsFileResourceContentStore.class );
-    private static final Pattern CONTAINER_NAME_PATTERN = Pattern.compile( "^(?![.-])(?=.{1,63}$)([.-]?[a-zA-Z0-9]+)+$" );
-    private static final long FIVE_MINUTES_IN_SECONDS = Minutes.minutes( 5 ).toStandardDuration().getStandardSeconds();
+@Slf4j
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.fileresource.FileResourceContentStore")
+public class JCloudsFileResourceContentStore implements FileResourceContentStore {
+  private static final long FIVE_MINUTES_IN_SECONDS =
+      Minutes.minutes(5).toStandardDuration().getStandardSeconds();
 
-    private BlobStore blobStore;
-    private BlobStoreContext blobStoreContext;
-    private BlobStoreProperties config;
+  private final JCloudsStore jCloudsStore;
 
-    // -------------------------------------------------------------------------
-    // Providers
-    // -------------------------------------------------------------------------
+  @Override
+  public InputStream getFileResourceContent(String key) {
+    final Blob blob = jCloudsStore.getBlob(key);
 
-    private static final String JCLOUDS_PROVIDER_KEY_FILESYSTEM = "filesystem";
-    private static final String JCLOUDS_PROVIDER_KEY_AWS_S3 = "aws-s3";
-    private static final String JCLOUDS_PROVIDER_KEY_TRANSIENT = "transient";
-
-    private static final List<String> SUPPORTED_PROVIDERS =
-        Arrays.asList( JCLOUDS_PROVIDER_KEY_FILESYSTEM, JCLOUDS_PROVIDER_KEY_AWS_S3, JCLOUDS_PROVIDER_KEY_TRANSIENT );
-
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
-
-    private LocationManager locationManager;
-
-    public void setLocationManager( LocationManager locationManager )
-    {
-        this.locationManager = locationManager;
+    if (blob == null) {
+      return null;
     }
 
-    private DhisConfigurationProvider configurationProvider;
+    try {
+      return blob.getPayload().openStream();
+    } catch (IOException e) {
+      log.warn(
+          String.format(
+              "Unable to retrieve fileResource with key: %s. Message: %s", key, e.getMessage()));
+      return null;
+    }
+  }
 
-    public void setConfigurationProvider( DhisConfigurationProvider configurationProvider )
-    {
-        this.configurationProvider = configurationProvider;
+  @Override
+  public long getFileResourceContentLength(String key) {
+    final Blob blob = jCloudsStore.getBlob(key);
+
+    if (blob == null) {
+      return 0;
     }
 
-    // -------------------------------------------------------------------------
-    // Life cycle management
-    // -------------------------------------------------------------------------
+    return blob.getMetadata().getContentMetadata().getContentLength();
+  }
 
-    @PostConstruct
-    public void init()
-    {
-        // ---------------------------------------------------------------------
-        // Bootstrap config
-        // ---------------------------------------------------------------------
+  @Override
+  public String saveFileResourceContent(@Nonnull FileResource fr, @Nonnull byte[] bytes) {
+    return saveFileResourceContent(fr, createBlob(fr, bytes), null);
+  }
 
-        config = new BlobStoreProperties(
-            configurationProvider.getProperty( ConfigurationKey.FILESTORE_PROVIDER ),
-            configurationProvider.getProperty( ConfigurationKey.FILESTORE_LOCATION ),
-            configurationProvider.getProperty( ConfigurationKey.FILESTORE_CONTAINER )
-        );
+  @Override
+  public String saveFileResourceContent(@Nonnull FileResource fr, @Nonnull File file) {
+    return saveFileResourceContent(
+        fr,
+        createBlob(fr, StringUtils.EMPTY, file, fr.getContentMd5()),
+        () -> {
+          try {
+            Files.deleteIfExists(file.toPath());
+          } catch (IOException ioe) {
+            log.warn(
+                String.format("Temporary file '%s' could not be deleted.", file.toPath()), ioe);
+          }
+        });
+  }
 
-        Pair<Credentials, Properties> providerConfig = configureForProvider(
-            config.provider,
-            configurationProvider.getProperty( ConfigurationKey.FILESTORE_IDENTITY ),
-            configurationProvider.getProperty( ConfigurationKey.FILESTORE_SECRET )
-        );
-
-        // ---------------------------------------------------------------------
-        // Set up JClouds context
-        // ---------------------------------------------------------------------
-
-        blobStoreContext = ContextBuilder.newBuilder( config.provider )
-            .credentials( providerConfig.getLeft().identity, providerConfig.getLeft().credential )
-            .overrides( providerConfig.getRight() )
-            .build( BlobStoreContext.class );
-
-        blobStore = blobStoreContext.getBlobStore();
-
-        Location provider = new LocationBuilder()
-            .scope( LocationScope.PROVIDER )
-            .id( config.provider )
-            .description( config.provider )
-            .build();
-
-        try
-        {
-            blobStore.createContainerInLocation( createRegionLocation( config, provider ), config.container );
-
-            log.info( String.format( "File store configured with provider: '%s', container: '%s' and location: '%s'.",
-                config.provider, config.container, config.location ) );
-        }
-        catch ( HttpResponseException ex )
-        {
-            log.error( String.format( "Could not configure file store with provider '%s' and container '%s'.\n" +
-                "File storage will not be available.", config.provider, config.container ), ex );
-        }
-        catch ( AuthorizationException ex )
-        {
-            log.error( String.format( "Could not authenticate with file store provider '%s' and container '%s'. " +
-                    "File storage will not be available.", config.provider, config.location ), ex );
-        }
+  @CheckForNull
+  private String saveFileResourceContent(
+      @Nonnull FileResource fr, @CheckForNull Blob blob, @CheckForNull Runnable postPutCallback) {
+    if (blob == null) {
+      return null;
     }
 
-    @PreDestroy
-    public void cleanUp()
-    {
-        blobStoreContext.close();
+    try {
+      jCloudsStore.putBlob(blob);
+    } catch (Exception e) {
+      log.error("File upload failed: ", e);
+      return null;
     }
 
-    // -------------------------------------------------------------------------
-    // FileResourceContentStore implementation
-    // -------------------------------------------------------------------------
-
-    @Override
-    public ByteSource getFileResourceContent( String key )
-    {
-        final Blob blob = getBlob( key );
-
-        if ( blob == null )
-        {
-            return null;
-        }
-
-        final ByteSource byteSource = new ByteSource()
-        {
-            @Override
-            public InputStream openStream()
-            {
-                try
-                {
-                    return blob.getPayload().openStream();
-                }
-                catch ( IOException e )
-                {
-                    return new NullInputStream( 0 );
-                }
-            }
-        };
-
-        boolean isEmptyOrFailed;
-
-        try
-        {
-            isEmptyOrFailed = byteSource.isEmpty();
-        }
-        catch ( IOException e )
-        {
-            isEmptyOrFailed = true;
-        }
-
-        return isEmptyOrFailed ? null : byteSource;
+    if (postPutCallback != null) {
+      postPutCallback.run();
     }
 
-    @Override 
-    public String saveFileResourceContent( FileResource fileResource, byte[] bytes )
-    {
-        Blob blob = createBlob( fileResource, bytes );
+    log.debug(String.format("File resource saved with key: %s", fr.getStorageKey()));
 
-        if ( blob == null )
-        {
-            return null;
+    return fr.getStorageKey();
+  }
+
+  @Override
+  public String saveFileResourceContent(
+      @Nonnull FileResource fr, @Nonnull Map<ImageFileDimension, File> imageFiles) {
+    if (imageFiles.isEmpty()) {
+      return null;
+    }
+
+    Blob blob;
+
+    for (Map.Entry<ImageFileDimension, File> entry : imageFiles.entrySet()) {
+      File file = entry.getValue();
+
+      String contentMd5;
+
+      try {
+        HashCode hash = com.google.common.io.Files.asByteSource(file).hash(Hashing.md5());
+        contentMd5 = hash.toString();
+      } catch (IOException e) {
+        log.error("Hashing error", e);
+        return null;
+      }
+
+      blob = createBlob(fr, entry.getKey().getDimension(), file, contentMd5);
+
+      if (blob != null) {
+        try {
+          jCloudsStore.putBlob(blob);
+          Files.deleteIfExists(file.toPath());
+        } catch (ContainerNotFoundException e) {
+          log.error("Container not found", e);
+          return null;
+        } catch (IOException ioe) {
+          log.warn(String.format("Temporary file '%s' could not be deleted: ", file.toPath()), ioe);
         }
-
-        blobStore.putBlob( config.container, blob );
-
-        log.debug( String.format( "File resource saved with key: %s", fileResource.getStorageKey() ) );
-
-        return fileResource.getStorageKey();
+      } else {
+        return null;
+      }
     }
 
-    @Override
-    public String saveFileResourceContent( FileResource fileResource, File file )
-    {
-        Blob blob = createBlob( fileResource, file );
+    return fr.getStorageKey();
+  }
 
-        if ( blob == null )
-        {
-            return null;
-        }
+  @Override
+  public void deleteFileResourceContent(String key) {
+    jCloudsStore.removeBlob(key);
+  }
 
-        blobStore.putBlob( config.container, blob );
+  @Override
+  public boolean fileResourceContentExists(String key) {
+    return jCloudsStore.blobExists(key);
+  }
 
-        try
-        {
-            Files.deleteIfExists( file.toPath() );
-        }
-        catch ( IOException ioe )
-        {
-            log.warn( String.format( "Temporary file '%s' could not be deleted.", file.toPath() ), ioe );
-        }
+  @Override
+  public URI getSignedGetContentUri(String key) {
+    BlobRequestSigner signer = jCloudsStore.getBlobRequestSigner();
 
-        log.debug( String.format( "File resource saved with key: %s", fileResource.getStorageKey() ) );
-
-        return fileResource.getStorageKey();
+    if (!requestSigningSupported(signer)) {
+      return null;
     }
 
-    @Override
-    public void deleteFileResourceContent( String key )
-    {
-        deleteBlob( key );
+    HttpRequest httpRequest;
+
+    try {
+      httpRequest =
+          signer.signGetBlob(jCloudsStore.getBlobContainer(), key, FIVE_MINUTES_IN_SECONDS);
+    } catch (UnsupportedOperationException uoe) {
+      return null;
     }
 
-    @Override
-    public boolean fileResourceContentExists( String key )
-    {
-        return blobExists( key );
+    return httpRequest.getEndpoint();
+  }
+
+  @Override
+  public void copyContent(String key, OutputStream output)
+      throws IOException, NoSuchElementException {
+    ensureBlobExists(key);
+
+    try (InputStream in = jCloudsStore.getBlob(key).getPayload().openStream()) {
+      IOUtils.copy(in, output);
     }
+  }
 
-    @Override
-    public URI getSignedGetContentUri( String key )
-    {
-        BlobRequestSigner signer = blobStoreContext.getSigner();
+  @Override
+  public byte[] copyContent(String key) throws IOException, NoSuchElementException {
+    ensureBlobExists(key);
 
-        if ( !requestSigningSupported( signer ) )
-        {
-            return null;
-        }
-
-        HttpRequest httpRequest;
-
-        try
-        {
-            httpRequest = signer.signGetBlob( config.container, key, FIVE_MINUTES_IN_SECONDS );
-        }
-        catch ( UnsupportedOperationException uoe )
-        {
-            return null;
-        }
-
-        return httpRequest.getEndpoint();
+    try (InputStream in = jCloudsStore.getBlob(key).getPayload().openStream()) {
+      return IOUtils.toByteArray(in);
     }
+  }
 
-    // -------------------------------------------------------------------------
-    // Supportive methods
-    // -------------------------------------------------------------------------
+  @Override
+  public InputStream openStream(String key) throws IOException, NoSuchElementException {
+    ensureBlobExists(key);
 
-    private Blob getBlob( String key )
-    {
-        return blobStore.getBlob( config.container, key );
+    return jCloudsStore.getBlob(key).getPayload().openStream();
+  }
+
+  private void ensureBlobExists(String key) {
+    if (!jCloudsStore.blobExists(key)) {
+      throw new NoSuchElementException("key '" + key + "' not found.");
     }
+  }
 
-    private boolean blobExists( String key )
-    {
-        return key != null && blobStore.blobExists( config.container, key );
-    }
+  private Blob createBlob(@Nonnull FileResource fileResource, @Nonnull byte[] bytes) {
+    return jCloudsStore
+        .getBlobStore()
+        .blobBuilder(fileResource.getStorageKey())
+        .payload(bytes)
+        .contentLength(bytes.length)
+        .contentMD5(HashCode.fromString(fileResource.getContentMd5()))
+        .contentType(fileResource.getContentType())
+        .contentDisposition("filename=" + fileResource.getName())
+        .build();
+  }
 
-    private void deleteBlob( String key )
-    {
-        blobStore.removeBlob( config.container, key );
-    }
+  private Blob createBlob(
+      @Nonnull FileResource fileResource,
+      String fileDimension,
+      @Nonnull File file,
+      @Nonnull String contentMd5) {
+    return jCloudsStore
+        .getBlobStore()
+        .blobBuilder(StringUtils.join(fileResource.getStorageKey(), fileDimension))
+        .payload(file)
+        .contentLength(file.length())
+        .contentMD5(HashCode.fromString(contentMd5))
+        .contentType(fileResource.getContentType())
+        .contentDisposition("filename=" + fileResource.getName() + fileDimension)
+        .build();
+  }
 
-    private Blob createBlob( FileResource fileResource, byte[] bytes )
-    {
-        return blobStore.blobBuilder( fileResource.getStorageKey() )
-            .payload( bytes )
-            .contentLength( fileResource.getContentLength() )
-            .contentMD5( HashCode.fromString( fileResource.getContentMd5() ) )
-            .contentType( fileResource.getContentType() )
-            .contentDisposition( "filename=" + fileResource.getName() )
-            .build();
-    }
-
-    private Blob createBlob( FileResource fileResource, File file )
-    {
-        return blobStore.blobBuilder( fileResource.getStorageKey() )
-            .payload( file )
-            .contentLength( fileResource.getContentLength() )
-            .contentMD5( HashCode.fromString( fileResource.getContentMd5() ) )
-            .contentType( fileResource.getContentType() )
-            .contentDisposition( "filename=" + fileResource.getName() )
-            .build();
-    }
-
-    private boolean requestSigningSupported( BlobRequestSigner signer )
-    {
-        return !( signer instanceof RequestSigningUnsupported ) && !( signer instanceof LocalBlobRequestSigner );
-    }
-
-    private static Location createRegionLocation( BlobStoreProperties config, Location provider )
-    {
-        return config.location != null ?
-            new LocationBuilder()
-                .scope( LocationScope.REGION )
-                .id( config.location )
-                .description( config.location )
-                .parent( provider )
-                .build() : null;
-    }
-
-    private Pair<Credentials, Properties> configureForProvider( String provider, String identity, String secret )
-    {
-        Properties overrides = new Properties();
-        Credentials credentials = new Credentials( "Unused", "Unused" );
-
-        if ( provider.equals( JCLOUDS_PROVIDER_KEY_FILESYSTEM ) && locationManager.externalDirectorySet() )
-        {
-            overrides.setProperty( FilesystemConstants.PROPERTY_BASEDIR, locationManager.getExternalDirectoryPath() );
-        }
-        else if ( provider.equals( JCLOUDS_PROVIDER_KEY_AWS_S3 ) )
-        {
-            credentials = new Credentials( identity, secret );
-            overrides.setProperty( S3Constants.PROPERTY_S3_VIRTUAL_HOST_BUCKETS, "false" );
-
-            if ( credentials.identity.isEmpty() || credentials.credential.isEmpty() )
-            {
-                log.warn( "AWS S3 store configured without credentials, authentication not possible." );
-            }
-        }
-
-        return Pair.of( credentials, overrides );
-    }
-
-    // -------------------------------------------------------------------------
-    // Internal classes
-    // -------------------------------------------------------------------------
-
-    private class BlobStoreProperties
-    {
-        private String provider;
-        private String location;
-        private String container;
-
-        BlobStoreProperties( String provider, String location, String container )
-        {
-            this.provider = provider;
-            this.location = location;
-            this.container = container;
-
-            validate();
-            validateAndSelectProvider();
-        }
-
-        private void validate()
-        {
-            if ( !isValidContainerName( container ) )
-            {
-                if ( container != null )
-                {
-                    log.warn( String.format( "Container name '%s' is illegal. " +
-                        "Standard domain name naming conventions apply (no underscores allowed). " +
-                        "Using default container name ' %s'", container, ConfigurationKey.FILESTORE_CONTAINER.getDefaultValue() ) );
-                }
-
-                container = ConfigurationKey.FILESTORE_CONTAINER.getDefaultValue();
-            }
-        }
-
-        private boolean isValidContainerName( String containerName )
-        {
-            return containerName != null && CONTAINER_NAME_PATTERN.matcher( containerName ).matches();
-        }
-
-        private void validateAndSelectProvider()
-        {
-            if ( !SUPPORTED_PROVIDERS.contains( provider ) )
-            {
-                log.warn( "Ignored unsupported file store provider '" + provider + "', using file system provider." );
-                provider = JCLOUDS_PROVIDER_KEY_FILESYSTEM;
-            }
-
-            if ( provider.equals( JCLOUDS_PROVIDER_KEY_FILESYSTEM ) && !locationManager.externalDirectorySet() )
-            {
-                log.info( "File system file store provider could not be configured; external directory is not set. " +
-                    "Falling back to in-memory provider." );
-                provider = JCLOUDS_PROVIDER_KEY_TRANSIENT;
-            }
-        }
-    }
+  private boolean requestSigningSupported(BlobRequestSigner signer) {
+    return !(signer instanceof RequestSigningUnsupported)
+        && !(signer instanceof LocalBlobRequestSigner);
+  }
 }

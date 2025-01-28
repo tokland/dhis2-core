@@ -1,7 +1,5 @@
-package org.hisp.dhis.organisationunit;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,40 +25,33 @@ package org.hisp.dhis.organisationunit;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.organisationunit;
 
-public class OrganisationUnitRelationship
-{
-    private int parentId;
-    
-    private int childId;
-    
-    public OrganisationUnitRelationship()
-    {
-    }
-    
-    public OrganisationUnitRelationship( int parentId, int childId )
-    {
-        this.parentId = parentId;
-        this.childId = childId;
-    }
+public class OrganisationUnitRelationship {
+  private long parentId;
 
-    public int getParentId()
-    {
-        return parentId;
-    }
+  private long childId;
 
-    public void setParentId( int parentId )
-    {
-        this.parentId = parentId;
-    }
+  public OrganisationUnitRelationship() {}
 
-    public int getChildId()
-    {
-        return childId;
-    }
+  public OrganisationUnitRelationship(long parentId, long childId) {
+    this.parentId = parentId;
+    this.childId = childId;
+  }
 
-    public void setChildId( int childId )
-    {
-        this.childId = childId;
-    }
+  public long getParentId() {
+    return parentId;
+  }
+
+  public void setParentId(long parentId) {
+    this.parentId = parentId;
+  }
+
+  public long getChildId() {
+    return childId;
+  }
+
+  public void setChildId(long childId) {
+    this.childId = childId;
+  }
 }

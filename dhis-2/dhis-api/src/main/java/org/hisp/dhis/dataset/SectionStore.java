@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,19 +25,44 @@ package org.hisp.dhis.dataset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataset;
 
+import java.util.Collection;
+import java.util.List;
 import org.hisp.dhis.common.IdentifiableObjectStore;
+import org.hisp.dhis.dataelement.DataElement;
+import org.hisp.dhis.indicator.Indicator;
 
-public interface SectionStore
-    extends IdentifiableObjectStore<Section>
-{
-    String ID = SectionStore.class.getName();
+public interface SectionStore extends IdentifiableObjectStore<Section> {
+  /**
+   * Retrieves the Section with the given name and the given DataSet.
+   *
+   * @param name the name of the Section to retrieve.
+   * @return the Section.
+   */
+  Section getSectionByName(String name, DataSet dataSet);
 
-    /**
-     * Retrieves the Section with the given name and the given DataSet.
-     *
-     * @param name the name of the Section to retrieve.
-     * @return the Section.
-     */
-    Section getSectionByName( String name, DataSet dataSet );
+  /**
+   * Retrieves sections associated with the data element with the given UID.
+   *
+   * @param uid the data element UID.
+   * @return a list of {@link Section}.
+   */
+  List<Section> getSectionsByDataElement(String uid);
+
+  /**
+   * Retrieves sections associated with the given indicators.
+   *
+   * @param indicators the list of {@link Indicator}.
+   * @return a list of {@link Section}.
+   */
+  List<Section> getSectionsByIndicators(Collection<Indicator> indicators);
+
+  /**
+   * Retrieves sections associated with the given data elements.
+   *
+   * @param dataElements the list of {@link DataElement}.
+   * @return a list of {@link Section}.
+   */
+  List<Section> getSectionsByDataElement(Collection<DataElement> dataElements);
 }

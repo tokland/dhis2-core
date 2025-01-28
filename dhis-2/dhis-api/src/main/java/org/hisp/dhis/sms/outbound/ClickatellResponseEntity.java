@@ -1,8 +1,5 @@
-package org.hisp.dhis.sms.outbound;
-
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,44 +25,26 @@ package org.hisp.dhis.sms.outbound;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import java.util.List;
-import java.util.Map;
+package org.hisp.dhis.sms.outbound;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import java.util.List;
+import java.util.Map;
 
-/**
- * Zubair <rajazubair.asghar@gmail.com>
- */
+/** Zubair <rajazubair.asghar@gmail.com> */
+@JacksonXmlRootElement(localName = "responseEntity")
+public class ClickatellResponseEntity {
+  private Map<Object, List<Map<Object, Object>>> data;
 
-@JacksonXmlRootElement( localName = "responseEntity" )
-public class ClickatellResponseEntity
-{
+  @JsonProperty(value = "data")
+  @JacksonXmlProperty(localName = "data")
+  public Map<Object, List<Map<Object, Object>>> getData() {
+    return data;
+  }
 
-    private Map<Object, List<Map<Object, Object>>> data;
-
-    public ClickatellResponseEntity( Map<Object, List<Map<Object, Object>>> data )
-    {
-        super();
-        this.data = data;
-    }
-
-    public ClickatellResponseEntity()
-    {
-        super();
-    }
-
-    @JsonProperty( value = "data" )
-    @JacksonXmlProperty( localName = "data" )
-    public Map<Object, List<Map<Object, Object>>> getData()
-    {
-        return data;
-    }
-
-    public void setData( Map<Object, List<Map<Object, Object>>> data )
-    {
-        this.data = data;
-    }
+  public void setData(Map<Object, List<Map<Object, Object>>> data) {
+    this.data = data;
+  }
 }

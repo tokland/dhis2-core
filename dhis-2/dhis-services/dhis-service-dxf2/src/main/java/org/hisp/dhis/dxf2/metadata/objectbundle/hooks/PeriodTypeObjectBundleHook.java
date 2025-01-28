@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,62 +25,58 @@ package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
 
+import lombok.AllArgsConstructor;
 import org.hisp.dhis.common.IdentifiableObject;
 import org.hisp.dhis.dxf2.metadata.objectbundle.ObjectBundle;
+import org.hisp.dhis.hibernate.HibernateProxyUtils;
 import org.hisp.dhis.period.PeriodService;
 import org.hisp.dhis.period.PeriodType;
 import org.hisp.dhis.schema.Property;
 import org.hisp.dhis.schema.Schema;
 import org.hisp.dhis.system.util.ReflectionUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class PeriodTypeObjectBundleHook extends AbstractObjectBundleHook
-{
-    @Autowired
-    private PeriodService periodService;
+@Component
+@AllArgsConstructor
+public class PeriodTypeObjectBundleHook extends AbstractObjectBundleHook<IdentifiableObject> {
+  private final PeriodService periodService;
 
-    @Override
-    public <T extends IdentifiableObject> void preCreate( T object, ObjectBundle bundle )
-    {
-        Schema schema = schemaService.getDynamicSchema( object.getClass() );
+  @Override
+  public void preCreate(IdentifiableObject object, ObjectBundle bundle) {
+    Schema schema = schemaService.getDynamicSchema(HibernateProxyUtils.getRealClass(object));
 
-        for ( Property property : schema.getPropertyMap().values() )
-        {
-            if ( PeriodType.class.isAssignableFrom( property.getKlass() ) )
-            {
-                PeriodType periodType = ReflectionUtils.invokeMethod( object, property.getGetterMethod() );
+    for (Property property : schema.getPropertyMap().values()) {
+      if (PeriodType.class.isAssignableFrom(property.getKlass())) {
+        PeriodType periodType = ReflectionUtils.invokeMethod(object, property.getGetterMethod());
 
-                if ( periodType != null )
-                {
-                    periodType = bundle.getPreheat().getPeriodTypeMap().get( periodType.getName() );
-                    periodType = periodService.reloadPeriodType( periodType );
-                    ReflectionUtils.invokeMethod( object, property.getSetterMethod(), periodType );
-                }
-            }
+        if (periodType != null) {
+          periodType = bundle.getPreheat().getPeriodTypeMap().get(periodType.getName());
+          periodType = periodService.reloadPeriodType(periodType);
+          ReflectionUtils.invokeMethod(object, property.getSetterMethod(), periodType);
         }
+      }
     }
+  }
 
-    @Override
-    public <T extends IdentifiableObject> void preUpdate( T object, T persistedObject, ObjectBundle bundle )
-    {
-        Schema schema = schemaService.getDynamicSchema( object.getClass() );
+  @Override
+  public void preUpdate(
+      IdentifiableObject object, IdentifiableObject persistedObject, ObjectBundle bundle) {
+    Schema schema = schemaService.getDynamicSchema(HibernateProxyUtils.getRealClass(object));
 
-        for ( Property property : schema.getPropertyMap().values() )
-        {
-            if ( PeriodType.class.isAssignableFrom( property.getKlass() ) )
-            {
-                PeriodType periodType = ReflectionUtils.invokeMethod( object, property.getGetterMethod() );
+    for (Property property : schema.getPropertyMap().values()) {
+      if (PeriodType.class.isAssignableFrom(property.getKlass())) {
+        PeriodType periodType = ReflectionUtils.invokeMethod(object, property.getGetterMethod());
 
-                if ( periodType != null )
-                {
-                    periodType = bundle.getPreheat().getPeriodTypeMap().get( periodType.getName() );
-                    ReflectionUtils.invokeMethod( object, property.getSetterMethod(), periodType );
-                }
-            }
+        if (periodType != null) {
+          periodType = bundle.getPreheat().getPeriodTypeMap().get(periodType.getName());
+          ReflectionUtils.invokeMethod(object, property.getSetterMethod(), periodType);
         }
+      }
     }
+  }
 }

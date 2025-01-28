@@ -1,9 +1,14 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC
   "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-  "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+  "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd"
+    [<!ENTITY identifiableProperties SYSTEM "classpath://org/hisp/dhis/common/identifiableProperties.hbm">]
+    >
 
 <hibernate-mapping>
+
+  <typedef class="org.hibernate.type.PostgresUUIDType" name="pg-uuid" />
+
   <class name="org.hisp.dhis.user.User" lazy="false" table="userinfo">
 
     <cache usage="read-write" />
@@ -24,7 +29,13 @@
 
     <property name="firstName" not-null="true" length="160" />
 
+    <property name="name" length="321" insert="false" update="false" />
+
     <property name="email" length="160" />
+
+    <property name="verifiedEmail" />
+
+    <property name="emailVerificationToken" />
 
     <property name="phoneNumber" length="80" />
 
@@ -46,9 +57,23 @@
 
     <property name="languages" type="text" />
 
+    <property name="welcomeMessage" type="text" />
+
     <property name="lastCheckedInterpretations" type="timestamp" />
 
-    <one-to-one name="userCredentials" class="org.hisp.dhis.user.UserCredentials" foreign-key="fk_userinfo_userid" />
+    <property name="whatsApp" />
+
+    <property name="skype" />
+
+    <property name="facebookMessenger" />
+
+    <property name="telegram" />
+
+    <property name="twitter" />
+
+    <many-to-one name="lastUpdatedBy" class="org.hisp.dhis.user.User" column="lastupdatedby" foreign-key="fk_lastupdateby_userid" />
+
+    <many-to-one name="avatar" class="org.hisp.dhis.fileresource.FileResource" column="avatar" foreign-key="fk_user_fileresourceid" />
 
     <set name="groups" table="usergroupmembers" inverse="true">
       <cache usage="read-write" />
@@ -77,13 +102,11 @@
         foreign-key="fk_userteisearchorgunits_organisationunitid" />
     </set>
 
+    <property name="dataViewMaxOrganisationUnitLevel" column="dataviewmaxorgunitlevel" />
+
     <!-- Dynamic attribute values -->
 
-    <set name="attributeValues" table="userattributevalues" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="userinfoid" />
-      <many-to-many class="org.hisp.dhis.attribute.AttributeValue" column="attributevalueid" unique="true" />
-    </set>
+    <property name="attributeValues" type="jsbAttributeValues"/>
 
     <list name="apps" table="userapps">
       <cache usage="read-write" />
@@ -91,6 +114,74 @@
       <list-index column="sort_order" base="0" />
       <element type="string" column="app" />
     </list>
+
+    <property name="uuid" column="uuid" type="pg-uuid" not-null="false" unique="true" />
+
+    <many-to-one name="createdBy" class="org.hisp.dhis.user.User" column="creatoruserid" foreign-key="fk_user_userid" />
+
+    <property name="username" column="username" not-null="true" unique="true" />
+
+    <property name="password" length="60" column="password" not-null="false" />
+
+    <property name="secret" type="text" not-null="false" />
+
+    <property name="twoFactorType" column="twofactortype" length="50" not-null="false"  >
+      <type name="org.hibernate.type.EnumType">
+        <param name="enumClass">org.hisp.dhis.security.twofa.TwoFactorType</param>
+        <param name="useNamed">true</param>
+        <param name="type">12</param>
+      </type>
+    </property>
+
+    <property name="externalAuth" column="externalauth" />
+
+    <property name="openId" column="openid" type="text" />
+
+    <property name="ldapId" column="ldapid" unique="true" type="text" />
+
+    <property name="passwordLastUpdated" />
+
+    <set name="userRoles" table="userrolemembers" cascade="all">
+      <cache usage="read-write"/>
+      <key column="userid" foreign-key="fk_userrolemembers_userid"/>
+      <many-to-many column="userroleid" class="org.hisp.dhis.user.UserRole"/>
+    </set>
+
+    <list name="previousPasswords" table="previouspasswords">
+      <key column="userid" />
+      <list-index column="list_index" />
+      <element column="previouspassword" type="text" />
+    </list>
+
+    <set name="cogsDimensionConstraints" table="users_cogsdimensionconstraints">
+      <cache usage="read-write" />
+      <key column="userid" foreign-key="fk_users_cogsconstraints_userid" />
+      <many-to-many column="categoryoptiongroupsetid" class="org.hisp.dhis.category.CategoryOptionGroupSet"
+                    foreign-key="fk_fk_users_cogsconstraints_categoryoptiongroupsetid" />
+    </set>
+
+    <set name="catDimensionConstraints" table="users_catdimensionconstraints">
+      <cache usage="read-write" />
+      <key column="userid" foreign-key="fk_users_catconstraints_userid" />
+      <many-to-many column="dataelementcategoryid" class="org.hisp.dhis.category.Category"
+                    foreign-key="fk_fk_users_catconstraints_dataelementcategoryid" />
+    </set>
+
+    <property name="lastLogin" />
+
+    <property name="idToken" />
+
+    <property name="restoreToken"/>
+
+    <property name="restoreExpiry" type="timestamp"/>
+
+    <property name="selfRegistered"/>
+
+    <property name="invitation"/>
+
+    <property name="disabled"/>
+
+    <property name="accountExpiry" type="timestamp"/>
 
   </class>
 

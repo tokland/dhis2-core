@@ -24,6 +24,10 @@
 
     <property name="style" type="jbObjectStyle" column="style" />
 
+    <property name="fieldMask" />
+
+    <property name="translations" type="jblTranslations"/>
+
     <property name="valueType" length="50" not-null="true">
       <type name="org.hibernate.type.EnumType">
         <param name="enumClass">org.hisp.dhis.common.ValueType</param>
@@ -31,6 +35,8 @@
         <param name="type">12</param>
       </type>
     </property>
+
+    <property name="valueTypeOptions" type="jbValueTypeOptions"/>
 
     <property name="domainType" column="domainType" type="org.hisp.dhis.dataelement.DataElementDomainUserType" not-null="true" />
 
@@ -42,7 +48,7 @@
       </type>
     </property>
 
-    <many-to-one name="dataElementCategoryCombo" class="org.hisp.dhis.category.CategoryCombo"
+    <many-to-one name="categoryCombo" class="org.hisp.dhis.category.CategoryCombo"
       column="categorycomboid" not-null="true" foreign-key="fk_dataelement_categorycomboid" />
 
     <property name="url" />
@@ -82,35 +88,12 @@
     </list>
 
     <!-- Dynamic attribute values -->
-    <set name="attributeValues" table="dataelementattributevalues" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="dataelementid" />
-      <many-to-many class="org.hisp.dhis.attribute.AttributeValue" column="attributevalueid" unique="true" />
-    </set>
+    <property name="attributeValues" type="jsbAttributeValues"/>
 
-    <!-- Object Translation -->
-    <set name="translations" table="dataelementtranslations" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="dataelementid" foreign-key="fk_objecttranslation_dataelementid" />
-      <many-to-many class="org.hisp.dhis.translation.ObjectTranslation" column="objecttranslationid" unique="true" />
-    </set>
+    <many-to-one name="createdBy" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_dataelement_userid" />
 
-    <!-- Access properties -->
-    <many-to-one name="user" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_dataelement_userid" />
-
-    <property name="publicAccess" length="8" />
-
-    <set name="userGroupAccesses" table="dataelementusergroupaccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="dataelementid" />
-      <many-to-many class="org.hisp.dhis.user.UserGroupAccess" column="usergroupaccessid" unique="true" />
-    </set>
-
-    <set name="userAccesses" table="dataelementuseraccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="dataelementid" />
-      <many-to-many class="org.hisp.dhis.user.UserAccess" column="useraccessid" unique="true" />
-    </set>
+    <!-- Sharing -->
+    <property name="sharing" type="jsbObjectSharing"/>
 
   </class>
 

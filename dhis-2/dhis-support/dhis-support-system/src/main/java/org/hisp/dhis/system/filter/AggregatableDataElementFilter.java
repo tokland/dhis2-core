@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.filter;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.system.filter;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.filter;
 
 import org.hisp.dhis.commons.filter.Filter;
 import org.hisp.dhis.dataelement.DataElement;
@@ -34,14 +33,11 @@ import org.hisp.dhis.dataelement.DataElement;
 /**
  * @author Lars Helge Overland
  */
-public class AggregatableDataElementFilter
-    implements Filter<DataElement>
-{
-    public static final AggregatableDataElementFilter INSTANCE = new AggregatableDataElementFilter();
+public class AggregatableDataElementFilter implements Filter<DataElement> {
+  public static final AggregatableDataElementFilter INSTANCE = new AggregatableDataElementFilter();
 
-    @Override
-    public boolean retain( DataElement object )
-    {
-        return object != null && object.getValueType().isAggregateable() && object.getAggregationType().isAggregateable();
-    }
+  @Override
+  public boolean retain(DataElement object) {
+    return object.getValueType().isAggregatable(object.getAggregationType());
+  }
 }

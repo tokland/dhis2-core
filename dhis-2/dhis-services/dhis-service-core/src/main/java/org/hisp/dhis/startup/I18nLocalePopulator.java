@@ -1,7 +1,5 @@
-package org.hisp.dhis.startup;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,50 +25,50 @@ package org.hisp.dhis.startup;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.startup;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.Locale;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.hisp.dhis.i18n.I18nLocaleService;
 import org.hisp.dhis.i18n.locale.I18nLocale;
 import org.hisp.dhis.system.startup.TransactionContextStartupRoutine;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import com.google.common.collect.ImmutableSet;
+import org.hisp.dhis.user.SystemUser;
 
 /**
  * Populates default I18nLocales if none exists.
- * 
+ *
  * @author Lars Helge Overland
  */
-public class I18nLocalePopulator
-    extends TransactionContextStartupRoutine
-{
-    private static final Log log = LogFactory.getLog( I18nLocalePopulator.class );
-    
-    @Autowired
-    private I18nLocaleService localeService;
-    
-    private static final ImmutableSet<String> DEFAULT_LOCALES = ImmutableSet.of( 
-        "af","ar","bi","am","de","dz","en","es","fa","fr","gu","hi","id","it",
-        "km","lo","my","ne","nl","no","ps","pt","ru","rw","sw","tg","vi","zh" );
+@Slf4j
+public class I18nLocalePopulator extends TransactionContextStartupRoutine {
+  private final I18nLocaleService localeService;
 
-    @Override
-    public void executeInTransaction()
-    {
-        int count = localeService.getI18nLocaleCount();
-        
-        if ( count > 0 )
-        {
-            return;
-        }
-        
-        for ( String locale : DEFAULT_LOCALES )
-        {
-            localeService.saveI18nLocale( new I18nLocale( new Locale( locale ) ) );
-        }
+  public I18nLocalePopulator(I18nLocaleService localeService) {
+    checkNotNull(localeService);
 
-        log.info( "Populated default locales" );
+    this.localeService = localeService;
+  }
+
+  private static final Set<String> DEFAULT_LOCALES =
+      Set.of(
+          "af", "ar", "bi", "am", "de", "dz", "en", "es", "fa", "fr", "gu", "hi", "id", "it", "km",
+          "lo", "my", "ne", "nl", "no", "ps", "pt", "ru", "rw", "sw", "tg", "vi", "zh");
+
+  @Override
+  public void executeInTransaction() {
+    int count = localeService.getI18nLocaleCount();
+
+    if (count > 0) {
+      return;
     }
+
+    for (String locale : DEFAULT_LOCALES) {
+      localeService.saveI18nLocale(new I18nLocale(new Locale(locale)), new SystemUser());
+    }
+
+    log.info("Populated default locales");
+  }
 }

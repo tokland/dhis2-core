@@ -1,7 +1,5 @@
-package org.hisp.dhis.common;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,36 +25,32 @@ package org.hisp.dhis.common;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.common;
 
 /**
  * @author Lars Helge Overland
  */
-public enum DataDimensionType
-{
-    DISAGGREGATION("disaggregation"), ATTRIBUTE("attribute");
-    
-    private final String value;
+public enum DataDimensionType {
+  DISAGGREGATION("disaggregation"),
+  ATTRIBUTE("attribute");
 
-    DataDimensionType( String value )
-    {
-        this.value = value;
+  private final String value;
+
+  DataDimensionType(String value) {
+    this.value = value;
+  }
+
+  public static DataDimensionType fromValue(String value) {
+    for (DataDimensionType type : DataDimensionType.values()) {
+      if (type.value.equalsIgnoreCase(value)) {
+        return type;
+      }
     }
 
-    public static DataDimensionType fromValue( String value )
-    {
-        for ( DataDimensionType type : DataDimensionType.values() )
-        {
-            if ( type.value.equalsIgnoreCase( value ) )
-            {
-                return type;
-            }
-        }
+    return null;
+  }
 
-        return null;
-    }
-    
-    public String getValue()
-    {
-        return value;
-    }
+  public String getValue() {
+    return value;
+  }
 }

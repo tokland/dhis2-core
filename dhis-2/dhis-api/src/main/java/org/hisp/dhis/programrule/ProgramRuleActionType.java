@@ -1,7 +1,5 @@
-package org.hisp.dhis.programrule;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,55 +25,71 @@ package org.hisp.dhis.programrule;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.programrule;
 
-import com.google.common.collect.ImmutableSet;
+import static org.hisp.dhis.programrule.ProgramRuleActionEvaluationTime.ON_COMPLETE;
+import static org.hisp.dhis.programrule.ProgramRuleActionEvaluationTime.ON_DATA_ENTRY;
+import static org.hisp.dhis.programrule.ProgramRuleActionEvaluationTime.getAll;
 
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.dataelement.DataElement;
+import org.hisp.dhis.notification.NotificationTemplate;
+import org.hisp.dhis.trackedentity.TrackedEntityAttribute;
 
 /**
  * @author Markus Bekken
  */
-public enum ProgramRuleActionType
-{
-    DISPLAYTEXT( "displaytext" ),
-    DISPLAYKEYVALUEPAIR( "displaykeyvaluepair" ),
-    HIDEFIELD( "hidefield" ),
-    HIDESECTION( "hidesection" ),
-    HIDEPROGRAMSTAGE( "hideprogramstage"),
-    ASSIGN( "assign" ),
-    SHOWWARNING( "showwarning" ),
-    WARNINGONCOMPLETE( "warningoncomplete" ),
-    SHOWERROR( "showerror" ),
-    ERRORONCOMPLETE( "erroroncomplete" ),
-    CREATEEVENT( "createevent" ),
-    SETMANDATORYFIELD( "setmandatoryfield" ),
-    SENDMESSAGE( "sendmessage" );
+@RequiredArgsConstructor
+public enum ProgramRuleActionType {
+  DISPLAYTEXT("displaytext"),
+  DISPLAYKEYVALUEPAIR("displaykeyvaluepair"),
+  HIDEFIELD("hidefield"),
+  HIDESECTION("hidesection"),
+  HIDEPROGRAMSTAGE("hideprogramstage"),
+  ASSIGN("assign", Set.of(ON_DATA_ENTRY, ON_COMPLETE)),
+  SHOWWARNING("showwarning"),
+  WARNINGONCOMPLETE("warningoncomplete"),
+  SHOWERROR("showerror"),
+  ERRORONCOMPLETE("erroroncomplete"),
+  CREATEEVENT("createevent"),
+  SETMANDATORYFIELD("setmandatoryfield", Set.of(ON_DATA_ENTRY)),
+  SENDMESSAGE("sendmessage", Set.of(ON_DATA_ENTRY, ON_COMPLETE)),
+  SCHEDULEMESSAGE("schedulemessage", Set.of(ON_DATA_ENTRY, ON_COMPLETE)),
+  HIDEOPTION("hideoption"),
+  SHOWOPTIONGROUP("showoptiongroup"),
+  HIDEOPTIONGROUP("hideoptiongroup");
 
-    final String value;
+  final String value;
 
-    private static final Set<ProgramRuleActionType> IMPLEMENTED_ACTIONS =
-        new ImmutableSet.Builder<ProgramRuleActionType>().add( SENDMESSAGE ).build(); // Actions having back end implementation
+  final Set<ProgramRuleActionEvaluationTime> whenToRun;
 
-    ProgramRuleActionType( String value )
-    {
-        this.value = value;
-    }
+  /** Actions which require server-side execution. */
+  public static final Set<ProgramRuleActionType> IMPLEMENTED_ACTIONS =
+      Set.of(SENDMESSAGE, SCHEDULEMESSAGE, ASSIGN);
 
-    public static ProgramRuleActionType fromValue( String value )
-    {
-        for ( ProgramRuleActionType type : ProgramRuleActionType.values() )
-        {
-            if ( type.value.equalsIgnoreCase( value ) )
-            {
-                return type;
-            }
-        }
+  /** Actions associated with {@link DataElement} or {@link TrackedEntityAttribute}. */
+  public static final Set<ProgramRuleActionType> DATA_LINKED_TYPES =
+      Set.of(HIDEFIELD, SETMANDATORYFIELD, HIDEOPTION, HIDEOPTIONGROUP, SHOWOPTIONGROUP);
 
-        return null;
-    }
+  /** Actions associated with {@link NotificationTemplate}. */
+  public static final Set<ProgramRuleActionType> NOTIFICATION_LINKED_TYPES =
+      Set.of(SENDMESSAGE, SCHEDULEMESSAGE);
 
-    public boolean isImplementable()
-    {
-        return IMPLEMENTED_ACTIONS.contains( this );
-    }
+  /** Complete set of actions which require server-side execution. */
+  public static final Set<ProgramRuleActionType> SERVER_SUPPORTED_TYPES =
+      Set.of(
+          SENDMESSAGE,
+          SCHEDULEMESSAGE,
+          SHOWERROR,
+          SHOWWARNING,
+          ERRORONCOMPLETE,
+          WARNINGONCOMPLETE,
+          ASSIGN,
+          SETMANDATORYFIELD);
+
+  ProgramRuleActionType(String value) {
+    this.value = value;
+    this.whenToRun = getAll();
+  }
 }

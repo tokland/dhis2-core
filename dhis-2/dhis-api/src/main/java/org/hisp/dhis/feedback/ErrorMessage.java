@@ -1,7 +1,5 @@
-package org.hisp.dhis.feedback;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,31 +25,45 @@ package org.hisp.dhis.feedback;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.feedback;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.text.MessageFormat;
+import java.util.List;
+import java.util.stream.Stream;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
+import lombok.Getter;
+import lombok.ToString;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class ErrorMessage
-{
-    private final ErrorCode errorCode;
+@Getter
+@ToString
+public class ErrorMessage {
 
-    private final Object[] args;
+  @JsonProperty private final ErrorCode errorCode;
+  @JsonProperty private final List<String> args;
+  @JsonProperty private String message;
 
-    public ErrorMessage( ErrorCode errorCode, Object... args )
-    {
-        this.errorCode = errorCode;
-        this.args = args;
-    }
+  public ErrorMessage(ErrorCode errorCode, Object... args) {
+    this.errorCode = errorCode;
+    this.args =
+        Stream.of(args)
+            .map(obj -> obj == null ? null : obj.toString())
+            .toList(); // OBS! Must support null values!
+    this.message = MessageFormat.format(errorCode.getMessage(), args);
+  }
 
-    public ErrorCode getErrorCode()
-    {
-        return errorCode;
-    }
-
-    public String getMessage()
-    {
-        return MessageFormat.format( errorCode.getMessage(), args );
-    }
+  @JsonCreator
+  public ErrorMessage(
+      @Nonnull @JsonProperty("message") String message,
+      @Nonnull @JsonProperty("errorCode") ErrorCode errorCode,
+      @CheckForNull @JsonProperty("args") List<String> args) {
+    this.errorCode = errorCode;
+    this.args = args == null ? List.of() : args;
+    this.message = message;
+  }
 }

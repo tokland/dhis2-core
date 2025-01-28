@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.util;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,62 +25,52 @@ package org.hisp.dhis.system.util;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.common.IdentifiableObject;
+package org.hisp.dhis.system.util;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.function.Predicate;
+import org.hisp.dhis.common.IdentifiableObject;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class PredicateUtils
-{
-    public static final Predicate<Field> idObjectCollections = new CollectionWithTypePredicate( IdentifiableObject.class );
+public class PredicateUtils {
+  public static final Predicate<Field> idObjectCollections =
+      new CollectionWithTypePredicate(IdentifiableObject.class);
 
-    private static class CollectionPredicate
-        implements Predicate<Field>
-    {
-        @Override
-        public boolean test( Field field )
-        {
-            return Collection.class.isAssignableFrom( field.getType() );
-        }
+  private static class CollectionPredicate implements Predicate<Field> {
+    @Override
+    public boolean test(Field field) {
+      return Collection.class.isAssignableFrom(field.getType());
+    }
+  }
+
+  private static class CollectionWithTypePredicate implements Predicate<Field> {
+    private CollectionPredicate collectionPredicate = new CollectionPredicate();
+
+    private Class<?> type;
+
+    CollectionWithTypePredicate(Class<?> type) {
+      this.type = type;
     }
 
-    private static class CollectionWithTypePredicate
-        implements Predicate<Field>
-    {
-        private CollectionPredicate collectionPredicate = new CollectionPredicate();
+    @Override
+    public boolean test(Field field) {
+      if (collectionPredicate.test(field)) {
+        ParameterizedType parameterizedType = (ParameterizedType) field.getGenericType();
+        Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
 
-        private Class<?> type;
-
-        CollectionWithTypePredicate( Class<?> type )
-        {
-            this.type = type;
+        if (actualTypeArguments.length > 0) {
+          if (type.isAssignableFrom((Class<?>) actualTypeArguments[0])) {
+            return true;
+          }
         }
+      }
 
-        @Override
-        public boolean test( Field field )
-        {
-            if ( collectionPredicate.test( field ) )
-            {
-                ParameterizedType parameterizedType = (ParameterizedType) field.getGenericType();
-                Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
-
-                if ( actualTypeArguments.length > 0 )
-                {
-                    if ( type.isAssignableFrom( (Class<?>) actualTypeArguments[0] ) )
-                    {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
+      return false;
     }
+  }
 }

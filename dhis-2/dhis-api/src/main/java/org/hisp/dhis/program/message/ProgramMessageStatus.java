@@ -1,7 +1,5 @@
-package org.hisp.dhis.program.message;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,16 +25,18 @@ package org.hisp.dhis.program.message;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.common.DxfNamespaces;
+package org.hisp.dhis.program.message;
 
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import org.hisp.dhis.common.DxfNamespaces;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
  */
-@JacksonXmlRootElement( localName = "programMessageStatus", namespace = DxfNamespaces.DXF_2_0 )
-public enum ProgramMessageStatus
-{
-    SENT, FAILED, SCHEDULED, OUTBOUND
+@JacksonXmlRootElement(localName = "programMessageStatus", namespace = DxfNamespaces.DXF_2_0)
+public enum ProgramMessageStatus {
+  SENT,
+  FAILED,
+  SCHEDULED,
+  OUTBOUND
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.sync.exception;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,25 +25,21 @@ package org.hisp.dhis.dxf2.metadata.sync.exception;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.sync.exception;
 
 /**
- * @author  aamerm.
+ * @author aamerm.
  */
-public class RemoteServerUnavailableException
-    extends RuntimeException
-{
-    public RemoteServerUnavailableException( String message )
-    {
-        super( message );
-    }
+public class RemoteServerUnavailableException extends RuntimeException {
+  public RemoteServerUnavailableException(String message) {
+    super(message);
+  }
 
-    public RemoteServerUnavailableException( Throwable cause )
-    {
-        super( cause );
-    }
+  public RemoteServerUnavailableException(Throwable cause) {
+    super(cause);
+  }
 
-    public RemoteServerUnavailableException( String message, Throwable cause )
-    {
-        super( message, cause );
-    }
+  public RemoteServerUnavailableException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

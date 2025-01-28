@@ -1,7 +1,5 @@
-package org.hisp.dhis.program.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,16 +25,44 @@ package org.hisp.dhis.program.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program.hibernate;
 
+import jakarta.persistence.EntityManager;
+import java.util.List;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
+import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.program.ProgramStageSection;
 import org.hisp.dhis.program.ProgramStageSectionStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Chau Thu Tran
  */
+@Repository("org.hisp.dhis.program.ProgramStageSectionStore")
 public class HibernateProgramStageSectionStore
     extends HibernateIdentifiableObjectStore<ProgramStageSection>
-    implements ProgramStageSectionStore
-{
+    implements ProgramStageSectionStore {
+  public HibernateProgramStageSectionStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, ProgramStageSection.class, aclService, true);
+  }
+
+  @Override
+  public List<ProgramStageSection> getAllByDataElement(List<DataElement> dataElements) {
+    return getQuery(
+            """
+            select pss from ProgramStageSection pss
+            join pss.dataElements de
+            where de in :dataElements
+            group by pss
+            """)
+        .setParameter("dataElements", dataElements)
+        .list();
+  }
 }

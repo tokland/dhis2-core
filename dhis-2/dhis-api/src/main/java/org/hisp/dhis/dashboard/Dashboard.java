@@ -1,7 +1,5 @@
-package org.hisp.dhis.dashboard;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,147 +25,142 @@ package org.hisp.dhis.dashboard;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dashboard;
+
+import static org.hisp.dhis.common.DxfNamespaces.DXF_2_0;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.NoArgsConstructor;
 import org.hisp.dhis.common.BaseIdentifiableObject;
 import org.hisp.dhis.common.BaseNameableObject;
 import org.hisp.dhis.common.DxfNamespaces;
 import org.hisp.dhis.common.MetadataObject;
-
-import java.util.ArrayList;
-import java.util.List;
+import org.hisp.dhis.dashboard.design.ItemConfig;
+import org.hisp.dhis.dashboard.design.Layout;
+import org.hisp.dhis.dashboard.embedded.EmbeddedDashboard;
 
 /**
+ * Encapsulates information about an embedded dashboard. An embedded dashboard is typically loaded
+ * from an external provider.
+ *
  * @author Lars Helge Overland
  */
-@JacksonXmlRootElement( localName = "dashboard", namespace = DxfNamespaces.DXF_2_0 )
-public class Dashboard
-    extends BaseNameableObject implements MetadataObject
-{
-    public static final int MAX_ITEMS = 40;
-    
-    private List<DashboardItem> items = new ArrayList<>();
+@NoArgsConstructor
+@JacksonXmlRootElement(localName = "dashboard", namespace = DxfNamespaces.DXF_2_0)
+public class Dashboard extends BaseNameableObject implements MetadataObject {
+  public static final int MAX_ITEMS = 40;
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------
+  private List<DashboardItem> items = new ArrayList<>();
 
-    public Dashboard()
-    {
-    }
+  private Layout layout;
 
-    public Dashboard( String name )
-    {
-        this.name = name;
-    }
+  private ItemConfig itemConfig;
 
-    // -------------------------------------------------------------------------
-    // Logic
-    // -------------------------------------------------------------------------
+  /**
+   * Whether filter dimensions are restricted for the dashboard. The allowed filter dimensions are
+   * specified by {@link Dashboard#allowedFilters}.
+   */
+  private boolean restrictFilters;
 
-    /**
-     * Moves an item in the list. Returns true if the operation lead to a
-     * modification of the list order. Returns false if there are no items,
-     * the given position is out of bounds, the item is not present, if position
-     * is equal to current item index or if attempting to move an item one
-     * position to the right (pointless operation).
-     *
-     * @param uid      the uid of the item to move.
-     * @param position the new index position of the item.
-     * @return true if the operation lead to a modification of order, false otherwise.
-     */
-    public boolean moveItem( String uid, int position )
-    {
-        if ( items == null || position < 0 || position > items.size() )
-        {
-            return false; // No items or position out of bounds
-        }
+  /** Allowed filter dimensions (if any) which may be used for the dashboard. */
+  private List<String> allowedFilters = new ArrayList<>();
 
-        int index = items.indexOf( new DashboardItem( uid ) );
+  /** Optional, only set if this dashboard is embedded and loaded from an external provider. */
+  private EmbeddedDashboard embedded;
 
-        if ( index == -1 || index == position || (index + 1) == position )
-        {
-            return false; // Not found, already at position or pointless move
-        }
+  // -------------------------------------------------------------------------
+  // Constructors
+  // -------------------------------------------------------------------------
 
-        DashboardItem item = items.get( index );
+  public Dashboard(String name) {
+    this.name = name;
+  }
 
-        index = position < index ? (index + 1) : index; // New index after move
+  // -------------------------------------------------------------------------
+  // Logic
+  // -------------------------------------------------------------------------
 
-        items.add( position, item ); // Add item at position
-        items.remove( index ); // Remove item at previous index
+  /** Indicates whether this dashboard has at least one item. */
+  public boolean hasItems() {
+    return items != null && !items.isEmpty();
+  }
 
-        return true;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public int getItemCount() {
+    return items == null ? 0 : items.size();
+  }
 
-    /**
-     * Returns the item with the given uid, or null if no item with the given
-     * uid is present for this dashboard.
-     *
-     * @param uid the item identifier.
-     * @return an item.
-     */
-    public DashboardItem getItemByUid( String uid )
-    {
-        int index = items.indexOf( new DashboardItem( uid ) );
+  // -------------------------------------------------------------------------
+  // Getters and setters
+  // -------------------------------------------------------------------------
 
-        return index != -1 ? items.get( index ) : null;
-    }
+  @JsonProperty("dashboardItems")
+  @JsonSerialize(contentAs = BaseIdentifiableObject.class)
+  @JacksonXmlElementWrapper(localName = "dashboardItems", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "dashboardItem", namespace = DxfNamespaces.DXF_2_0)
+  public List<DashboardItem> getItems() {
+    return items;
+  }
 
-    /**
-     * Returns an item from this dashboard of the given type which number of
-     * content is less than max. Returns null if no item matches the criteria.
-     *
-     * @param type the type of content to return.
-     * @return an item.
-     */
-    public DashboardItem getAvailableItemByType( DashboardItemType type )
-    {
-        for ( DashboardItem item : items )
-        {
-            if ( type.equals( item.getType() ) && item.getContentCount() < DashboardItem.MAX_CONTENT )
-            {
-                return item;
-            }
-        }
+  public void setItems(List<DashboardItem> items) {
+    this.items = items;
+  }
 
-        return null;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DXF_2_0)
+  public Layout getLayout() {
+    return layout;
+  }
 
-    /**
-     * Indicates whether this dashboard has at least one item.
-     */
-    public boolean hasItems()
-    {
-        return items != null && !items.isEmpty();
-    }
+  public void setLayout(Layout layout) {
+    this.layout = layout;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public int getItemCount()
-    {
-        return items == null ? 0 : items.size();
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DXF_2_0)
+  public ItemConfig getItemConfig() {
+    return itemConfig;
+  }
 
-    // -------------------------------------------------------------------------
-    // Getters and setters
-    // -------------------------------------------------------------------------
+  public void setItemConfig(ItemConfig itemConfig) {
+    this.itemConfig = itemConfig;
+  }
 
-    @JsonProperty( "dashboardItems" )
-    @JsonSerialize( contentAs = BaseIdentifiableObject.class )
-    @JacksonXmlElementWrapper( localName = "dashboardItems", namespace = DxfNamespaces.DXF_2_0 )
-    @JacksonXmlProperty( localName = "dashboardItem", namespace = DxfNamespaces.DXF_2_0 )
-    public List<DashboardItem> getItems()
-    {
-        return items;
-    }
+  @JsonProperty
+  @JacksonXmlProperty
+  public boolean isRestrictFilters() {
+    return restrictFilters;
+  }
 
-    public void setItems( List<DashboardItem> items )
-    {
-        this.items = items;
-    }
+  public void setRestrictFilters(boolean restrictFilters) {
+    this.restrictFilters = restrictFilters;
+  }
+
+  @JsonProperty
+  @JacksonXmlElementWrapper(localName = "allowedFilters", namespace = DxfNamespaces.DXF_2_0)
+  @JacksonXmlProperty(localName = "allowedFilter", namespace = DxfNamespaces.DXF_2_0)
+  public List<String> getAllowedFilters() {
+    return allowedFilters;
+  }
+
+  public void setAllowedFilters(List<String> allowedFilters) {
+    this.allowedFilters = allowedFilters;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DXF_2_0)
+  public EmbeddedDashboard getEmbedded() {
+    return embedded;
+  }
+
+  public void setEmbedded(EmbeddedDashboard embedded) {
+    this.embedded = embedded;
+  }
 }

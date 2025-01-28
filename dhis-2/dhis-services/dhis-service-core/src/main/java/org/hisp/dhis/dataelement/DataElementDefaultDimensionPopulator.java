@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataelement;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,99 +25,95 @@ package org.hisp.dhis.dataelement;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataelement;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static org.hisp.dhis.user.CurrentUserUtil.clearSecurityContext;
+import static org.hisp.dhis.user.CurrentUserUtil.injectUserInSecurityContext;
+
+import java.util.Collection;
+import lombok.extern.slf4j.Slf4j;
 import org.hisp.dhis.category.Category;
 import org.hisp.dhis.category.CategoryCombo;
 import org.hisp.dhis.category.CategoryService;
 import org.hisp.dhis.system.startup.TransactionContextStartupRoutine;
-
-import java.util.Collection;
+import org.hisp.dhis.user.CurrentUserUtil;
+import org.hisp.dhis.user.SystemUser;
 
 /**
- * When storing DataValues without associated dimensions there is a need to
- * refer to a default dimension. This populator persists a
- * CategoryCombo named by the
- * CategoryCombo.DEFAULT_CATEGORY_COMBO_NAME property and a
- * corresponding DataElementCatoryOptionCombo which should be used for this
- * purpose.
- * 
+ * When storing DataValues without associated dimensions there is a need to refer to a default
+ * dimension. This populator persists a CategoryCombo named by the
+ * CategoryCombo.DEFAULT_CATEGORY_COMBO_NAME property and a corresponding
+ * DataElementCatoryOptionCombo which should be used for this purpose.
+ *
  * @author Lars Helge Overland
  * @author Abyot Aselefew
- * @version $Id$
  */
-public class DataElementDefaultDimensionPopulator
-    extends TransactionContextStartupRoutine
-{
-    private static final Log log = LogFactory.getLog( DataElementDefaultDimensionPopulator.class );
+@Slf4j
+public class DataElementDefaultDimensionPopulator extends TransactionContextStartupRoutine {
+  // -------------------------------------------------------------------------
+  // Dependencies
+  // -------------------------------------------------------------------------
 
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+  private final DataElementService dataElementService;
+  private final CategoryService categoryService;
 
-    private DataElementService dataElementService;
+  public DataElementDefaultDimensionPopulator(
+      DataElementService dataElementService, CategoryService categoryService) {
+    checkNotNull(dataElementService);
+    checkNotNull(categoryService);
+    this.dataElementService = dataElementService;
+    this.categoryService = categoryService;
+  }
 
-    public void setDataElementService( DataElementService dataElementService )
-    {
-        this.dataElementService = dataElementService;
+  // -------------------------------------------------------------------------
+  // Execute
+  // -------------------------------------------------------------------------
+
+  @Override
+  public void executeInTransaction() {
+    SystemUser actingUser = new SystemUser();
+
+    boolean hasCurrentUser = CurrentUserUtil.hasCurrentUser();
+    if (!hasCurrentUser) {
+      injectUserInSecurityContext(actingUser);
     }
 
-    private CategoryService categoryService;
+    Category defaultCategory =
+        categoryService.getCategoryByName(Category.DEFAULT_NAME, new SystemUser());
 
-    public void setCategoryService( CategoryService categoryService )
-    {
-        this.categoryService = categoryService;
+    if (defaultCategory == null) {
+      categoryService.generateDefaultDimension(actingUser);
+      defaultCategory = categoryService.getCategoryByName(Category.DEFAULT_NAME, new SystemUser());
+      log.info("Added default category");
     }
 
-    // -------------------------------------------------------------------------
-    // Execute
-    // -------------------------------------------------------------------------
+    categoryService.updateCategory(defaultCategory, actingUser);
+    String defaultName = CategoryCombo.DEFAULT_CATEGORY_COMBO_NAME;
+    CategoryCombo categoryCombo = categoryService.getCategoryComboByName(defaultName);
 
-    @Override
-    public void executeInTransaction()
-    {
-        Category defaultCategory = categoryService.getCategoryByName( Category.DEFAULT_NAME );
-
-        if ( defaultCategory == null )
-        {
-            categoryService.generateDefaultDimension();
-
-            defaultCategory = categoryService.getCategoryByName( Category.DEFAULT_NAME );
-
-            log.info( "Added default category" );
-        }
-
-        categoryService.updateCategory( defaultCategory );
-
-        String defaultName = CategoryCombo.DEFAULT_CATEGORY_COMBO_NAME;
-
-        CategoryCombo categoryCombo = categoryService.getCategoryComboByName( defaultName );
-
-        if ( categoryCombo == null )
-        {
-            categoryService.generateDefaultDimension();
-
-            log.info( "Added default dataelement dimension" );
-
-            categoryCombo = categoryService.getCategoryComboByName( defaultName );
-        }
-
-        // ---------------------------------------------------------------------
-        // Any data elements without dimensions need to be associated at least
-        // with the default dimension
-        // ---------------------------------------------------------------------
-
-        Collection<DataElement> dataElements = dataElementService.getAllDataElements();
-
-        for ( DataElement dataElement : dataElements )
-        {
-            if ( dataElement.getDataElementCategoryCombo() == null )
-            {
-                dataElement.setDataElementCategoryCombo( categoryCombo );
-
-                dataElementService.updateDataElement( dataElement );
-            }
-        }
+    if (categoryCombo == null) {
+      categoryService.generateDefaultDimension(actingUser);
+      log.info("Added default dataelement dimension");
+      categoryCombo = categoryService.getCategoryComboByName(defaultName);
     }
+
+    // ---------------------------------------------------------------------
+    // Any data elements without dimensions need to be associated at least
+    // with the default dimension
+    // ---------------------------------------------------------------------
+
+    Collection<DataElement> dataElements = dataElementService.getAllDataElements();
+
+    for (DataElement dataElement : dataElements) {
+      if (dataElement.getCategoryCombo() == null) {
+        dataElement.setCategoryCombo(categoryCombo);
+        dataElementService.updateDataElement(dataElement);
+      }
+    }
+
+    if (!hasCurrentUser) {
+      clearSecurityContext();
+    }
+  }
 }

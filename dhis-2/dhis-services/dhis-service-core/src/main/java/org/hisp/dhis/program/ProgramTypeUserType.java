@@ -1,7 +1,5 @@
-package org.hisp.dhis.program;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,19 +25,15 @@ package org.hisp.dhis.program;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program;
 
 import org.hisp.dhis.hibernate.EnumUserType;
 
 /**
  * @author Chau Thu Tran
- *
- * @version $ ProgramTypeUserType.java Jul 1, 2015 3:32:02 PM $
  */
-public class ProgramTypeUserType
-    extends EnumUserType<ProgramType>
-{
-    public ProgramTypeUserType()
-    {
-        super( ProgramType.class );
-    }
+public class ProgramTypeUserType extends EnumUserType<ProgramType> {
+  public ProgramTypeUserType() {
+    super(ProgramType.class);
+  }
 }

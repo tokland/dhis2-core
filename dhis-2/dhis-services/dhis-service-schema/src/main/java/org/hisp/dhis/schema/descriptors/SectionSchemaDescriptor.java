@@ -1,7 +1,5 @@
-package org.hisp.dhis.schema.descriptors;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,35 +25,34 @@ package org.hisp.dhis.schema.descriptors;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.schema.descriptors;
 
 import com.google.common.collect.Lists;
 import org.hisp.dhis.dataset.Section;
-import org.hisp.dhis.security.Authority;
-import org.hisp.dhis.security.AuthorityType;
 import org.hisp.dhis.schema.Schema;
 import org.hisp.dhis.schema.SchemaDescriptor;
+import org.hisp.dhis.security.Authority;
+import org.hisp.dhis.security.AuthorityType;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class SectionSchemaDescriptor implements SchemaDescriptor
-{
-    public static final String SINGULAR = "section";
+public class SectionSchemaDescriptor implements SchemaDescriptor {
+  public static final String SINGULAR = "section";
 
-    public static final String PLURAL = "sections";
+  public static final String PLURAL = "sections";
 
-    public static final String API_ENDPOINT = "/" + PLURAL;
+  public static final String API_ENDPOINT = "/" + PLURAL;
 
-    @Override
-    public Schema getSchema()
-    {
-        Schema schema = new Schema( Section.class, SINGULAR, PLURAL );
-        schema.setRelativeApiEndpoint( API_ENDPOINT );
-        schema.setOrder( 1320 );
+  @Override
+  public Schema getSchema() {
+    Schema schema = new Schema(Section.class, SINGULAR, PLURAL);
+    schema.setRelativeApiEndpoint(API_ENDPOINT);
+    schema.setOrder(1320);
 
-        schema.getAuthorities().add( new Authority( AuthorityType.CREATE, Lists.newArrayList( "F_SECTION_ADD" ) ) );
-        schema.getAuthorities().add( new Authority( AuthorityType.DELETE, Lists.newArrayList( "F_SECTION_DELETE" ) ) );
+    schema.add(new Authority(AuthorityType.CREATE, Lists.newArrayList("F_SECTION_ADD")));
+    schema.add(new Authority(AuthorityType.DELETE, Lists.newArrayList("F_SECTION_DELETE")));
 
-        return schema;
-    }
+    return schema;
+  }
 }

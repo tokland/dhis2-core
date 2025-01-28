@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,101 +25,107 @@ package org.hisp.dhis.dataset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.category.CategoryOptionCombo;
-import org.hisp.dhis.organisationunit.OrganisationUnit;
-import org.hisp.dhis.period.Period;
+package org.hisp.dhis.dataset;
 
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import javax.annotation.Nonnull;
+import org.hisp.dhis.category.CategoryOptionCombo;
+import org.hisp.dhis.common.UID;
+import org.hisp.dhis.organisationunit.OrganisationUnit;
+import org.hisp.dhis.period.Period;
 
 /**
  * @author Lars Helge Overland
- * @version $Id$
  */
-public interface CompleteDataSetRegistrationStore
-{
-    String ID = CompleteDataSetRegistrationStore.class.getName();
+public interface CompleteDataSetRegistrationStore {
+  /**
+   * Saves a CompleteDataSetRegistration.
+   *
+   * @param registration the CompleteDataSetRegistration to save.
+   */
+  void saveCompleteDataSetRegistration(CompleteDataSetRegistration registration);
 
-    /**
-     * Saves a CompleteDataSetRegistration.
-     * 
-     * @param registration the CompleteDataSetRegistration to save.
-     */
-    void saveCompleteDataSetRegistration( CompleteDataSetRegistration registration );
+  /**
+   * Saves a CompleteDataSetRegistration without updating its lastUpdated value
+   *
+   * @param registration reg to update
+   */
+  void saveWithoutUpdatingLastUpdated(@Nonnull CompleteDataSetRegistration registration);
 
-    /**
-     * Updates a CompleteDataSetRegistration.
-     * 
-     * @param registration the CompleteDataSetRegistration to update.
-     */
-    void updateCompleteDataSetRegistration( CompleteDataSetRegistration registration );
-    
-    /**
-     * Retrieves the CompleteDataSetRegistration for the given DataSet, Period
-     * and Source.
-     * 
-     * @param dataSet the DataSet.
-     * @param period the Period.
-     * @param source the Source.
-     * @param attributeOptionCombo the attribute option combo.
-     * @return the CompleteDataSetRegistration.
-     */
-    CompleteDataSetRegistration getCompleteDataSetRegistration( DataSet dataSet, Period period, 
-        OrganisationUnit source, CategoryOptionCombo attributeOptionCombo );
+  /**
+   * Updates a CompleteDataSetRegistration.
+   *
+   * @param registration the CompleteDataSetRegistration to update.
+   */
+  void updateCompleteDataSetRegistration(CompleteDataSetRegistration registration);
 
-    /**
-     * Deletes a CompleteDataSetRegistration.
-     * 
-     * @param registration the CompleteDataSetRegistration to delete.
-     */
-    void deleteCompleteDataSetRegistration( CompleteDataSetRegistration registration );
+  /**
+   * Retrieves the CompleteDataSetRegistration for the given DataSet, Period and Source.
+   *
+   * @param dataSet the DataSet.
+   * @param period the Period.
+   * @param source the Source.
+   * @param attributeOptionCombo the attribute option combo.
+   * @return the CompleteDataSetRegistration.
+   */
+  CompleteDataSetRegistration getCompleteDataSetRegistration(
+      DataSet dataSet,
+      Period period,
+      OrganisationUnit source,
+      CategoryOptionCombo attributeOptionCombo);
 
-    /**
-     * Retrieves all CompleteDataSetRegistration.
-     * 
-     * @return a list of CompleteDataSetRegistrations.
-     */
-    List<CompleteDataSetRegistration> getAllCompleteDataSetRegistrations();
-    
-    /**
-     * Retrieves a list of CompleteDataSetRegistrations for the given Collection 
-     * of DataSets, Sources and Periods.
-     * 
-     * @param dataSets the Collection of DataSets.
-     * @param sources the Collection of Sources.
-     * @param periods the Collection of Periods.
-     * @return a list of CompleteDataSetRegistrations.
-     */
-    List<CompleteDataSetRegistration> getCompleteDataSetRegistrations( 
-        Collection<DataSet> dataSets, Collection<OrganisationUnit> sources, Collection<Period> periods );
-    
-    /**
-     * Retrieves a list of CompleteDataSetRegistrations for the given DataSet,
-     * Collection of Sources, Period and Date. The Date deadline is the date that 
-     * the registration must be made before in order to be defined as "on time".
-     * 
-     * @param dataSet the DataSet.
-     * @param sources the Collection of Sources.
-     * @param period the Period.
-     * @param deadline the Date.
-     * @return a list of CompleteDataSetRegistrations.
-     */
-    List<CompleteDataSetRegistration> getCompleteDataSetRegistrations( 
-        DataSet dataSet, Collection<OrganisationUnit> sources, Period period, Date deadline );
+  /**
+   * Deletes a CompleteDataSetRegistration.
+   *
+   * @param registration the CompleteDataSetRegistration to delete.
+   */
+  void deleteCompleteDataSetRegistration(CompleteDataSetRegistration registration);
 
-    /**
-     * Deletes the CompleteDataSetRegistrations associated with the given DataSet.
-     * 
-     * @param dataSet the DataSet.
-     */
-    void deleteCompleteDataSetRegistrations( DataSet dataSet );
-    
-    /**
-     * Deletes the CompleteDataSetRegistrations associated with the given OrganisationUnit.
-     * 
-     * @param unit the OrganisationUnit.
-     */
-    void deleteCompleteDataSetRegistrations( OrganisationUnit unit );
+  /**
+   * Retrieves all CompleteDataSetRegistration.
+   *
+   * @return a list of CompleteDataSetRegistrations.
+   */
+  List<CompleteDataSetRegistration> getAllCompleteDataSetRegistrations();
+
+  /**
+   * Deletes the CompleteDataSetRegistrations associated with the given DataSet.
+   *
+   * @param dataSet the DataSet.
+   */
+  void deleteCompleteDataSetRegistrations(DataSet dataSet);
+
+  /**
+   * Deletes the CompleteDataSetRegistrations associated with the given OrganisationUnit.
+   *
+   * @param unit the OrganisationUnit.
+   */
+  void deleteCompleteDataSetRegistrations(OrganisationUnit unit);
+
+  /**
+   * Returns the number of Complete DataSets which have been updated at or after the given date
+   * time.
+   *
+   * @param lastUpdated specifies the date to filter complete data sets last updated after
+   * @return the number of completed DataSets.
+   */
+  int getCompleteDataSetCountLastUpdatedAfter(Date lastUpdated);
+
+  /**
+   * Retrieve all {@link CompleteDataSetRegistration}s with {@link CategoryOptionCombo} {@link UID}s
+   *
+   * @param uids {@link CategoryOptionCombo} {@link UID}s
+   * @return {@link CompleteDataSetRegistration}s with references to {@link CategoryOptionCombo}
+   *     {@link UID}s passed in
+   */
+  List<CompleteDataSetRegistration> getAllByCategoryOptionCombo(@Nonnull Collection<UID> uids);
+
+  /**
+   * Delete all {@link CompleteDataSetRegistration}s with references to {@link CategoryOptionCombo}s
+   *
+   * @param cocs {@link CategoryOptionCombo}s
+   */
+  void deleteByCategoryOptionCombo(@Nonnull Collection<CategoryOptionCombo> cocs);
 }

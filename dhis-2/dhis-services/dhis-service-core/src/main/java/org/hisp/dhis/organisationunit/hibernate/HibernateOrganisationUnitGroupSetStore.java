@@ -1,7 +1,5 @@
-package org.hisp.dhis.organisationunit.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,16 +25,29 @@ package org.hisp.dhis.organisationunit.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.organisationunit.hibernate;
 
+import jakarta.persistence.EntityManager;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.organisationunit.OrganisationUnitGroupSet;
 import org.hisp.dhis.organisationunit.OrganisationUnitGroupSetStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
+@Repository("org.hisp.dhis.organisationunit.OrganisationUnitGroupSetStore")
 public class HibernateOrganisationUnitGroupSetStore
     extends HibernateIdentifiableObjectStore<OrganisationUnitGroupSet>
-    implements OrganisationUnitGroupSetStore
-{ 
+    implements OrganisationUnitGroupSetStore {
+  public HibernateOrganisationUnitGroupSetStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, OrganisationUnitGroupSet.class, aclService, true);
+  }
 }

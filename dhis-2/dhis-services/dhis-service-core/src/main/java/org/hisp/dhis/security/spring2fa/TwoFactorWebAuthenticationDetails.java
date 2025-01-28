@@ -1,7 +1,5 @@
-package org.hisp.dhis.security.spring2fa;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,42 +25,35 @@ package org.hisp.dhis.security.spring2fa;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.security.spring2fa;
 
-import org.hisp.dhis.util.ObjectUtils;
-import org.springframework.security.web.authentication.WebAuthenticationDetails;
-
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import org.hisp.dhis.security.ForwardedIpAwareWebAuthenticationDetails;
 
 /**
  * @author Henning Håkonsen
  * @author Lars Helge Øverland
  */
-public class TwoFactorWebAuthenticationDetails
-    extends WebAuthenticationDetails
-{
-    private static final String HEADER_FORWARDED_FOR = "X-Forwarded-For";
+public class TwoFactorWebAuthenticationDetails extends ForwardedIpAwareWebAuthenticationDetails {
+  private static final String TWO_FACTOR_AUTHENTICATION_GETTER = "2fa_code";
 
-    private static final String TWO_FACTOR_AUTHENTICATION_GETTER = "2fa_code";
+  private String code;
 
-    private String code;
+  public TwoFactorWebAuthenticationDetails(HttpServletRequest request) {
+    super(request);
+    code = request.getParameter(TWO_FACTOR_AUTHENTICATION_GETTER);
+  }
 
-    private String ip;
+  public TwoFactorWebAuthenticationDetails(HttpServletRequest request, String twoFactorCode) {
+    super(request);
+    code = twoFactorCode;
+  }
 
-    public TwoFactorWebAuthenticationDetails( HttpServletRequest request )
-    {
-        super( request );
-        code = request.getParameter( TWO_FACTOR_AUTHENTICATION_GETTER );
-        ip = ObjectUtils.firstNonNull( request.getHeader( HEADER_FORWARDED_FOR ), request.getRemoteAddr() );
-    }
+  public String getCode() {
+    return code;
+  }
 
-    public String getCode()
-    {
-        return code;
-    }
-
-    public String getIp()
-    {
-        return ip;
-    }
+  public void setCode(String code) {
+    this.code = code;
+  }
 }
-

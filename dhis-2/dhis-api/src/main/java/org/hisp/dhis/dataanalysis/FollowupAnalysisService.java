@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataanalysis;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,16 +25,33 @@ package org.hisp.dhis.dataanalysis;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataanalysis;
 
+import java.util.Collection;
+import java.util.List;
+import org.hisp.dhis.common.Grid;
+import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.datavalue.DeflatedDataValue;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
-
-import java.util.List;
+import org.hisp.dhis.period.Period;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Halvdan Hoem Grelland
  */
-public interface FollowupAnalysisService
-{
-    List<DeflatedDataValue> getFollowupDataValues( OrganisationUnit organisationUnit, String dataSetId, int limit );
+public interface FollowupAnalysisService {
+  /**
+   * @deprecated Use {@link #getFollowupDataValues(FollowupAnalysisRequest)}
+   */
+  @Deprecated
+  List<DeflatedDataValue> getFollowupDataValues(
+      OrganisationUnit orgUnit,
+      Collection<DataElement> dataElements,
+      Collection<Period> periods,
+      int limit);
+
+  FollowupAnalysisResponse getFollowupDataValues(FollowupAnalysisRequest params);
+
+  @Transactional(readOnly = true)
+  Grid generateAnalysisReport(FollowupAnalysisResponse followupAnalysisResponse);
 }

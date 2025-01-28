@@ -1,7 +1,5 @@
-package org.hisp.dhis.metadata.version.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,57 +25,84 @@ package org.hisp.dhis.metadata.version.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.metadata.version.hibernate;
 
-import org.hibernate.criterion.Property;
-import org.hibernate.criterion.Restrictions;
-import org.hibernate.criterion.Projections;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import java.util.Date;
+import java.util.List;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.metadata.version.MetadataVersion;
 import org.hisp.dhis.metadata.version.MetadataVersionStore;
-
-import java.sql.Timestamp;
-import java.util.Date;
-import java.util.List;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * Implementation of MetadataVersionStore.
  *
  * @author aamerm
  */
-public class HibernateMetadataVersionStore
-    extends HibernateIdentifiableObjectStore<MetadataVersion>
-    implements MetadataVersionStore
-{
-    @Override
-    public MetadataVersion getVersionByKey( int key )
-    {
-        return (MetadataVersion) getCriteria( Restrictions.eq( "id", key ) ).uniqueResult();
-    }
+@Repository("org.hisp.dhis.metadata.version.MetadataVersionStore")
+public class HibernateMetadataVersionStore extends HibernateIdentifiableObjectStore<MetadataVersion>
+    implements MetadataVersionStore {
+  public HibernateMetadataVersionStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, MetadataVersion.class, aclService, false);
+  }
 
-    @Override
-    public MetadataVersion getVersionByName( String versionName )
-    {
-        return (MetadataVersion) getCriteria( Restrictions.eq( "name", versionName ) ).uniqueResult();
-    }
+  @Override
+  public MetadataVersion getVersionByKey(long key) {
+    CriteriaBuilder builder = getCriteriaBuilder();
 
-    @Override
-    public MetadataVersion getCurrentVersion()
-    {
-        Timestamp lastUpdatedDate = (Timestamp) getCriteria().setCacheable( false ).setProjection( Projections.max( "created" ) ).uniqueResult();
-        return (MetadataVersion) getCriteria().setCacheable( false ).add( Property.forName( "created" ).eq( lastUpdatedDate ) ).uniqueResult();
-    }
+    return getSingleResult(
+        builder, newJpaParameters().addPredicate(root -> builder.equal(root.get("id"), key)));
+  }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public List<MetadataVersion> getAllVersionsInBetween( Date startDate, Date endDate )
-    {
-        return getCriteria().add( Restrictions.between( "created", startDate, endDate ) ).list();
-    }
+  @Override
+  public MetadataVersion getVersionByName(String versionName) {
+    CriteriaBuilder builder = getCriteriaBuilder();
 
-    @Override
-    public MetadataVersion getInitialVersion()
-    {
-        Timestamp initialCreateDate = (Timestamp) getCriteria().setCacheable( false ).setProjection( Projections.min( "created" ) ).uniqueResult();
-        return (MetadataVersion) getCriteria().setCacheable( false ).add( Property.forName( "created" ).eq( initialCreateDate ) ).uniqueResult();
-    }
+    return getSingleResult(
+        builder,
+        newJpaParameters().addPredicate(root -> builder.equal(root.get("name"), versionName)));
+  }
+
+  @Override
+  public MetadataVersion getCurrentVersion() {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getSingleResult(
+        builder,
+        newJpaParameters()
+            .addOrder(root -> builder.desc(root.get("created")))
+            .setMaxResults(1)
+            .setCacheable(false));
+  }
+
+  @Override
+  public List<MetadataVersion> getAllVersionsInBetween(Date startDate, Date endDate) {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getList(
+        builder,
+        newJpaParameters()
+            .addPredicate(root -> builder.between(root.get("created"), startDate, endDate)));
+  }
+
+  @Override
+  public MetadataVersion getInitialVersion() {
+    CriteriaBuilder builder = getCriteriaBuilder();
+
+    return getSingleResult(
+        builder,
+        newJpaParameters()
+            .addOrder(root -> builder.asc(root.get("created")))
+            .setMaxResults(1)
+            .setCacheable(false));
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.textpattern;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.textpattern;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.textpattern;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -35,33 +34,24 @@ import java.util.regex.Pattern;
 /**
  * @author Stian Sandvold
  */
-public class DateMethodType
-    extends BaseMethodType
-{
-    DateMethodType( Pattern pattern )
-    {
-        super( pattern );
+public class DateMethodType extends BaseMethodType {
+  DateMethodType(Pattern pattern) {
+    super(pattern);
+  }
+
+  @Override
+  public boolean validateText(String format, String text) {
+    try {
+      new SimpleDateFormat(format).parse(text);
+    } catch (ParseException e) {
+      return false;
     }
 
-    @Override
-    public boolean validateText( String format, String text )
-    {
-        try
-        {
-            new SimpleDateFormat( format ).parse( text );
-        }
-        catch ( ParseException e )
-        {
-            return false;
-        }
+    return true;
+  }
 
-        return true;
-    }
-
-    @Override
-    public String getValueRegex( String format )
-    {
-        return String.format( ".{%d}", format.length() );
-    }
-
+  @Override
+  public String getValueRegex(String format) {
+    return String.format(".{%d}", format.length());
+  }
 }

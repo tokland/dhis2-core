@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataelement.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,31 +25,72 @@ package org.hisp.dhis.dataelement.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataelement.hibernate;
 
+import jakarta.persistence.EntityManager;
+import java.util.Collection;
 import java.util.List;
-
+import javax.annotation.Nonnull;
+import org.hisp.dhis.common.UID;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
+import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.dataelement.DataElementOperand;
 import org.hisp.dhis.dataelement.DataElementOperandStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
+@Repository("org.hisp.dhis.dataelement.DataElementOperandStore")
 public class HibernateDataElementOperandStore
     extends HibernateIdentifiableObjectStore<DataElementOperand>
-    implements DataElementOperandStore
-{
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<DataElementOperand> getAllOrderedName()
-    {
-        return getQuery( "from DataElementOperand d" ).list();
-    }
+    implements DataElementOperandStore {
+  public HibernateDataElementOperandStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, DataElementOperand.class, aclService, false);
 
-    @Override
-    @SuppressWarnings( "unchecked" )
-    public List<DataElementOperand> getAllOrderedName( int first, int max )
-    {
-        return getQuery( "from DataElementOperand d" ).setFirstResult( first ).setMaxResults( max ).list();
-    }
+    transientIdentifiableProperties = true;
+  }
+
+  @Nonnull
+  @Override
+  public List<DataElementOperand> getAllOrderedName() {
+    return getQuery("from DataElementOperand d").list();
+  }
+
+  @Nonnull
+  @Override
+  public List<DataElementOperand> getAllOrderedName(int first, int max) {
+    return getQuery("from DataElementOperand d").setFirstResult(first).setMaxResults(max).list();
+  }
+
+  @Override
+  public List<DataElementOperand> getByDataElement(Collection<DataElement> dataElements) {
+    return getQuery(
+            """
+            from DataElementOperand deo
+            where deo.dataElement in :dataElements
+            """)
+        .setParameter("dataElements", dataElements)
+        .list();
+  }
+
+  @Override
+  public List<DataElementOperand> getByCategoryOptionCombo(@Nonnull Collection<UID> uids) {
+    if (uids.isEmpty()) return List.of();
+    return getQuery(
+            """
+            select distinct deo from DataElementOperand deo
+            join deo.categoryOptionCombo coc
+            where coc.uid in :uids
+            """)
+        .setParameter("uids", UID.toValueList(uids))
+        .getResultList();
+  }
 }

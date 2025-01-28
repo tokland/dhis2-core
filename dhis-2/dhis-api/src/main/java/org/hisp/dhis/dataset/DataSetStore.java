@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,43 +25,27 @@ package org.hisp.dhis.dataset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataset;
 
+import java.util.Collection;
 import java.util.List;
-
 import org.hisp.dhis.common.IdentifiableObjectStore;
+import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.dataentryform.DataEntryForm;
-import org.hisp.dhis.organisationunit.OrganisationUnit;
-import org.hisp.dhis.period.PeriodType;
 
 /**
  * @author Kristian Nordal
  */
 public interface DataSetStore
-    extends IdentifiableObjectStore<DataSet>
-{
-    String ID = DataSetStore.class.getName();
+    extends IdentifiableObjectStore<DataSet>, DataSetDataIntegrityProvider {
 
-    // -------------------------------------------------------------------------
-    // DataSet
-    // -------------------------------------------------------------------------
+  /**
+   * Gets all DataSets associated with the given DataEntryForm.
+   *
+   * @param dataEntryForm the DataEntryForm.
+   * @return a list of DataSets.
+   */
+  List<DataSet> getDataSetsByDataEntryForm(DataEntryForm dataEntryForm);
 
-    /**
-     * Gets all DataSets associated with the given PeriodType.
-     * 
-     * @param periodType the PeriodType.
-     * @return a list of DataSets.
-     */
-    List<DataSet> getDataSetsByPeriodType( PeriodType periodType );
-
-    /**
-     * Returns all DataSets that can be collected through mobile.
-     */
-    List<DataSet> getDataSetsForMobile( OrganisationUnit source );
-
-    /**
-     * Gets all DataSets associated with the given DataEntryForm.
-     * @param dataEntryForm the DataEntryForm.
-     * @return a list of DataSets.
-     */
-    List<DataSet> getDataSetsByDataEntryForm( DataEntryForm dataEntryForm );
+  List<DataSetElement> getDataSetElementsByDataElement(Collection<DataElement> dataElements);
 }

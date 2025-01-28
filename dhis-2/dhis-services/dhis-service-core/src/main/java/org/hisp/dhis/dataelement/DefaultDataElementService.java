@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataelement;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,255 +25,238 @@ package org.hisp.dhis.dataelement;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.category.CategoryCombo;
-import org.hisp.dhis.common.GenericDimensionalObjectStore;
-import org.hisp.dhis.common.IdentifiableObjectStore;
-import org.hisp.dhis.common.ValueType;
-import org.hisp.dhis.period.PeriodType;
-import org.springframework.transaction.annotation.Transactional;
+package org.hisp.dhis.dataelement;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.common.GenericDimensionalObjectStore;
+import org.hisp.dhis.common.IdentifiableObjectStore;
+import org.hisp.dhis.common.IllegalQueryException;
+import org.hisp.dhis.common.ValueType;
+import org.hisp.dhis.feedback.ErrorCode;
+import org.hisp.dhis.feedback.ErrorMessage;
+import org.hisp.dhis.option.Option;
+import org.hisp.dhis.option.OptionSet;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Kristian Nordal
  */
-@Transactional
-public class DefaultDataElementService
-    implements DataElementService
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.dataelement.DataElementService")
+public class DefaultDataElementService implements DataElementService {
+  private final DataElementStore dataElementStore;
 
-    private DataElementStore dataElementStore;
+  private final IdentifiableObjectStore<OptionSet> optionSetStore;
 
-    public void setDataElementStore( DataElementStore dataElementStore )
-    {
-        this.dataElementStore = dataElementStore;
+  private final IdentifiableObjectStore<DataElementGroup> dataElementGroupStore;
+
+  private final GenericDimensionalObjectStore<DataElementGroupSet> dataElementGroupSetStore;
+
+  // -------------------------------------------------------------------------
+  // DataElement
+  // -------------------------------------------------------------------------
+
+  @Override
+  @Transactional
+  public long addDataElement(DataElement dataElement) {
+    validateDateElement(dataElement);
+    dataElementStore.save(dataElement);
+    return dataElement.getId();
+  }
+
+  @Override
+  @Transactional
+  public void updateDataElement(DataElement dataElement) {
+    validateDateElement(dataElement);
+    dataElementStore.update(dataElement);
+  }
+
+  @Override
+  public void validateDateElement(DataElement dataElement) {
+    if (dataElement.getOptionSet() == null) {
+      if (dataElement.getValueType() == ValueType.MULTI_TEXT) {
+        throw new IllegalQueryException(new ErrorMessage(ErrorCode.E1116, dataElement.getUid()));
+      }
+      return;
     }
-
-    private IdentifiableObjectStore<DataElementGroup> dataElementGroupStore;
-
-    public void setDataElementGroupStore( IdentifiableObjectStore<DataElementGroup> dataElementGroupStore )
-    {
-        this.dataElementGroupStore = dataElementGroupStore;
+    // need to reload the options in case this is a create and the options
+    // is a shallow reference object
+    OptionSet options = optionSetStore.getByUid(dataElement.getOptionSet().getUid());
+    if (options == null) {
+      return; // no need to do further checks
     }
-
-    private GenericDimensionalObjectStore<DataElementGroupSet> dataElementGroupSetStore;
-
-    public void setDataElementGroupSetStore( GenericDimensionalObjectStore<DataElementGroupSet> dataElementGroupSetStore )
-    {
-        this.dataElementGroupSetStore = dataElementGroupSetStore;
+    if (options.getValueType() != dataElement.getValueType()) {
+      throw new IllegalQueryException(new ErrorMessage(ErrorCode.E1115, options.getValueType()));
     }
-
-    // -------------------------------------------------------------------------
-    // DataElement
-    // -------------------------------------------------------------------------
-
-    @Override
-    public int addDataElement( DataElement dataElement )
-    {
-        dataElementStore.save( dataElement );
-
-        return dataElement.getId();
+    if (dataElement.getValueType() == ValueType.MULTI_TEXT
+        && options.getOptions().stream()
+            .anyMatch(option -> option.getCode().contains(ValueType.MULTI_TEXT_SEPARATOR))) {
+      throw new IllegalQueryException(
+          new ErrorMessage(
+              ErrorCode.E1117,
+              dataElement.getUid(),
+              options.getUid(),
+              options.getOptions().stream()
+                  .map(Option::getCode)
+                  .filter(code -> code.contains(ValueType.MULTI_TEXT_SEPARATOR))
+                  .findFirst()
+                  .orElse("")));
     }
+  }
 
-    @Override
-    public void updateDataElement( DataElement dataElement )
-    {
-        dataElementStore.update( dataElement );
-    }
+  @Override
+  @Transactional
+  public void deleteDataElement(DataElement dataElement) {
+    dataElementStore.delete(dataElement);
+  }
 
-    @Override
-    public void deleteDataElement( DataElement dataElement )
-    {
-        dataElementStore.delete( dataElement );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public DataElement getDataElement(long id) {
+    return dataElementStore.get(id);
+  }
 
-    @Override
-    public DataElement getDataElement( int id )
-    {
-        return dataElementStore.get( id );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public DataElement getDataElement(String uid) {
+    return dataElementStore.getByUid(uid);
+  }
 
-    @Override
-    public DataElement getDataElement( String uid )
-    {
-        return dataElementStore.getByUid( uid );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public DataElement getDataElementByCode(String code) {
+    return dataElementStore.getByCode(code);
+  }
 
-    @Override
-    public DataElement getDataElementByCode( String code )
-    {
-        return dataElementStore.getByCode( code );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<DataElement> getAllDataElements() {
+    return dataElementStore.getAll();
+  }
 
-    @Override
-    public List<DataElement> getAllDataElements()
-    {
-        return dataElementStore.getAll();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<DataElement> getDataElementsWithoutGroups() {
+    return dataElementStore.getDataElementsWithoutGroups();
+  }
 
-    @Override
-    public List<DataElement> getAllDataElementsByValueType( ValueType valueType )
-    {
-        return dataElementStore.getDataElementsByValueType( valueType );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<DataElement> getDataElementsWithoutDataSets() {
+    return dataElementStore.getDataElementsWithoutDataSets();
+  }
 
-    @Override
-    public List<DataElement> getDataElementsByZeroIsSignificant( boolean zeroIsSignificant )
-    {
-        return dataElementStore.getDataElementsByZeroIsSignificant( zeroIsSignificant );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<DataElement> getDataElementsWithDataSets() {
+    return dataElementStore.getDataElementsWithDataSets();
+  }
 
-    @Override
-    public List<DataElement> getDataElementsByPeriodType( final PeriodType periodType )
-    {
-        return getAllDataElements().stream().filter( p -> p.getPeriodType() != null && p.getPeriodType().equals( periodType ) ).collect( Collectors.toList() );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<DataElement> getDataElementsByAggregationLevel(int aggregationLevel) {
+    return dataElementStore.getDataElementsByAggregationLevel(aggregationLevel);
+  }
 
-    @Override
-    public List<DataElement> getDataElementsByDomainType( DataElementDomain domainType )
-    {
-        return dataElementStore.getDataElementsByDomainType( domainType );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<DataElement> getDataElementsByUid(List<String> dataElements) {
+    return dataElementStore.getByUid(dataElements);
+  }
 
-    @Override
-    public List<DataElement> getDataElementByCategoryCombo( CategoryCombo categoryCombo )
-    {
-        return dataElementStore.getDataElementByCategoryCombo( categoryCombo );
-    }
+  // -------------------------------------------------------------------------
+  // DataElementGroup
+  // -------------------------------------------------------------------------
 
-    @Override
-    public List<DataElement> getDataElementsWithoutGroups()
-    {
-        return dataElementStore.getDataElementsWithoutGroups();
-    }
+  @Override
+  @Transactional
+  public long addDataElementGroup(DataElementGroup dataElementGroup) {
+    dataElementGroupStore.save(dataElementGroup);
 
-    @Override
-    public List<DataElement> getDataElementsWithoutDataSets()
-    {
-        return dataElementStore.getDataElementsWithoutDataSets();
-    }
+    return dataElementGroup.getId();
+  }
 
-    @Override
-    public List<DataElement> getDataElementsWithDataSets()
-    {
-        return dataElementStore.getDataElementsWithDataSets();
-    }
+  @Override
+  @Transactional
+  public void updateDataElementGroup(DataElementGroup dataElementGroup) {
+    dataElementGroupStore.update(dataElementGroup);
+  }
 
-    @Override
-    public List<DataElement> getDataElementsByAggregationLevel( int aggregationLevel )
-    {
-        return dataElementStore.getDataElementsByAggregationLevel( aggregationLevel );
-    }
+  @Override
+  @Transactional
+  public void deleteDataElementGroup(DataElementGroup dataElementGroup) {
+    dataElementGroupStore.delete(dataElementGroup);
+  }
 
-    // -------------------------------------------------------------------------
-    // DataElementGroup
-    // -------------------------------------------------------------------------
+  @Override
+  @Transactional(readOnly = true)
+  public DataElementGroup getDataElementGroup(long id) {
+    return dataElementGroupStore.get(id);
+  }
 
-    @Override
-    public int addDataElementGroup( DataElementGroup dataElementGroup )
-    {
-        dataElementGroupStore.save( dataElementGroup );
+  @Override
+  @Transactional(readOnly = true)
+  public List<DataElementGroup> getDataElementGroupsByUid(@Nonnull Collection<String> uids) {
+    return dataElementGroupStore.getByUid(uids);
+  }
 
-        return dataElementGroup.getId();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public DataElementGroup getDataElementGroup(String uid) {
+    return dataElementGroupStore.getByUid(uid);
+  }
 
-    @Override
-    public void updateDataElementGroup( DataElementGroup dataElementGroup )
-    {
-        dataElementGroupStore.update( dataElementGroup );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<DataElementGroup> getAllDataElementGroups() {
+    return dataElementGroupStore.getAll();
+  }
 
-    @Override
-    public void deleteDataElementGroup( DataElementGroup dataElementGroup )
-    {
-        dataElementGroupStore.delete( dataElementGroup );
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public DataElementGroup getDataElementGroupByName(String name) {
+    List<DataElementGroup> dataElementGroups = dataElementGroupStore.getAllEqName(name);
 
-    @Override
-    public DataElementGroup getDataElementGroup( int id )
-    {
-        return dataElementGroupStore.get( id );
-    }
+    return !dataElementGroups.isEmpty() ? dataElementGroups.get(0) : null;
+  }
 
-    @Override
-    public List<DataElementGroup> getDataElementGroupsByUid( Collection<String> uids )
-    {
-        return dataElementGroupStore.getByUid( uids );
-    }
+  // -------------------------------------------------------------------------
+  // DataElementGroupSet
+  // -------------------------------------------------------------------------
 
-    @Override
-    public DataElementGroup getDataElementGroup( String uid )
-    {
-        return dataElementGroupStore.getByUid( uid );
-    }
+  @Override
+  @Transactional
+  public long addDataElementGroupSet(DataElementGroupSet groupSet) {
+    dataElementGroupSetStore.save(groupSet);
 
-    @Override
-    public List<DataElementGroup> getAllDataElementGroups()
-    {
-        return dataElementGroupStore.getAll();
-    }
+    return groupSet.getId();
+  }
 
-    @Override
-    public DataElementGroup getDataElementGroupByName( String name )
-    {
-        List<DataElementGroup> dataElementGroups = dataElementGroupStore.getAllEqName( name );
+  @Override
+  @Transactional
+  public void updateDataElementGroupSet(DataElementGroupSet groupSet) {
+    dataElementGroupSetStore.update(groupSet);
+  }
 
-        return !dataElementGroups.isEmpty() ? dataElementGroups.get( 0 ) : null;
-    }
+  @Override
+  @Transactional
+  public void deleteDataElementGroupSet(DataElementGroupSet groupSet) {
+    dataElementGroupSetStore.delete(groupSet);
+  }
 
-    // -------------------------------------------------------------------------
-    // DataElementGroupSet
-    // -------------------------------------------------------------------------
+  @Override
+  @Transactional(readOnly = true)
+  public DataElementGroupSet getDataElementGroupSet(long id) {
+    return dataElementGroupSetStore.get(id);
+  }
 
-    @Override
-    public int addDataElementGroupSet( DataElementGroupSet groupSet )
-    {
-        dataElementGroupSetStore.save( groupSet );
-
-        return groupSet.getId();
-    }
-
-    @Override
-    public void updateDataElementGroupSet( DataElementGroupSet groupSet )
-    {
-        dataElementGroupSetStore.update( groupSet );
-    }
-
-    @Override
-    public void deleteDataElementGroupSet( DataElementGroupSet groupSet )
-    {
-        dataElementGroupSetStore.delete( groupSet );
-    }
-
-    @Override
-    public DataElementGroupSet getDataElementGroupSet( int id )
-    {
-        return dataElementGroupSetStore.get( id );
-    }
-
-    @Override
-    public DataElementGroupSet getDataElementGroupSet( String uid )
-    {
-        return dataElementGroupSetStore.getByUid( uid );
-    }
-
-    @Override
-    public DataElementGroupSet getDataElementGroupSetByName( String name )
-    {
-        List<DataElementGroupSet> dataElementGroupSets = dataElementGroupSetStore.getAllEqName( name );
-
-        return !dataElementGroupSets.isEmpty() ? dataElementGroupSets.get( 0 ) : null;
-    }
-
-    @Override
-    public List<DataElementGroupSet> getAllDataElementGroupSets()
-    {
-        return dataElementGroupSetStore.getAll();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public DataElementGroupSet getDataElementGroupSet(String uid) {
+    return dataElementGroupSetStore.getByUid(uid);
+  }
 }

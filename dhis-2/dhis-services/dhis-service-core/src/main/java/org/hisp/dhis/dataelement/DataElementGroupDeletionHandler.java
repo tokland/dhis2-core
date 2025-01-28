@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataelement;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,37 +25,27 @@ package org.hisp.dhis.dataelement;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataelement;
 
-import org.hisp.dhis.common.IdentifiableObjectManager;
-import org.hisp.dhis.system.deletion.DeletionHandler;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
+import org.hisp.dhis.system.deletion.IdObjectDeletionHandler;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
  */
-public class DataElementGroupDeletionHandler
-    extends DeletionHandler
-{
-    @Autowired
-    private IdentifiableObjectManager idObjectManager;
-    
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
+@Component
+@AllArgsConstructor
+public class DataElementGroupDeletionHandler extends IdObjectDeletionHandler<DataElementGroup> {
+  @Override
+  protected void registerHandler() {
+    whenDeleting(DataElement.class, this::deleteDataElement);
+  }
 
-    @Override
-    public String getClassName()
-    {
-        return DataElementGroup.class.getSimpleName();
+  private void deleteDataElement(DataElement dataElement) {
+    for (DataElementGroup group : dataElement.getGroups()) {
+      group.getMembers().remove(dataElement);
+      idObjectManager.updateNoAcl(group);
     }
-    
-    @Override
-    public void deleteDataElement( DataElement dataElement )
-    {
-        for ( DataElementGroup group : dataElement.getGroups() )
-        {
-            group.getMembers().remove( dataElement );
-            idObjectManager.updateNoAcl( group );
-        }
-    }
+  }
 }

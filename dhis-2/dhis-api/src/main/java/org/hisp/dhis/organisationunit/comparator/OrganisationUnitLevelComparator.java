@@ -1,7 +1,5 @@
-package org.hisp.dhis.organisationunit.comparator;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,23 +25,20 @@ package org.hisp.dhis.organisationunit.comparator;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.organisationunit.OrganisationUnitLevel;
+package org.hisp.dhis.organisationunit.comparator;
 
 import java.util.Comparator;
+import org.hisp.dhis.organisationunit.OrganisationUnitLevel;
 
 /**
  * @author Lars Helge Overland
- * @version $Id$
  */
-public class OrganisationUnitLevelComparator
-    implements Comparator<OrganisationUnitLevel>
-{
-    public static final Comparator<OrganisationUnitLevel> INSTANCE = new OrganisationUnitLevelComparator();
+public class OrganisationUnitLevelComparator implements Comparator<OrganisationUnitLevel> {
+  public static final Comparator<OrganisationUnitLevel> INSTANCE =
+      new OrganisationUnitLevelComparator();
 
-    @Override
-    public int compare( OrganisationUnitLevel level1, OrganisationUnitLevel level2 )
-    {
-        return level1.getLevel() - level2.getLevel();
-    }
+  @Override
+  public int compare(OrganisationUnitLevel level1, OrganisationUnitLevel level2) {
+    return level1.getLevel() - level2.getLevel();
+  }
 }

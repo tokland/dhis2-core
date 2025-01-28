@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.callable;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,40 +25,37 @@ package org.hisp.dhis.system.callable;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.common.IdentifiableObject;
-import org.hisp.dhis.common.IdentifiableObjectManager;
+package org.hisp.dhis.system.callable;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import org.hisp.dhis.common.IdentifiableObject;
+import org.hisp.dhis.common.IdentifiableObjectManager;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class IdentifiableObjectSearchCallable<T extends IdentifiableObject>
-    implements Callable<T>
-{
-    protected IdentifiableObjectManager manager;
-    protected Class<T> clazz;
-    protected String id;
+public class IdentifiableObjectSearchCallable<T extends IdentifiableObject> implements Callable<T> {
+  protected IdentifiableObjectManager manager;
 
-    public IdentifiableObjectSearchCallable( IdentifiableObjectManager manager, Class<T> clazz, String id )
-    {
-        this.manager = manager;
-        this.clazz = clazz;
-        this.id = id;
-    }
+  protected Class<T> clazz;
 
-    @Override
-    public T call()
-        throws ExecutionException
-    {
-        return manager.search( clazz, id );
-    }
+  protected String id;
 
-    public IdentifiableObjectSearchCallable<T> setId( String id )
-    {
-        this.id = id;
-        return this;
-    }
+  public IdentifiableObjectSearchCallable(
+      IdentifiableObjectManager manager, Class<T> clazz, String id) {
+    this.manager = manager;
+    this.clazz = clazz;
+    this.id = id;
+  }
+
+  @Override
+  public T call() throws ExecutionException {
+    return manager.search(clazz, id);
+  }
+
+  public IdentifiableObjectSearchCallable<T> setId(String id) {
+    this.id = id;
+    return this;
+  }
 }

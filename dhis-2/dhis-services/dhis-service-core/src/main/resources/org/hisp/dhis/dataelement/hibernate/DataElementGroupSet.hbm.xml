@@ -6,22 +6,29 @@
   >
 
 <hibernate-mapping>
-  <class name="org.hisp.dhis.dataelement.DataElementGroupSet" table="dataelementgroupset">
+  <class name="org.hisp.dhis.dataelement.DataElementGroupSet"
+         table="dataelementgroupset">
 
-    <cache usage="read-write" />
+    <cache usage="read-write"/>
 
     <id name="id" column="dataelementgroupsetid">
-      <generator class="native" />
+      <generator class="native"/>
     </id>
     &identifiableProperties;
 
-    <property name="name" column="name" not-null="true" unique="true" length="230" />
+    <property name="name" column="name" not-null="true" unique="true"
+              length="230"/>
 
-    <property name="description" type="text" />
+    <property name="shortName" column="shortname" not-null="true" unique="true"
+              length="50"/>
 
-    <property name="compulsory" />
+    <property name="description" type="text"/>
 
-    <property name="dataDimension" column="datadimension" not-null="true" />
+    <property name="compulsory"/>
+
+    <property name="dataDimension" column="datadimension" not-null="true"/>
+
+    <property name="translations" type="jblTranslations"/>
 
     <list name="members" table="dataelementgroupsetmembers">
       <cache usage="read-write" />
@@ -31,29 +38,14 @@
         foreign-key="fk_dataelementgroupset_dataelementgroupid" />
     </list>
 
-    <!-- Object Translation -->
-    <set name="translations" table="dataelementgroupsettranslations" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="dataelementgroupsetid" foreign-key="fk_objecttranslation_dataelementgroupsetid" />
-      <many-to-many class="org.hisp.dhis.translation.ObjectTranslation" column="objecttranslationid" unique="true" />
-    </set>
+    <many-to-one name="createdBy" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_dataelementgroupset_userid" />
 
-    <!-- Access properties -->
-    <many-to-one name="user" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_dataelementgroupset_userid" />
+    <!-- Sharing -->
+    <property name="sharing" type="jsbObjectSharing"/>
 
-    <property name="publicAccess" length="8" />
+    <!-- Dynamic attribute values -->
 
-    <set name="userGroupAccesses" table="dataelementgroupsetusergroupaccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="dataelementgroupsetid" />
-      <many-to-many class="org.hisp.dhis.user.UserGroupAccess" column="usergroupaccessid" unique="true" />
-    </set>
-
-    <set name="userAccesses" table="dataelementgroupsetuseraccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="dataelementgroupsetid" />
-      <many-to-many class="org.hisp.dhis.user.UserAccess" column="useraccessid" unique="true" />
-    </set>
+    <property name="attributeValues" type="jsbAttributeValues"/>
 
   </class>
 

@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,109 +25,98 @@ package org.hisp.dhis.dataset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataset;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import java.util.Date;
+import lombok.Setter;
+import lombok.ToString;
 import org.hisp.dhis.common.BaseIdentifiableObject;
 import org.hisp.dhis.common.DxfNamespaces;
+import org.hisp.dhis.common.PrimaryKeyObject;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.period.Period;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-@JacksonXmlRootElement( localName = "lockException", namespace = DxfNamespaces.DXF_2_0 )
-public class LockException
-{
-    private int id;
+@Setter
+@ToString
+@JacksonXmlRootElement(localName = "lockException", namespace = DxfNamespaces.DXF_2_0)
+public class LockException implements PrimaryKeyObject {
+  private long id;
 
-    private Period period;
+  private Period period;
 
-    private OrganisationUnit organisationUnit;
+  private OrganisationUnit organisationUnit;
 
-    private DataSet dataSet;
+  private DataSet dataSet;
 
-    public LockException()
-    {
+  private Date created;
+
+  public LockException() {}
+
+  public LockException(Period period, OrganisationUnit organisationUnit, DataSet dataSet) {
+    this.period = period;
+    this.organisationUnit = organisationUnit;
+    this.dataSet = dataSet;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public String getName() {
+    if (organisationUnit == null) {
+      return dataSet.getName() + " (" + period.getName() + ")";
     }
 
-    public LockException( Period period, OrganisationUnit organisationUnit, DataSet dataSet )
-    {
-        this.period = period;
-        this.organisationUnit = organisationUnit;
-        this.dataSet = dataSet;
-    }
+    return dataSet.getName() + " (" + organisationUnit.getName() + ", " + period.getName() + ")";
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public String getName()
-    {
-        if ( organisationUnit == null )
-        {
-            return dataSet.getName() + " (" + period.getName() + ")";
-        }
+  @Override
+  public String getUid() {
+    return String.valueOf(id);
+  }
 
-        return dataSet.getName() + " (" + organisationUnit.getName() + ", " + period.getName() + ")";
-    }
+  @Override
+  public long getId() {
+    return id;
+  }
 
-    public int getId()
-    {
-        return id;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public Period getPeriod() {
+    return period;
+  }
 
-    public void setId( int id )
-    {
-        this.id = id;
-    }
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public OrganisationUnit getOrganisationUnit() {
+    return organisationUnit;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public Period getPeriod()
-    {
-        return period;
-    }
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public DataSet getDataSet() {
+    return dataSet;
+  }
 
-    public void setPeriod( Period period )
-    {
-        this.period = period;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public Date getCreated() {
+    return created;
+  }
 
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public OrganisationUnit getOrganisationUnit()
-    {
-        return organisationUnit;
-    }
+  /** Set auto-generated fields on save or update */
+  public void setAutoFields() {
+    Date date = new Date();
 
-    public void setOrganisationUnit( OrganisationUnit organisationUnit )
-    {
-        this.organisationUnit = organisationUnit;
+    if (created == null) {
+      created = date;
     }
-
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty( namespace = DxfNamespaces.DXF_2_0 )
-    public DataSet getDataSet()
-    {
-        return dataSet;
-    }
-
-    public void setDataSet( DataSet dataSet )
-    {
-        this.dataSet = dataSet;
-    }
-
-    @Override
-    public String toString()
-    {
-        return "LockException{" +
-            "id=" + id +
-            ", period=" + period +
-            ", organisationUnit=" + organisationUnit +
-            ", dataSet=" + dataSet +
-            '}';
-    }
+  }
 }

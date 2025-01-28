@@ -1,6 +1,5 @@
-package org.hisp.dhis.fileresource;
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,60 +25,58 @@ package org.hisp.dhis.fileresource;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.fileresource;
 
-import org.hisp.dhis.common.BaseIdentifiableObject;
-import org.hisp.dhis.common.MetadataObject;
-
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import java.util.Date;
+import org.hisp.dhis.common.BaseIdentifiableObject;
+import org.hisp.dhis.common.DxfNamespaces;
 
 /**
  * @author Stian Sandvold
  */
-public class ExternalFileResource
-    extends BaseIdentifiableObject implements MetadataObject
-{
-    /**
-     * FileResource containing the file we are exposing
-     */
-    private FileResource fileResource;
+@JacksonXmlRootElement(localName = "externalFileResource", namespace = DxfNamespaces.DXF_2_0)
+public class ExternalFileResource extends BaseIdentifiableObject {
+  /** FileResource containing the file we are exposing */
+  private FileResource fileResource;
 
-    /**
-     * The accessToken required to identify ExternalFileResources trough the api
-     */
-    private String accessToken;
+  /** The accessToken required to identify ExternalFileResources trough the api */
+  private String accessToken;
 
-    /**
-     * Date when the resource expires. Null means it never expires
-     */
-    private Date expires;
+  /** Date when the resource expires. Null means it never expires */
+  private Date expires;
 
-    public Date getExpires()
-    {
-        return expires;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public Date getExpires() {
+    return expires;
+  }
 
-    public void setExpires( Date expires )
-    {
-        this.expires = expires;
-    }
+  public void setExpires(Date expires) {
+    this.expires = expires;
+  }
 
-    public String getAccessToken()
-    {
-        return accessToken;
-    }
+  @JsonProperty
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public String getAccessToken() {
+    return accessToken;
+  }
 
-    public void setAccessToken( String accessToken )
-    {
-        this.accessToken = accessToken;
-    }
+  public void setAccessToken(String accessToken) {
+    this.accessToken = accessToken;
+  }
 
-    public FileResource getFileResource()
-    {
-        return fileResource;
-    }
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty(namespace = DxfNamespaces.DXF_2_0)
+  public FileResource getFileResource() {
+    return fileResource;
+  }
 
-    public void setFileResource( FileResource fileResource )
-    {
-        this.fileResource = fileResource;
-    }
+  public void setFileResource(FileResource fileResource) {
+    this.fileResource = fileResource;
+  }
 }

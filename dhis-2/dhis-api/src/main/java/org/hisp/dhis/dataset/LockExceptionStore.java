@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,33 +25,42 @@ package org.hisp.dhis.dataset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataset;
 
+import java.util.Date;
+import java.util.List;
 import org.hisp.dhis.common.GenericStore;
 import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.period.Period;
 
-import java.util.List;
-
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public interface LockExceptionStore
-    extends GenericStore<LockException>
-{
-    String ID = LockExceptionStore.class.getName();
+public interface LockExceptionStore extends GenericStore<LockException> {
+  List<LockException> getLockExceptions(List<DataSet> dataSets);
 
-    List<LockException> getAllOrderedName( int first, int max );
+  List<LockException> getLockExceptionCombinations();
 
-    List<LockException> getCombinations();
+  void deleteLockExceptions(DataSet dataSet, Period period);
 
-    void deleteCombination( DataSet dataSet, Period period );
+  void deleteLockExceptions(DataSet dataSet, Period period, OrganisationUnit organisationUnit);
 
-    void deleteCombination( DataSet dataSet, Period period, OrganisationUnit organisationUnit );
+  void deleteLockExceptions(OrganisationUnit organisationUnit);
 
-    long getCount( DataElement dataElement, Period period, OrganisationUnit organisationUnit );
+  /**
+   * Deletes all lock exceptions that are considered expired. This means their creation date is
+   * before the given date.
+   *
+   * @param createdBefore The threshold date, any {@link LockException} with an older created date
+   *     is deleted
+   * @return number of deleted lock exceptions
+   */
+  int deleteExpiredLockExceptions(Date createdBefore);
 
-    long getCount( DataSet dataSet, Period period, OrganisationUnit organisationUnit );
-    
-    boolean anyExists();
+  long getCount(DataElement dataElement, Period period, OrganisationUnit organisationUnit);
+
+  long getCount(DataSet dataSet, Period period, OrganisationUnit organisationUnit);
+
+  boolean anyExists();
 }

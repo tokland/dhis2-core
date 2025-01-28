@@ -1,7 +1,5 @@
-package org.hisp.dhis.node.types;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,68 +25,67 @@ package org.hisp.dhis.node.types;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.node.types;
 
+import com.google.common.collect.Lists;
+import java.util.Objects;
 import org.hisp.dhis.node.AbstractNode;
 import org.hisp.dhis.node.NodeType;
 
-import java.util.Objects;
-
 /**
+ * The Node services are being deprecated so please do not use in new code.
+ *
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class CollectionNode extends AbstractNode
-{
-    /**
-     * Should this collection act as a wrapper around its children.
-     */
-    boolean wrapping = true;
+public class CollectionNode extends AbstractNode {
+  /** Should this collection act as a wrapper around its children. */
+  private boolean wrapping = true;
 
-    public CollectionNode( String name )
-    {
-        super( name, NodeType.COLLECTION );
+  public CollectionNode(String name) {
+    super(name, NodeType.COLLECTION);
+  }
+
+  public CollectionNode(String name, int initialChildSize) {
+    super(name, NodeType.COLLECTION);
+
+    if (initialChildSize > 0) {
+      children = Lists.newArrayListWithCapacity(initialChildSize);
+    }
+  }
+
+  public CollectionNode(String name, boolean wrapping) {
+    super(name, NodeType.COLLECTION);
+    this.wrapping = wrapping;
+  }
+
+  public boolean isWrapping() {
+    return wrapping;
+  }
+
+  public void setWrapping(boolean wrapping) {
+    this.wrapping = wrapping;
+  }
+
+  @Override
+  public int hashCode() {
+    return 31 * super.hashCode() + Objects.hash(wrapping);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
     }
 
-    public CollectionNode( String name, boolean wrapping )
-    {
-        super( name, NodeType.COLLECTION );
-        this.wrapping = wrapping;
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
     }
 
-    public boolean isWrapping()
-    {
-        return wrapping;
+    if (!super.equals(obj)) {
+      return false;
     }
 
-    public void setWrapping( boolean wrapping )
-    {
-        this.wrapping = wrapping;
-    }
-
-    @Override
-    public int hashCode()
-    {
-        return 31 * super.hashCode() + Objects.hash( wrapping );
-    }
-
-    @Override
-    public boolean equals( Object obj )
-    {
-        if ( this == obj )
-        {
-            return true;
-        }
-
-        if ( obj == null || getClass() != obj.getClass() )
-        {
-            return false;
-        }
-
-        if ( !super.equals( obj ) )
-        {
-            return false;
-        }
-
-        final CollectionNode other = (CollectionNode) obj;
-        return Objects.equals( this.wrapping, other.wrapping );
-    }
+    final CollectionNode other = (CollectionNode) obj;
+    return Objects.equals(this.wrapping, other.wrapping);
+  }
 }

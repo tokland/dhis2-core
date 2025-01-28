@@ -1,7 +1,5 @@
-package org.hisp.dhis.schema.descriptors;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,37 +25,38 @@ package org.hisp.dhis.schema.descriptors;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.schema.descriptors;
 
 import com.google.common.collect.Lists;
 import org.hisp.dhis.document.Document;
-import org.hisp.dhis.security.Authority;
-import org.hisp.dhis.security.AuthorityType;
 import org.hisp.dhis.schema.Schema;
 import org.hisp.dhis.schema.SchemaDescriptor;
+import org.hisp.dhis.security.Authority;
+import org.hisp.dhis.security.AuthorityType;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class DocumentSchemaDescriptor implements SchemaDescriptor
-{
-    public static final String SINGULAR = "document";
+public class DocumentSchemaDescriptor implements SchemaDescriptor {
+  public static final String SINGULAR = "document";
 
-    public static final String PLURAL = "documents";
+  public static final String PLURAL = "documents";
 
-    public static final String API_ENDPOINT = "/" + PLURAL;
+  public static final String API_ENDPOINT = "/" + PLURAL;
 
-    @Override
-    public Schema getSchema()
-    {
-        Schema schema = new Schema( Document.class, SINGULAR, PLURAL );
-        schema.setRelativeApiEndpoint( API_ENDPOINT );
-        schema.setOrder( 2000 );
+  @Override
+  public Schema getSchema() {
+    Schema schema = new Schema(Document.class, SINGULAR, PLURAL);
+    schema.setRelativeApiEndpoint(API_ENDPOINT);
+    schema.setOrder(2000);
 
-        schema.getAuthorities().add( new Authority( AuthorityType.CREATE_PUBLIC, Lists.newArrayList( "F_DOCUMENT_PUBLIC_ADD" ) ) );
-        schema.getAuthorities().add( new Authority( AuthorityType.CREATE_PRIVATE, Lists.newArrayList( "F_DOCUMENT_PRIVATE_ADD" ) ) );
-        schema.getAuthorities().add( new Authority( AuthorityType.EXTERNALIZE, Lists.newArrayList( "F_DOCUMENT_EXTERNAL" ) ) );
-        schema.getAuthorities().add( new Authority( AuthorityType.DELETE, Lists.newArrayList( "F_DOCUMENT_DELETE" ) ) );
+    schema.add(
+        new Authority(AuthorityType.CREATE_PUBLIC, Lists.newArrayList("F_DOCUMENT_PUBLIC_ADD")));
+    schema.add(
+        new Authority(AuthorityType.CREATE_PRIVATE, Lists.newArrayList("F_DOCUMENT_PRIVATE_ADD")));
+    schema.add(new Authority(AuthorityType.EXTERNALIZE, Lists.newArrayList("F_DOCUMENT_EXTERNAL")));
+    schema.add(new Authority(AuthorityType.DELETE, Lists.newArrayList("F_DOCUMENT_DELETE")));
 
-        return schema;
-    }
+    return schema;
+  }
 }

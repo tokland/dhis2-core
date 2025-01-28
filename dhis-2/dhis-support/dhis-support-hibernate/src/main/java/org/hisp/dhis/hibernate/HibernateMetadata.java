@@ -1,7 +1,5 @@
-package org.hisp.dhis.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.hibernate;
 
 import org.hibernate.boot.SessionFactoryBuilder;
 import org.hibernate.boot.spi.MetadataImplementor;
@@ -36,19 +35,17 @@ import org.hibernate.boot.spi.SessionFactoryBuilderImplementor;
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class HibernateMetadata implements SessionFactoryBuilderFactory
-{
-    private static final ThreadLocal<MetadataImplementor> metadataImplementor = new ThreadLocal<>();
+public class HibernateMetadata implements SessionFactoryBuilderFactory {
+  private static final ThreadLocal<MetadataImplementor> metadataImplementor = new ThreadLocal<>();
 
-    @Override
-    public SessionFactoryBuilder getSessionFactoryBuilder( MetadataImplementor metadataImplementor, SessionFactoryBuilderImplementor defaultBuilder )
-    {
-        HibernateMetadata.metadataImplementor.set( metadataImplementor );
-        return defaultBuilder;
-    }
+  @Override
+  public SessionFactoryBuilder getSessionFactoryBuilder(
+      MetadataImplementor metadataImplementor, SessionFactoryBuilderImplementor defaultBuilder) {
+    HibernateMetadata.metadataImplementor.set(metadataImplementor);
+    return defaultBuilder;
+  }
 
-    public static MetadataImplementor getMetadataImplementor()
-    {
-        return metadataImplementor.get();
-    }
+  public static MetadataImplementor getMetadataImplementor() {
+    return metadataImplementor.get();
+  }
 }

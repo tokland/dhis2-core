@@ -1,7 +1,5 @@
-package org.hisp.dhis.minmax;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,55 +25,39 @@ package org.hisp.dhis.minmax;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.minmax;
 
-import org.hisp.dhis.dataelement.DataElement;
+import lombok.RequiredArgsConstructor;
 import org.hisp.dhis.category.CategoryOptionCombo;
+import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.system.deletion.DeletionHandler;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lars Helge Overland
- * @version $Id$
  */
-public class MinMaxDataElementDeletionHandler
-    extends DeletionHandler
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Component
+@RequiredArgsConstructor
+public class MinMaxDataElementDeletionHandler extends DeletionHandler {
+  private final MinMaxDataElementService minMaxDataElementService;
 
-    private MinMaxDataElementService minMaxDataElementService;
+  @Override
+  protected void register() {
+    whenDeleting(DataElement.class, this::deleteDataElement);
+    whenDeleting(OrganisationUnit.class, this::deleteOrganisationUnit);
+    whenDeleting(CategoryOptionCombo.class, this::deleteCategoryOptionCombo);
+  }
 
-    public void setMinMaxDataElementService( MinMaxDataElementService minMaxDataElementService )
-    {
-        this.minMaxDataElementService = minMaxDataElementService;
-    }
-    
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
+  private void deleteDataElement(DataElement dataElement) {
+    minMaxDataElementService.removeMinMaxDataElements(dataElement);
+  }
 
-    @Override
-    public String getClassName()
-    {
-        return MinMaxDataElement.class.getSimpleName();
-    }
-    
-    @Override
-    public void deleteDataElement( DataElement dataElement )
-    {
-        minMaxDataElementService.removeMinMaxDataElements( dataElement );
-    }
-    
-    @Override
-    public void deleteOrganisationUnit( OrganisationUnit source )
-    {
-        minMaxDataElementService.removeMinMaxDataElements( source );
-    }
-    
-    @Override
-    public void deleteCategoryOptionCombo( CategoryOptionCombo optionCombo )
-    {
-        minMaxDataElementService.removeMinMaxDataElements( optionCombo );
-    }
+  private void deleteOrganisationUnit(OrganisationUnit source) {
+    minMaxDataElementService.removeMinMaxDataElements(source);
+  }
+
+  private void deleteCategoryOptionCombo(CategoryOptionCombo optionCombo) {
+    minMaxDataElementService.removeMinMaxDataElements(optionCombo);
+  }
 }

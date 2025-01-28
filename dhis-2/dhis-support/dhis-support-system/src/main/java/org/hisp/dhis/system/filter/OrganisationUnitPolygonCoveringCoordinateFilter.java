@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.filter;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,31 +25,29 @@ package org.hisp.dhis.system.filter;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.filter;
 
 import org.hisp.dhis.commons.filter.Filter;
 import org.hisp.dhis.organisationunit.FeatureType;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.system.util.GeoUtils;
+import org.locationtech.jts.geom.Geometry;
 
-public class OrganisationUnitPolygonCoveringCoordinateFilter
-    implements Filter<OrganisationUnit>
-{
-    private double longitude;
-    private double latitude;
+public class OrganisationUnitPolygonCoveringCoordinateFilter implements Filter<OrganisationUnit> {
+  private double longitude;
 
-    public OrganisationUnitPolygonCoveringCoordinateFilter( double longitude, double latitude )
-    {
-        this.longitude = longitude;
-        this.latitude = latitude;
-    }
+  private double latitude;
 
-    @Override
-    public boolean retain( OrganisationUnit unit )
-    {
-        FeatureType featureType = unit.getFeatureType();
-        String coordinate = unit.getCoordinates();
+  public OrganisationUnitPolygonCoveringCoordinateFilter(double longitude, double latitude) {
+    this.longitude = longitude;
+    this.latitude = latitude;
+  }
 
-        return featureType != null && coordinate != null && !coordinate.isEmpty() && featureType.isPolygon()
-            && GeoUtils.checkPointWithMultiPolygon( longitude, latitude, unit.getCoordinates(), featureType );
-    }
+  @Override
+  public boolean retain(OrganisationUnit unit) {
+    Geometry geometry = unit.getGeometry();
+    return geometry != null
+        && FeatureType.getTypeFromName(geometry.getGeometryType()) == FeatureType.POLYGON
+        && GeoUtils.checkPointWithMultiPolygon(longitude, latitude, unit.getGeometry());
+  }
 }

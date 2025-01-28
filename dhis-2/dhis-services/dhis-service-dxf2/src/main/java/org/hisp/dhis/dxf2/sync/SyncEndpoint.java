@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.sync;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,25 +25,24 @@ package org.hisp.dhis.dxf2.sync;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.sync;
+
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import org.hisp.dhis.dxf2.importsummary.ImportSummary;
+import org.hisp.dhis.webmessage.WebMessageResponse;
 
 /**
- * @author David Katuscak
+ * @author David Katuscak <katuscak.d@gmail.com>
  */
-public enum SyncEndpoint
-{
-    TEIS_ENDPOINT( "/api/trackedEntityInstances" ),
-    ENROLLMENTS_ENDPOINT( "/api/enrollments" ),
-    EVENTS_ENDPOINT( "/api/events" );
+@Getter
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public enum SyncEndpoint {
+  COMPLETE_DATA_SET_REGISTRATIONS("/api/completeDataSetRegistrations", ImportSummary.class),
+  DATA_VALUE_SETS("/api/dataValueSets", ImportSummary.class);
 
-    private String path;
+  private final String path;
 
-    SyncEndpoint( String path )
-    {
-        this.path = path;
-    }
-
-    public String getPath()
-    {
-        return path;
-    }
+  private final Class<? extends WebMessageResponse> klass;
 }

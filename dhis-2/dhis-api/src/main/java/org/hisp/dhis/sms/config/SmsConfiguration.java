@@ -1,7 +1,5 @@
-package org.hisp.dhis.sms.config;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,60 +25,25 @@ package org.hisp.dhis.sms.config;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.sms.config;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.xml.bind.annotation.XmlRootElement;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlElementWrapper;
-import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.XmlElements;
+/** Serializable configuration object for Sms. */
+@Setter
+@Getter
+@NoArgsConstructor
+@XmlRootElement(name = "smsConfiguration")
+public class SmsConfiguration implements Serializable {
+  @Serial private static final long serialVersionUID = 7460688383539123303L;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-/**
- * Serializable configuration object for Sms.
- */
-
-@XmlRootElement( name = "smsConfiguration" )
-public class SmsConfiguration
-    implements Serializable
-{
-    private static final long serialVersionUID = 7460688383539123303L;
-
-    private List<SmsGatewayConfig> gateways = new ArrayList<>();
-
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------
-
-    public SmsConfiguration()
-    {
-        this.gateways = new ArrayList<>();
-    }
-
-    public SmsConfiguration( boolean enabled )
-    {
-        this.gateways = new ArrayList<>();
-    }
-
-    // -------------------------------------------------------------------------
-    // Getter && Setter
-    // -------------------------------------------------------------------------
-
-    @JsonProperty( value = "gateways" )
-    @XmlElementWrapper( name = "gateways" )
-    @XmlElements( { @XmlElement( name = "bulksms", type = BulkSmsGatewayConfig.class ),
-        @XmlElement( name = "clickatell", type = ClickatellGatewayConfig.class ),
-        @XmlElement( name = "http", type = GenericHttpGatewayConfig.class ) })
-    public List<SmsGatewayConfig> getGateways()
-    {
-        return gateways;
-    }
-
-    public void setGateways( List<SmsGatewayConfig> gateways )
-    {
-        this.gateways = gateways;
-    }
+  @JsonProperty private List<SmsGatewayConfig> gateways = new ArrayList<>();
 }

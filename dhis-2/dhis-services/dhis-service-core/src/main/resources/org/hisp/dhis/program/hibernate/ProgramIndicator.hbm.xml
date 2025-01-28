@@ -23,7 +23,11 @@
 
     <property name="formName" type="text" />
 
+    <property name="orgUnitField" type="text" column="orgunitfield" />
+
     <property name="style" type="jbObjectStyle" column="style" />
+
+    <property name="translations" type="jblTranslations"/>
 
     <many-to-one name="program" class="org.hisp.dhis.program.Program"
       column="programid" foreign-key="fk_programindicator_program" not-null="true" />
@@ -74,37 +78,14 @@
       <key column="programindicatorid" />
       <one-to-many class="org.hisp.dhis.program.AnalyticsPeriodBoundary" />
     </set>
-    
-    <!-- Object Translation -->
-    <set name="translations" table="programindicatortranslations" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="programindicatorid" foreign-key="fk_objecttranslation_programindicatorid" />
-      <many-to-many class="org.hisp.dhis.translation.ObjectTranslation" column="objecttranslationid" unique="true" />
-    </set>
 
-    <!-- Access properties -->
-    <many-to-one name="user" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_programindicator_userid" />
+    <many-to-one name="createdBy" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_programindicator_userid" />
 
-    <property name="publicAccess" length="8" />
-
-    <set name="userGroupAccesses" table="programindicatorusergroupaccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="programindicatorid" />
-      <many-to-many class="org.hisp.dhis.user.UserGroupAccess" column="usergroupaccessid" unique="true" />
-    </set>
-
-    <set name="userAccesses" table="programindicatoruseraccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="programindicatorid" />
-      <many-to-many class="org.hisp.dhis.user.UserAccess" column="useraccessid" unique="true" />
-    </set>
+    <!-- Sharing -->
+    <property name="sharing" type="jsbObjectSharing"/>
 
     <!-- Dynamic attribute values -->
-    <set name="attributeValues" table="programindicatorattributevalues" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="programindicatorid" />
-      <many-to-many class="org.hisp.dhis.attribute.AttributeValue" column="attributevalueid" unique="true" />
-    </set>
+    <property name="attributeValues" type="jsbAttributeValues"/>
 
   </class>
 

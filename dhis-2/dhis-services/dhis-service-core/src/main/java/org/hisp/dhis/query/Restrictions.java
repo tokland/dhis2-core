@@ -1,7 +1,5 @@
-package org.hisp.dhis.query;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +25,10 @@ package org.hisp.dhis.query;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.query;
 
+import java.util.Collection;
+import java.util.List;
 import org.hisp.dhis.query.operators.BetweenOperator;
 import org.hisp.dhis.query.operators.EmptyOperator;
 import org.hisp.dhis.query.operators.EqualOperator;
@@ -45,105 +46,128 @@ import org.hisp.dhis.query.operators.NotNullOperator;
 import org.hisp.dhis.query.operators.NotTokenOperator;
 import org.hisp.dhis.query.operators.NullOperator;
 import org.hisp.dhis.query.operators.TokenOperator;
-
-import java.util.Collection;
+import org.hisp.dhis.schema.Schema;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public final class Restrictions
-{
-    public static Restriction eq( String path, Object value )
-    {
-        return new Restriction( path, new EqualOperator( value ) );
-    }
+public final class Restrictions {
+  public static <T extends Comparable<? super T>> Restriction eq(String path, T value) {
+    return new Restriction(path, new EqualOperator<>(value));
+  }
 
-    public static Restriction ne( String path, Object value )
-    {
-        return new Restriction( path, new NotEqualOperator( value ) );
-    }
+  public static <T extends Comparable<? super T>> Restriction ne(String path, T value) {
+    return new Restriction(path, new NotEqualOperator<>(value));
+  }
 
-    public static Restriction gt( String path, Object value )
-    {
-        return new Restriction( path, new GreaterThanOperator( value ) );
-    }
+  public static <T extends Comparable<? super T>> Restriction gt(String path, T value) {
+    return new Restriction(path, new GreaterThanOperator<>(value));
+  }
 
-    public static Restriction lt( String path, Object value )
-    {
-        return new Restriction( path, new LessThanOperator( value ) );
-    }
+  public static <T extends Comparable<? super T>> Restriction lt(String path, T value) {
+    return new Restriction(path, new LessThanOperator<>(value));
+  }
 
-    public static Restriction ge( String path, Object value )
-    {
-        return new Restriction( path, new GreaterEqualOperator( value ) );
-    }
+  public static <T extends Comparable<? super T>> Restriction ge(String path, T value) {
+    return new Restriction(path, new GreaterEqualOperator<>(value));
+  }
 
-    public static Restriction le( String path, Object value )
-    {
-        return new Restriction( path, new LessEqualOperator( value ) );
-    }
+  public static <T extends Comparable<? super T>> Restriction le(String path, T value) {
+    return new Restriction(path, new LessEqualOperator<>(value));
+  }
 
-    public static Restriction between( String path, Object lside, Object rside )
-    {
-        return new Restriction( path, new BetweenOperator( lside, rside ) );
-    }
+  public static <T extends Comparable<? super T>> Restriction between(
+      String path, T lside, T rside) {
+    return new Restriction(path, new BetweenOperator<>(lside, rside));
+  }
 
-    public static Restriction like( String path, Object value, MatchMode matchMode )
-    {
-        return new Restriction( path, new LikeOperator( value, true, matchMode ) );
-    }
+  public static <T extends Comparable<? super T>> Restriction like(
+      String path, T value, MatchMode matchMode) {
+    return new Restriction(path, new LikeOperator<>(value, true, matchMode));
+  }
 
-    public static Restriction notLike( String path, Object value, MatchMode matchMode )
-    {
-        return new Restriction( path, new NotLikeOperator( value, true, matchMode ) );
-    }
+  public static <T extends Comparable<? super T>> Restriction notLike(
+      String path, T value, MatchMode matchMode) {
+    return new Restriction(path, new NotLikeOperator<>(value, true, matchMode));
+  }
 
-    public static Restriction ilike( String path, Object value, MatchMode matchMode )
-    {
-        return new Restriction( path, new LikeOperator( value, false, matchMode ) );
-    }
+  public static <T extends Comparable<? super T>> Restriction ilike(
+      String path, T value, MatchMode matchMode) {
+    return new Restriction(path, new LikeOperator<>(value, false, matchMode));
+  }
 
-    public static Restriction notIlike( String path, Object value, MatchMode matchMode )
-    {
-        return new Restriction( path, new NotLikeOperator( value, false, matchMode ) );
-    }
+  public static <T extends Comparable<? super T>> Restriction notIlike(
+      String path, T value, MatchMode matchMode) {
+    return new Restriction(path, new NotLikeOperator<>(value, false, matchMode));
+  }
 
-    public static Restriction token( String path, Object value, MatchMode matchMode )
-    {
-        return new Restriction( path, new TokenOperator( value, false, matchMode ) );
-    }
+  public static <T extends Comparable<? super T>> Restriction token(
+      String path, T value, MatchMode matchMode) {
+    return new Restriction(path, new TokenOperator<>(value, false, matchMode));
+  }
 
-    public static Restriction notToken( String path, Object value, MatchMode matchMode )
-    {
-        return new Restriction( path, new NotTokenOperator( value, false, matchMode ) );
-    }
+  public static <T extends Comparable<? super T>> Restriction notToken(
+      String path, T value, MatchMode matchMode) {
+    return new Restriction(path, new NotTokenOperator<>(value, false, matchMode));
+  }
 
-    public static Restriction in( String path, Collection<?> values )
-    {
-        return new Restriction( path, new InOperator( values ) );
-    }
+  public static <T extends Comparable<? super T>> Restriction in(
+      String path, Collection<T> values) {
+    return new Restriction(path, new InOperator<>(values));
+  }
 
-    public static Restriction notIn( String path, Collection<?> values )
-    {
-        return new Restriction( path, new NotInOperator( values ) );
-    }
+  public static <T extends Comparable<? super T>> Restriction notIn(
+      String path, Collection<T> values) {
+    return new Restriction(path, new NotInOperator<>(values));
+  }
 
-    public static Restriction isNull( String path )
-    {
-        return new Restriction( path, new NullOperator() );
-    }
+  public static Restriction isNull(String path) {
+    return new Restriction(path, new NullOperator<>());
+  }
 
-    public static Restriction isNotNull( String path )
-    {
-        return new Restriction( path, new NotNullOperator() );
-    }
+  public static Restriction isNotNull(String path) {
+    return new Restriction(path, new NotNullOperator<>());
+  }
 
-    public static Restriction isEmpty( String path )
-    {
-        return new Restriction( path, new EmptyOperator() );
-    }
+  public static Restriction isEmpty(String path) {
+    return new Restriction(path, new EmptyOperator<>());
+  }
 
-    private Restrictions()
-    {
-    }
+  /**
+   * Builds a PR group to match the query string against id, code and name.
+   *
+   * @param schema of the root entity
+   * @param query the query string value used the URL {@code query} parameter
+   * @return OR group with the filters for the query string
+   */
+  public static Disjunction query(Schema schema, String query) {
+    Restriction name = ilike("name", query, MatchMode.ANYWHERE);
+    Restriction code = eq("code", query);
+    if (query.length() != 11) return or(schema, code, name);
+    // only a query with length 11 has a chance of matching a UID
+    Restriction id = eq("id", query);
+    return or(schema, id, code, name);
+  }
+
+  public static Disjunction or(Schema schema, Criterion... filters) {
+    return or(schema, List.of(filters));
+  }
+
+  public static Disjunction or(Schema schema, List<? extends Criterion> filters) {
+    Disjunction or = new Disjunction(schema);
+    or.add(filters);
+    return or;
+  }
+
+  public static Conjunction and(Schema schema, Criterion... filters) {
+    return and(schema, List.of(filters));
+  }
+
+  public static Conjunction and(Schema schema, List<? extends Criterion> filters) {
+    Conjunction and = new Conjunction(schema);
+    and.add(filters);
+    return and;
+  }
+
+  private Restrictions() {}
 }

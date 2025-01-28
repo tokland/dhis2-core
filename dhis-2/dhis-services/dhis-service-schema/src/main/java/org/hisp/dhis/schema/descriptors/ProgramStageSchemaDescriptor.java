@@ -1,7 +1,5 @@
-package org.hisp.dhis.schema.descriptors;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,8 +25,9 @@ package org.hisp.dhis.schema.descriptors;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.schema.descriptors;
 
-import com.google.common.collect.Lists;
+import java.util.List;
 import org.hisp.dhis.program.ProgramStage;
 import org.hisp.dhis.schema.Schema;
 import org.hisp.dhis.schema.SchemaDescriptor;
@@ -38,25 +37,23 @@ import org.hisp.dhis.security.AuthorityType;
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class ProgramStageSchemaDescriptor implements SchemaDescriptor
-{
-    public static final String SINGULAR = "programStage";
+public class ProgramStageSchemaDescriptor implements SchemaDescriptor {
+  public static final String SINGULAR = "programStage";
 
-    public static final String PLURAL = "programStages";
+  public static final String PLURAL = "programStages";
 
-    public static final String API_ENDPOINT = "/" + PLURAL;
+  public static final String API_ENDPOINT = "/" + PLURAL;
 
-    @Override
-    public Schema getSchema()
-    {
-        Schema schema = new Schema( ProgramStage.class, SINGULAR, PLURAL );
-        schema.setRelativeApiEndpoint( API_ENDPOINT );
-        schema.setOrder( 1509 );
-        schema.setDataShareable( true );
+  @Override
+  public Schema getSchema() {
+    Schema schema = new Schema(ProgramStage.class, SINGULAR, PLURAL);
+    schema.setRelativeApiEndpoint(API_ENDPOINT);
+    schema.setOrder(1509);
+    schema.setDataShareable(true);
 
-        schema.getAuthorities().add( new Authority( AuthorityType.CREATE, Lists.newArrayList( "F_PROGRAMSTAGE_ADD" ) ) );
-        schema.getAuthorities().add( new Authority( AuthorityType.DELETE, Lists.newArrayList( "F_PROGRAMSTAGE_DELETE" ) ) );
+    schema.add(new Authority(AuthorityType.CREATE, List.of("F_PROGRAMSTAGE_ADD")));
+    schema.add(new Authority(AuthorityType.DELETE, List.of("F_PROGRAMSTAGE_DELETE")));
 
-        return schema;
-    }
+    return schema;
+  }
 }

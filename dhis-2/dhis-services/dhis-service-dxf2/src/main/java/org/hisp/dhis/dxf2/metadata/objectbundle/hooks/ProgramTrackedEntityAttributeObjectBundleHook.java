@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,76 +25,60 @@ package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
 
-import org.hisp.dhis.common.IdentifiableObject;
+import java.util.function.Consumer;
 import org.hisp.dhis.dxf2.metadata.objectbundle.ObjectBundle;
 import org.hisp.dhis.feedback.ErrorCode;
 import org.hisp.dhis.feedback.ErrorReport;
 import org.hisp.dhis.program.ProgramTrackedEntityAttribute;
 import org.hisp.dhis.render.DeviceRenderTypeMap;
-import org.hisp.dhis.render.RenderDevice;
 import org.hisp.dhis.render.type.ValueTypeRenderingObject;
 import org.hisp.dhis.system.util.ValidationUtils;
 import org.hisp.dhis.trackedentity.TrackedEntityAttribute;
+import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
-
+@Component
 public class ProgramTrackedEntityAttributeObjectBundleHook
-    extends AbstractObjectBundleHook
-{
+    extends AbstractObjectBundleHook<ProgramTrackedEntityAttribute> {
+  /**
+   * Validate that the RenderType (if any) conforms to the constraints of ValueType or OptionSet.
+   */
+  @Override
+  public void validate(
+      ProgramTrackedEntityAttribute object, ObjectBundle bundle, Consumer<ErrorReport> addReports) {
+    renderTypeConformsToConstrains(object, addReports);
+  }
 
-    @Override
-    public <T extends IdentifiableObject> List<ErrorReport> validate( T object, ObjectBundle bundle )
-    {
-        List<ErrorReport> errorReports = new ArrayList<>();
+  private void renderTypeConformsToConstrains(
+      ProgramTrackedEntityAttribute ptea, Consumer<ErrorReport> addReports) {
+    DeviceRenderTypeMap<ValueTypeRenderingObject> map = ptea.getRenderType();
 
-        /*
-         * Validate that the RenderType (if any) conforms to the constraints of ValueType or OptionSet.
-         */
-        if ( object != null && object.getClass().isAssignableFrom( ProgramTrackedEntityAttribute.class ) )
-        {
-            ProgramTrackedEntityAttribute ptea = (ProgramTrackedEntityAttribute) object;
+    TrackedEntityAttribute attr = ptea.getAttribute();
 
-            errorReports.addAll( renderTypeConformsToConstrains( ptea ) );
-
-        }
-
-        return errorReports;
+    if (map == null) {
+      return;
     }
 
-    private List<ErrorReport> renderTypeConformsToConstrains( ProgramTrackedEntityAttribute ptea )
-    {
-        List<ErrorReport> errorReports = new ArrayList<>();
+    for (ValueTypeRenderingObject renderingObject : map.values()) {
+      if (renderingObject.getType() == null) {
+        addReports.accept(
+            new ErrorReport(
+                ProgramTrackedEntityAttribute.class, ErrorCode.E4011, "renderType.type"));
+      }
 
-        DeviceRenderTypeMap<ValueTypeRenderingObject> map = ptea.getRenderType();
-
-        TrackedEntityAttribute attr = ptea.getAttribute();
-
-        if ( map == null )
-        {
-            return errorReports;
-        }
-
-        for ( RenderDevice device : map.keySet() )
-        {
-            if ( map.get( device ).getType() == null )
-            {
-                errorReports
-                    .add( new ErrorReport( ProgramTrackedEntityAttribute.class, ErrorCode.E4011, "renderType.type" ) );
-            }
-
-            if ( !ValidationUtils
-                .validateRenderingType( ProgramTrackedEntityAttribute.class, attr.getValueType(), attr.hasOptionSet(),
-                    map.get( device ).getType() ) )
-            {
-                errorReports.add( new ErrorReport( ProgramTrackedEntityAttribute.class, ErrorCode.E4020,
-                    map.get( device ).getType(), attr.getValueType() ) );
-            }
-
-        }
-
-        return errorReports;
+      if (!ValidationUtils.validateRenderingType(
+          ProgramTrackedEntityAttribute.class,
+          attr.getValueType(),
+          attr.hasOptionSet(),
+          renderingObject.getType())) {
+        addReports.accept(
+            new ErrorReport(
+                ProgramTrackedEntityAttribute.class,
+                ErrorCode.E4020,
+                renderingObject.getType(),
+                attr.getValueType()));
+      }
     }
-
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.document;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,31 +25,49 @@ package org.hisp.dhis.document;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.document;
 
-import org.hisp.dhis.system.deletion.DeletionHandler;
+import static org.hisp.dhis.system.deletion.DeletionVeto.ACCEPT;
+
+import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.fileresource.FileResource;
+import org.hisp.dhis.fileresource.FileResourceStorageStatus;
+import org.hisp.dhis.system.deletion.DeletionVeto;
+import org.hisp.dhis.system.deletion.JdbcDeletionHandler;
 import org.hisp.dhis.user.User;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Viet Nguyen <viet@dhis2.org>
  */
-public class DocumentDeletionHandler extends DeletionHandler
-{
-    @Autowired
-    private DocumentService documentService;
+@Component
+@RequiredArgsConstructor
+public class DocumentDeletionHandler extends JdbcDeletionHandler {
+  private static final DeletionVeto VETO = new DeletionVeto(Document.class);
 
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
+  private final DocumentService documentService;
 
-    @Override
-    public String getClassName()
-    {
-        return Document.class.getSimpleName();
+  @Override
+  protected void register() {
+    whenVetoing(User.class, this::allowDeleteUser);
+    whenVetoing(FileResource.class, this::allowDeleteFileResource);
+    whenDeleting(FileResource.class, this::deleteFileResource);
+  }
+
+  private DeletionVeto allowDeleteUser(User user) {
+    return documentService.getCountDocumentByUser(user) > 0 ? VETO : ACCEPT;
+  }
+
+  private DeletionVeto allowDeleteFileResource(FileResource fileResource) {
+    if (fileResource.getStorageStatus() != FileResourceStorageStatus.STORED) {
+      return ACCEPT;
     }
+    String sql = "select 1 from document where fileresource=:id limit 1";
+    return vetoIfExists(VETO, sql, Map.of("id", fileResource.getId()));
+  }
 
-    public String allowDeleteUser( User user )
-    {
-        return documentService.getCountDocumentByUser( user ) > 0 ? ERROR : null;
-    }
+  private void deleteFileResource(FileResource fileResource) {
+    delete("delete from document where fileresource=:id", Map.of("id", fileResource.getId()));
+  }
 }

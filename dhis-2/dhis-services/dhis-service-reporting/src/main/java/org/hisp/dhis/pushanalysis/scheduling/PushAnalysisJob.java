@@ -1,6 +1,5 @@
-package org.hisp.dhis.pushanalysis.scheduling;
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,39 +25,38 @@ package org.hisp.dhis.pushanalysis.scheduling;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.pushanalysis.scheduling;
 
+import java.util.List;
+import lombok.AllArgsConstructor;
 import org.hisp.dhis.pushanalysis.PushAnalysisService;
-import org.hisp.dhis.scheduling.AbstractJob;
+import org.hisp.dhis.scheduling.Job;
 import org.hisp.dhis.scheduling.JobConfiguration;
+import org.hisp.dhis.scheduling.JobProgress;
 import org.hisp.dhis.scheduling.JobType;
 import org.hisp.dhis.scheduling.parameters.PushAnalysisJobParameters;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Stian Sandvold
  */
-public class PushAnalysisJob
-    extends AbstractJob
-{
-    @Autowired
-    private PushAnalysisService pushAnalysisService;
+@Component
+@AllArgsConstructor
+public class PushAnalysisJob implements Job {
+  private final PushAnalysisService pushAnalysisService;
 
-    // -------------------------------------------------------------------------
-    // Implementation
-    // -------------------------------------------------------------------------
+  @Override
+  public JobType getJobType() {
+    return JobType.PUSH_ANALYSIS;
+  }
 
-    @Override
-    public JobType getJobType()
-    {
-        return JobType.PUSH_ANALYSIS;
-    }
+  @Override
+  public void execute(JobConfiguration config, JobProgress progress) {
+    PushAnalysisJobParameters params = (PushAnalysisJobParameters) config.getJobParameters();
 
-    @Override
-    public void execute( JobConfiguration jobConfiguration )
-    {
-        PushAnalysisJobParameters parameters = (PushAnalysisJobParameters) jobConfiguration.getJobParameters();
-
-        pushAnalysisService.runPushAnalysis( parameters.getPushAnalysis(), jobConfiguration );
-    }
-
+    List<String> pushAnalysis = params.getPushAnalysis();
+    progress.startingProcess("Push analysis for " + pushAnalysis);
+    pushAnalysisService.runPushAnalysis(pushAnalysis, progress);
+    progress.completedProcess(null);
+  }
 }

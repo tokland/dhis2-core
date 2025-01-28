@@ -1,7 +1,5 @@
-package org.hisp.dhis.program.message;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,367 +25,242 @@ package org.hisp.dhis.program.message;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program.message;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import static org.hisp.dhis.audit.AuditOperationType.READ;
+import static org.hisp.dhis.user.CurrentUserUtil.getCurrentUsername;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.hisp.dhis.common.BaseIdentifiableObject;
 import org.hisp.dhis.common.DeliveryChannel;
 import org.hisp.dhis.common.IdentifiableObject;
 import org.hisp.dhis.common.IdentifiableObjectManager;
 import org.hisp.dhis.common.IllegalQueryException;
+import org.hisp.dhis.feedback.NotFoundException;
 import org.hisp.dhis.organisationunit.OrganisationUnitService;
 import org.hisp.dhis.outboundmessage.BatchResponseStatus;
 import org.hisp.dhis.outboundmessage.OutboundMessageBatch;
 import org.hisp.dhis.outboundmessage.OutboundMessageBatchService;
-import org.hisp.dhis.program.Program;
-import org.hisp.dhis.program.ProgramInstance;
-import org.hisp.dhis.program.ProgramService;
-import org.hisp.dhis.program.ProgramStageInstance;
+import org.hisp.dhis.program.Enrollment;
+import org.hisp.dhis.program.Event;
 import org.hisp.dhis.security.acl.AclService;
-import org.hisp.dhis.trackedentity.TrackedEntityInstanceService;
-import org.hisp.dhis.user.CurrentUserService;
-import org.hisp.dhis.user.User;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.hisp.dhis.trackedentity.ApiTrackedEntityAuditService;
+import org.hisp.dhis.trackedentity.TrackedEntity;
+import org.hisp.dhis.user.CurrentUserUtil;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
  */
-@Transactional
-public class DefaultProgramMessageService
-    implements ProgramMessageService
-{
-    private static final Log log = LogFactory.getLog( DefaultProgramMessageService.class );
+@Slf4j
+@RequiredArgsConstructor
+@Service("org.hisp.dhis.program.message.ProgramMessageService")
+public class DefaultProgramMessageService implements ProgramMessageService {
+  private final IdentifiableObjectManager manager;
 
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+  private final ProgramMessageStore programMessageStore;
 
-    @Autowired
-    protected IdentifiableObjectManager manager;
+  private final OrganisationUnitService organisationUnitService;
 
-    @Autowired
-    private ProgramMessageStore programMessageStore;
+  private final OutboundMessageBatchService messageBatchService;
 
-    @Autowired
-    private OrganisationUnitService organisationUnitService;
+  private final List<DeliveryChannelStrategy> strategies;
 
-    @Autowired
-    private TrackedEntityInstanceService trackedEntityInstanceService;
+  private final List<MessageBatchCreatorService> batchCreators;
 
-    @Autowired
-    private ProgramService programService;
+  private final AclService aclService;
 
-    @Autowired
-    private OutboundMessageBatchService messageBatchService;
+  private final ProgramMessageOperationParamMapper operationParamMapper;
 
-    @Autowired
-    private CurrentUserService currentUserService;
+  private final ApiTrackedEntityAuditService apiTrackedEntityAuditService;
 
-    @Autowired
-    private List<DeliveryChannelStrategy> strategies;
+  // -------------------------------------------------------------------------
+  // Implementation methods
+  // -------------------------------------------------------------------------
 
-    @Autowired
-    private List<MessageBatchCreatorService> batchCreators;
+  @Override
+  @Transactional(readOnly = true)
+  public ProgramMessage getProgramMessage(long id) {
+    return programMessageStore.get(id);
+  }
 
-    @Autowired
-    private AclService aclService;
+  @Override
+  @Transactional(readOnly = true)
+  public ProgramMessage getProgramMessage(String uid) {
+    return programMessageStore.getByUid(uid);
+  }
 
-    // -------------------------------------------------------------------------
-    // Implementation methods
-    // -------------------------------------------------------------------------
+  @Override
+  @Transactional(readOnly = true)
+  public List<ProgramMessage> getAllProgramMessages() {
+    return programMessageStore.getAll();
+  }
 
-    @Override
-    public ProgramMessageQueryParams getFromUrl( Set<String> ou, String piUid, String psiUid,
-        ProgramMessageStatus messageStatus, Integer page, Integer pageSize, Date afterDate, Date beforeDate )
-    {
-        ProgramMessageQueryParams params = new ProgramMessageQueryParams();
+  @Override
+  @Transactional(readOnly = true)
+  public List<ProgramMessage> getProgramMessages(ProgramMessageOperationParams params)
+      throws NotFoundException {
+    ProgramMessageQueryParams queryParams = operationParamMapper.map(params);
 
-        if ( piUid != null )
-        {
-            if ( manager.exists( ProgramInstance.class, piUid ) )
-            {
-                params.setProgramInstance( manager.get( ProgramInstance.class, piUid ) );
-            }
-            else
-            {
-                throw new IllegalQueryException( "ProgramInstance does not exist." );
-            }
+    return programMessageStore.getProgramMessages(queryParams);
+  }
+
+  @Override
+  @Transactional
+  public long saveProgramMessage(ProgramMessage programMessage) {
+    programMessageStore.save(programMessage);
+    return programMessage.getId();
+  }
+
+  @Override
+  @Transactional
+  public void updateProgramMessage(ProgramMessage programMessage) {
+    programMessageStore.update(programMessage);
+  }
+
+  @Override
+  public void deleteProgramMessage(ProgramMessage programMessage) {
+    programMessageStore.delete(programMessage);
+  }
+
+  @Override
+  @Transactional
+  public BatchResponseStatus sendMessages(List<ProgramMessage> programMessages) {
+    List<ProgramMessage> populatedProgramMessages =
+        programMessages.stream()
+            .filter(this::hasDataWriteAccess)
+            .map(this::setAttributesBasedOnStrategy)
+            .collect(Collectors.toList());
+
+    List<OutboundMessageBatch> batches = createBatches(populatedProgramMessages);
+
+    BatchResponseStatus status = new BatchResponseStatus(messageBatchService.sendBatches(batches));
+
+    saveProgramMessages(programMessages, status);
+
+    return status;
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public void validatePayload(ProgramMessage message) {
+    List<String> violations = new ArrayList<>();
+
+    ProgramMessageRecipients recipients = message.getRecipients();
+
+    if (message.getText() == null) {
+      violations.add("Message content must be provided");
+    }
+
+    if (message.getDeliveryChannels() == null || message.getDeliveryChannels().isEmpty()) {
+      violations.add("Delivery channel must be specified");
+    }
+
+    if (message.getEnrollment() == null && message.getEvent() == null) {
+      violations.add("Enrollment or event must be specified");
+    }
+
+    if (recipients.getTrackedEntity() != null) {
+      TrackedEntity trackedEntity = getEntity(TrackedEntity.class, recipients.getTrackedEntity());
+      if (trackedEntity == null) {
+        violations.add("Tracked entity does not exist");
+      }
+
+      apiTrackedEntityAuditService.addTrackedEntityAudit(trackedEntity, getCurrentUsername(), READ);
+    }
+
+    if (recipients.getOrganisationUnit() != null
+        && organisationUnitService.getOrganisationUnit(recipients.getOrganisationUnit().getUid())
+            == null) {
+      violations.add("Organisation unit does not exist");
+    }
+
+    if (!violations.isEmpty()) {
+      throw new IllegalQueryException(String.join(", ", violations));
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Supportive Methods
+  // ---------------------------------------------------------------------
+
+  private boolean hasDataWriteAccess(ProgramMessage message) {
+    IdentifiableObject object = null;
+
+    boolean isAuthorized;
+
+    if (message.hasEnrollment()) {
+      object = message.getEnrollment().getProgram();
+    } else if (message.hasEvent()) {
+      object = message.getEvent().getProgramStage();
+    }
+
+    if (object != null) {
+      isAuthorized = aclService.canDataWrite(CurrentUserUtil.getCurrentUserDetails(), object);
+
+      if (!isAuthorized) {
+        log.error(
+            String.format(
+                "Sending message failed. User does not have write access for %s.",
+                object.getName()));
+
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private void saveProgramMessages(List<ProgramMessage> messageBatch, BatchResponseStatus status) {
+    messageBatch.parallelStream()
+        .map(pm -> setParameters(pm, status))
+        .forEach(this::saveProgramMessage);
+  }
+
+  private ProgramMessage setParameters(ProgramMessage message, BatchResponseStatus status) {
+    message.setEnrollment(getEntity(Enrollment.class, message.getEnrollment()));
+    message.setEvent(getEntity(Event.class, message.getEvent()));
+    message.setProcessedDate(new Date());
+    message.setMessageStatus(
+        status.isOk() ? ProgramMessageStatus.SENT : ProgramMessageStatus.FAILED);
+
+    return message;
+  }
+
+  private List<OutboundMessageBatch> createBatches(List<ProgramMessage> programMessages) {
+    return batchCreators.stream()
+        .map(bc -> bc.getMessageBatch(programMessages))
+        .filter(bc -> !bc.getMessages().isEmpty())
+        .toList();
+  }
+
+  private <T extends BaseIdentifiableObject> T getEntity(
+      Class<T> klass, BaseIdentifiableObject entity) {
+    if (entity == null) {
+      return null;
+    }
+
+    return manager.get(klass, entity.getUid());
+  }
+
+  private ProgramMessage setAttributesBasedOnStrategy(ProgramMessage message) {
+    Set<DeliveryChannel> channels = message.getDeliveryChannels();
+
+    for (DeliveryChannel channel : channels) {
+      for (DeliveryChannelStrategy strategy : strategies) {
+        if (strategy.getDeliveryChannel().equals(channel)) {
+          strategy.setAttributes(message);
         }
-
-        if ( psiUid != null )
-        {
-            if ( manager.exists( ProgramStageInstance.class, psiUid ) )
-            {
-                params.setProgramStageInstance( manager.get( ProgramStageInstance.class, psiUid ) );
-            }
-            else
-            {
-                throw new IllegalQueryException( "ProgramStageInstance does not exist." );
-            }
-        }
-
-        params.setOrganisationUnit( ou );
-        params.setMessageStatus( messageStatus );
-        params.setPage( page );
-        params.setPageSize( pageSize );
-        params.setAfterDate( afterDate );
-        params.setBeforeDate( beforeDate );
-
-        return params;
+      }
     }
 
-    @Override
-    public boolean exists( String uid )
-    {
-        return programMessageStore.exists( uid );
-    }
-
-    @Override
-    public ProgramMessage getProgramMessage( int id )
-    {
-        return programMessageStore.get( id );
-    }
-
-    @Override
-    public ProgramMessage getProgramMessage( String uid )
-    {
-        return programMessageStore.getByUid( uid );
-    }
-
-    @Override
-    public List<ProgramMessage> getAllProgramMessages()
-    {
-        return programMessageStore.getAll();
-    }
-
-    @Override
-    public List<ProgramMessage> getProgramMessages( ProgramMessageQueryParams params )
-    {
-        hasAccess( params, currentUserService.getCurrentUser() );
-        validateQueryParameters( params );
-
-        return programMessageStore.getProgramMessages( params );
-    }
-
-    @Override
-    public int saveProgramMessage( ProgramMessage programMessage )
-    {
-        programMessageStore.save( programMessage );
-        return programMessage.getId();
-    }
-
-    @Override
-    public void updateProgramMessage( ProgramMessage programMessage )
-    {
-        programMessageStore.update( programMessage );
-    }
-
-    @Override
-    public void deleteProgramMessage( ProgramMessage programMessage )
-    {
-        programMessageStore.delete( programMessage );
-    }
-
-    @Override
-    public BatchResponseStatus sendMessages( List<ProgramMessage> programMessages )
-    {
-        List<ProgramMessage> populatedProgramMessages = programMessages.stream()
-            .filter( this::hasDataWriteAccess )
-            .map( this::setAttributesBasedOnStrategy )
-            .collect( Collectors.toList() );
-
-        List<OutboundMessageBatch> batches = createBatches( populatedProgramMessages );
-
-        BatchResponseStatus status = new BatchResponseStatus( messageBatchService.sendBatches( batches ) );
-
-        saveProgramMessages( programMessages, status );
-
-        return status;
-    }
-
-    @Override
-    public void hasAccess( ProgramMessageQueryParams params, User user )
-    {
-        ProgramInstance programInstance = null;
-
-        Set<Program> programs = new HashSet<>();
-
-        if ( params.hasProgramInstance() )
-        {
-            programInstance = params.getProgramInstance();
-        }
-
-        if ( params.hasProgramStageInstance() )
-        {
-            programInstance = params.getProgramStageInstance().getProgramInstance();
-        }
-
-        programs = programService.getUserPrograms( user );
-
-        if ( user != null && !programs.contains( programInstance.getProgram() ) )
-        {
-            throw new IllegalQueryException( "User does not have access to the required program" );
-        }
-    }
-
-    @Override
-    public void validateQueryParameters( ProgramMessageQueryParams params )
-    {
-        String violation = null;
-
-        if ( !params.hasProgramInstance() && !params.hasProgramStageInstance() )
-        {
-            violation = "Program instance or program stage instance must be provided";
-        }
-
-        if ( violation != null )
-        {
-            log.warn( "Parameter validation failed: " + violation );
-
-            throw new IllegalQueryException( violation );
-        }
-    }
-
-    @Override
-    public void validatePayload( ProgramMessage message )
-    {
-        String violation = null;
-
-        ProgramMessageRecipients recipients = message.getRecipients();
-
-        if ( message.getText() == null )
-        {
-            violation = "Message content must be provided";
-        }
-
-        if ( message.getDeliveryChannels() == null || message.getDeliveryChannels().isEmpty() )
-        {
-            violation = "Delivery channel must be specified";
-        }
-
-        if ( message.getProgramInstance() == null && message.getProgramStageInstance() == null )
-        {
-            violation = "Program instance or program stage instance must be specified";
-        }
-
-        if ( recipients.getTrackedEntityInstance() != null && trackedEntityInstanceService
-            .getTrackedEntityInstance( recipients.getTrackedEntityInstance().getUid() ) == null )
-        {
-            violation = "Tracked entity does not exist";
-        }
-
-        if ( recipients.getOrganisationUnit() != null
-            && organisationUnitService.getOrganisationUnit( recipients.getOrganisationUnit().getUid() ) == null )
-        {
-            violation = "Organisation unit does not exist";
-        }
-
-        if ( violation != null )
-        {
-            log.info( "Message validation failed: " + violation );
-
-            throw new IllegalQueryException( violation );
-
-        }
-    }
-
-    // ---------------------------------------------------------------------
-    // Supportive Methods
-    // ---------------------------------------------------------------------
-
-    private boolean hasDataWriteAccess( ProgramMessage message )
-    {
-        IdentifiableObject object = null;
-
-        boolean isAuthorized;
-
-            if ( message.hasProgramInstance() )
-            {
-                object = message.getProgramInstance();
-            }
-            else if( message.hasProgramStageInstance() )
-            {
-                object = message.getProgramStageInstance();
-            }
-
-            if ( object != null )
-            {
-                isAuthorized = aclService.canDataWrite( currentUserService.getCurrentUser(), object );
-
-                if ( !isAuthorized )
-                {
-                    log.error( String.format( "Sending message failed. User does not have write access for %s.", object.getName() ) );
-
-                    return false;
-                }
-            }
-
-        return true;
-    }
-
-    private void saveProgramMessages( List<ProgramMessage> messageBatch, BatchResponseStatus status )
-    {
-        messageBatch.parallelStream()
-            .filter( ProgramMessage::isStoreCopy )
-            .map( pm -> setParameters( pm, status ) )
-            .map( this::saveProgramMessage );
-    }
-
-    private ProgramMessage setParameters( ProgramMessage message, BatchResponseStatus status )
-    {
-        message.setProgramInstance( getProgramInstance( message ) );
-        message.setProgramStageInstance( getProgramStageInstance( message ) );
-        message.setProcessedDate( new Date() );
-        message.setMessageStatus( status.isOk() ? ProgramMessageStatus.SENT : ProgramMessageStatus.FAILED );
-
-        return message;
-    }
-
-    private List<OutboundMessageBatch> createBatches( List<ProgramMessage> programMessages )
-    {
-        return batchCreators.stream()
-            .map( bc -> bc.getMessageBatch( programMessages ) )
-            .filter( bc -> !bc.getMessages().isEmpty() )
-            .collect( Collectors.toList() );
-    }
-
-    private ProgramInstance getProgramInstance( ProgramMessage programMessage )
-    {
-        if ( programMessage.getProgramInstance() != null )
-        {
-            return manager.get( ProgramInstance.class, programMessage.getProgramInstance().getUid() );
-        }
-
-        return null;
-    }
-
-    private ProgramStageInstance getProgramStageInstance( ProgramMessage programMessage )
-    {
-        if ( programMessage.getProgramStageInstance() != null )
-        {
-            return manager.get( ProgramStageInstance.class, programMessage.getProgramStageInstance().getUid() );
-        }
-
-        return null;
-    }
-
-    private ProgramMessage setAttributesBasedOnStrategy( ProgramMessage message )
-    {
-        Set<DeliveryChannel> channels = message.getDeliveryChannels();
-
-        for ( DeliveryChannel channel : channels )
-        {
-            strategies.stream()
-                .filter( st -> st.getDeliveryChannel().equals( channel ) )
-                .map( st -> st.setAttributes( message ) );
-        }
-
-        return message;
-    }
+    return message;
+  }
 }

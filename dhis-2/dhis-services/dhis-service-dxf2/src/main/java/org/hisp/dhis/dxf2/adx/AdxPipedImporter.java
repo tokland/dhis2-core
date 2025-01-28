@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.adx;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,79 +25,69 @@ package org.hisp.dhis.dxf2.adx;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.adx;
 
-import org.apache.commons.io.IOUtils;
-import org.hibernate.SessionFactory;
+import jakarta.persistence.EntityManagerFactory;
+import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.util.concurrent.Callable;
+import org.hisp.dhis.commons.util.StreamUtils;
 import org.hisp.dhis.dbms.DbmsUtils;
 import org.hisp.dhis.dxf2.common.ImportOptions;
 import org.hisp.dhis.dxf2.datavalueset.DataValueSetService;
-import org.hisp.dhis.dxf2.importsummary.ImportStatus;
 import org.hisp.dhis.dxf2.importsummary.ImportSummary;
 import org.hisp.dhis.scheduling.JobConfiguration;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
-import java.util.concurrent.Callable;
-
 /**
  * @author bobj
  */
-public class AdxPipedImporter
-    implements Callable<ImportSummary>
-{
-    public static final int PIPE_BUFFER_SIZE = 4096;
+public class AdxPipedImporter implements Callable<ImportSummary> {
+  public static final int PIPE_BUFFER_SIZE = 4096;
 
-    public static final int TOTAL_MINUTES_TO_WAIT = 5;
+  public static final int TOTAL_MINUTES_TO_WAIT = 5;
 
-    protected PipedInputStream pipeIn;
+  protected PipedInputStream pipeIn;
 
-    private final DataValueSetService dataValueSetService;
+  private final DataValueSetService dataValueSetService;
 
-    private final ImportOptions importOptions;
+  private final ImportOptions importOptions;
 
-    private final JobConfiguration id;
-    
-    private final SessionFactory sessionFactory;
-    
-    private final Authentication authentication;
+  private final JobConfiguration id;
 
-    public AdxPipedImporter( DataValueSetService dataValueSetService, ImportOptions importOptions,
-        JobConfiguration id, PipedOutputStream pipeOut, SessionFactory sessionFactory ) throws IOException
-    {
-        this.dataValueSetService = dataValueSetService;
-        this.pipeIn = new PipedInputStream( pipeOut, PIPE_BUFFER_SIZE );
-        this.importOptions = importOptions;
-        this.id = id;
-        this.sessionFactory = sessionFactory;
-        this.authentication = SecurityContextHolder.getContext().getAuthentication();
+  private final EntityManagerFactory entityManagerFactory;
+
+  private final Authentication authentication;
+
+  public AdxPipedImporter(
+      DataValueSetService dataValueSetService,
+      ImportOptions importOptions,
+      JobConfiguration id,
+      PipedOutputStream pipeOut,
+      EntityManagerFactory entityManagerFactory)
+      throws IOException {
+    this.dataValueSetService = dataValueSetService;
+    this.pipeIn = new PipedInputStream(pipeOut, PIPE_BUFFER_SIZE);
+    this.importOptions = importOptions;
+    this.id = id;
+    this.entityManagerFactory = entityManagerFactory;
+    this.authentication = SecurityContextHolder.getContext().getAuthentication();
+  }
+
+  @Override
+  public ImportSummary call() {
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+    DbmsUtils.bindSessionToThread(entityManagerFactory);
+
+    try {
+      return dataValueSetService.importDataValueSetXml(pipeIn, importOptions, id);
+    } catch (Exception ex) {
+      return ImportSummary.error("Exception: " + ex.getMessage());
+    } finally {
+      StreamUtils.closeQuietly(pipeIn);
+      DbmsUtils.unbindSessionFromThread(entityManagerFactory);
     }
-
-    @Override
-    public ImportSummary call()
-    {
-        ImportSummary result = null;
-        SecurityContextHolder.getContext().setAuthentication( authentication );
-        DbmsUtils.bindSessionToThread( sessionFactory );
-
-        try
-        {
-            result = dataValueSetService.saveDataValueSet( pipeIn, importOptions, id );
-        }
-        catch ( Exception ex )
-        {
-            result = new ImportSummary();
-            result.setStatus( ImportStatus.ERROR );
-            result.setDescription( "Exception: " + ex.getMessage() );
-        }
-        finally
-        {
-            IOUtils.closeQuietly( pipeIn );
-            DbmsUtils.unbindSessionFromThread( sessionFactory );
-        }
-                
-        return result;
-    }
+  }
 }

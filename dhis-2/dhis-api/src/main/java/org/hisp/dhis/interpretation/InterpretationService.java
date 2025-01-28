@@ -1,7 +1,5 @@
-package org.hisp.dhis.interpretation;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,73 +25,71 @@ package org.hisp.dhis.interpretation;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.chart.Chart;
-import org.hisp.dhis.mapping.Map;
-import org.hisp.dhis.reporttable.ReportTable;
-import org.hisp.dhis.user.User;
+package org.hisp.dhis.interpretation;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import org.hisp.dhis.eventvisualization.EventVisualization;
+import org.hisp.dhis.mapping.Map;
+import org.hisp.dhis.user.User;
+import org.hisp.dhis.visualization.Visualization;
 
 /**
  * @author Lars Helge Overland
  */
-public interface InterpretationService
-{
-    int saveInterpretation( Interpretation interpretation );
+public interface InterpretationService {
+  long saveInterpretation(Interpretation interpretation);
 
-    Interpretation getInterpretation( int id );
+  Interpretation getInterpretation(long id);
 
-    Interpretation getInterpretation( String uid );
+  Interpretation getInterpretation(String uid);
 
-    void updateInterpretation( Interpretation interpretation );
+  void updateInterpretation(Interpretation interpretation);
 
-    void deleteInterpretation( Interpretation interpretation );
+  void updateInterpretationText(Interpretation interpretation, String text);
 
-    List<Interpretation> getInterpretations();
+  void deleteInterpretation(Interpretation interpretation);
 
-    List<Interpretation> getInterpretations( Date lastUpdated );
+  List<Interpretation> getInterpretations();
 
-    List<Interpretation> getInterpretations( int first, int max );
+  List<Interpretation> getInterpretations(Visualization visualization);
 
-    InterpretationComment addInterpretationComment( String uid, String text );
+  List<Interpretation> getInterpretations(EventVisualization eventVisualization);
 
-    void sendNotifications( Interpretation interpretation, InterpretationComment comment, Set<User> users );
-    
-    void updateSharingForMentions( Interpretation interpretation, Set<User> users );
+  List<Interpretation> getInterpretations(Map map);
 
-    void updateCurrentUserLastChecked();
+  List<Interpretation> getInterpretations(Date lastUpdated);
 
-    long getNewInterpretationCount();
+  List<Interpretation> getInterpretations(int first, int max);
 
-    /**
-     * Adds a like to the given interpretation for the current user. This method
-     * will have a "repeatable read" transaction isolation level to ensure an
-     * atomic increment of the like count interpretation property.
-     * 
-     * @param id the interpretation id.
-     * @return true if the current user had not already liked the
-     *         interpretation.
-     */
-    boolean likeInterpretation( int id );
+  InterpretationComment addInterpretationComment(String uid, String text);
 
-    /**
-     * Removes a like from the given interpretation for the current user. This
-     * method will have a "repeatable read" transaction isolation level to
-     * ensure an atomic decrease of the like count interpretation property.
-     * 
-     * @param id the interpretation id.
-     * @return true if the current user had previously liked the interpretation.
-     */
-    boolean unlikeInterpretation( int id );
+  void updateComment(Interpretation interpretation, InterpretationComment comment);
 
-    int countMapInterpretations( Map map );
+  boolean updateSharingForMentions(Interpretation interpretation, Set<User> users);
 
-    int countChartInterpretations( Chart chart );
+  void updateCurrentUserLastChecked();
 
-    int countReportTableInterpretations( ReportTable reportTable );
+  long getNewInterpretationCount();
 
-    Interpretation getInterpretationByChart( int id );
+  /**
+   * Adds a like to the given interpretation for the current user. This method will have a
+   * "repeatable read" transaction isolation level to ensure an atomic increment of the like count
+   * interpretation property.
+   *
+   * @param id the interpretation id.
+   * @return true if the current user had not already liked the interpretation.
+   */
+  boolean likeInterpretation(long id);
+
+  /**
+   * Removes a like from the given interpretation for the current user. This method will have a
+   * "repeatable read" transaction isolation level to ensure an atomic decrease of the like count
+   * interpretation property.
+   *
+   * @param id the interpretation id.
+   * @return true if the current user had previously liked the interpretation.
+   */
+  boolean unlikeInterpretation(long id);
 }

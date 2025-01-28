@@ -1,7 +1,5 @@
-package org.hisp.dhis.hibernate.jsonb.type;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,44 +25,30 @@ package org.hisp.dhis.hibernate.jsonb.type;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.hibernate.jsonb.type;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JavaType;
-
-import java.io.IOException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 
 /**
  * @author Abyot Asalefew Gizaw <abyota@gmail.com>
- *
  */
-public class JsonListBinaryType 
-    extends JsonBinaryType
-{
-    @Override
-    protected String convertObjectToJson( Object value )
-    {
-        try
-        {
-            return MAPPER.writeValueAsString( value );
-        }
-        catch ( IOException e )
-        {
-            throw new RuntimeException( e );
-        }
-    }
-    
-    @Override
-    protected Object convertJsonToObject( String content )
-    {
-        try
-        {
-            JavaType type = MAPPER.getTypeFactory().constructCollectionType( List.class, returnedClass() );
-            
-            return MAPPER.readValue( content, type );
-        }
-        catch ( IOException e )
-        {
-            throw new RuntimeException( e );
-        }
-    }
+public class JsonListBinaryType extends JsonBinaryType {
+  static final ObjectMapper MAPPER = new ObjectMapper();
+
+  static {
+    MAPPER.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+  }
+
+  @Override
+  protected ObjectMapper getResultingMapper() {
+    return MAPPER;
+  }
+
+  @Override
+  protected JavaType getResultingJavaType(Class<?> returnedClass) {
+    return MAPPER.getTypeFactory().constructCollectionType(List.class, returnedClass);
+  }
 }

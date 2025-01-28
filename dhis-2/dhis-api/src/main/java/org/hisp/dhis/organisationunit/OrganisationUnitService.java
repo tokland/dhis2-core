@@ -1,7 +1,5 @@
-package org.hisp.dhis.organisationunit;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,430 +25,452 @@ package org.hisp.dhis.organisationunit;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-import org.hisp.dhis.hierarchy.HierarchyViolationException;
-import org.hisp.dhis.user.User;
+package org.hisp.dhis.organisationunit;
 
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.annotation.Nonnull;
+import org.hisp.dhis.common.UID;
+import org.hisp.dhis.dataset.DataSet;
+import org.hisp.dhis.feedback.BadRequestException;
+import org.hisp.dhis.hierarchy.HierarchyViolationException;
+import org.hisp.dhis.program.Program;
+import org.hisp.dhis.user.User;
 
 /**
  * Defines methods for working with OrganisationUnits.
  *
  * @author Torgeir Lorange Ostby
  */
-public interface OrganisationUnitService
-{
-    String ID = OrganisationUnitService.class.getName();
+public interface OrganisationUnitService extends OrganisationUnitDataIntegrityProvider {
+  String ID = OrganisationUnitService.class.getName();
 
-    int MAX_LIMIT = 500;
+  /**
+   * Adds an OrganisationUnit to the hierarchy.
+   *
+   * @param organisationUnit the OrganisationUnit to add.
+   * @return a generated unique id of the added OrganisationUnit.
+   */
+  long addOrganisationUnit(OrganisationUnit organisationUnit);
 
-    // -------------------------------------------------------------------------
-    // OrganisationUnit
-    // -------------------------------------------------------------------------
+  /**
+   * Updates an OrganisationUnit.
+   *
+   * @param organisationUnit the OrganisationUnit to update.
+   */
+  void updateOrganisationUnit(OrganisationUnit organisationUnit);
 
-    /**
-     * Adds an OrganisationUnit to the hierarchy.
-     *
-     * @param organisationUnit the OrganisationUnit to add.
-     * @return a generated unique id of the added OrganisationUnit.
-     */
-    int addOrganisationUnit( OrganisationUnit organisationUnit );
+  /**
+   * Updates an OrganisationUnit.
+   *
+   * @param organisationUnit the organisationUnit to update.
+   * @param updateHierarchy indicate whether the OrganisationUnit hierarchy has been updated.
+   */
+  void updateOrganisationUnit(OrganisationUnit organisationUnit, boolean updateHierarchy);
 
-    /**
-     * Updates an OrganisationUnit.
-     *
-     * @param organisationUnit the OrganisationUnit to update.
-     */
-    void updateOrganisationUnit( OrganisationUnit organisationUnit );
+  /**
+   * Deletes an OrganisationUnit. OrganisationUnits with children cannot be deleted.
+   *
+   * @param organisationUnit the OrganisationUnit to delete.
+   * @throws HierarchyViolationException if the OrganisationUnit has children.
+   */
+  void deleteOrganisationUnit(OrganisationUnit organisationUnit) throws HierarchyViolationException;
 
-    /**
-     * Updates the version of the organisation unit hierarchy.
-     */
-    void updateOrganisationUnitVersion();
+  /**
+   * Returns an OrganisationUnit.
+   *
+   * @param id the id of the OrganisationUnit to return.
+   * @return the OrganisationUnit with the given id, or null if no match.
+   */
+  OrganisationUnit getOrganisationUnit(long id);
 
-    /**
-     * Updates an OrganisationUnit.
-     *
-     * @param organisationUnit the organisationUnit to update.
-     * @param updateHierarchy  indicate whether the OrganisationUnit hierarchy
-     *                         has been updated.
-     */
-    void updateOrganisationUnit( OrganisationUnit organisationUnit, boolean updateHierarchy );
+  /**
+   * Returns the OrganisationUnit with the given UID.
+   *
+   * @param uid the UID of the OrganisationUnit to return.
+   * @return the OrganisationUnit with the given UID, or null if no match.
+   */
+  OrganisationUnit getOrganisationUnit(String uid);
 
-    /**
-     * Deletes an OrganisationUnit. OrganisationUnits with children cannot be
-     * deleted.
-     *
-     * @param organisationUnit the OrganisationUnit to delete.
-     * @throws HierarchyViolationException if the OrganisationUnit has children.
-     */
-    void deleteOrganisationUnit( OrganisationUnit organisationUnit )
-        throws HierarchyViolationException;
+  /**
+   * Returns the OrganisationUnit with the given code.
+   *
+   * @param code the code of the OrganisationUnit to return.
+   * @return the OrganisationUnit with the given code, or null if no match.
+   */
+  OrganisationUnit getOrganisationUnitByCode(String code);
 
-    /**
-     * Returns an OrganisationUnit.
-     *
-     * @param id the id of the OrganisationUnit to return.
-     * @return the OrganisationUnit with the given id, or null if no match.
-     */
-    OrganisationUnit getOrganisationUnit( int id );
+  /**
+   * Returns all OrganisationUnits.
+   *
+   * @return a list of all OrganisationUnits, or an empty list if there are no OrganisationUnits.
+   */
+  List<OrganisationUnit> getAllOrganisationUnits();
 
-    /**
-     * Returns the OrganisationUnit with the given UID.
-     *
-     * @param uid the UID of the OrganisationUnit to return.
-     * @return the OrganisationUnit with the given UID, or null if no match.
-     */
-    OrganisationUnit getOrganisationUnit( String uid );
+  /**
+   * Returns all OrganisationUnits by lastUpdated.
+   *
+   * @param lastUpdated OrganisationUnits from this date
+   * @return a list of all OrganisationUnits, or an empty list if there are no OrganisationUnits.
+   */
+  List<OrganisationUnit> getAllOrganisationUnitsByLastUpdated(Date lastUpdated);
 
-    /**
-     * Returns the OrganisationUnit with the given code.
-     *
-     * @param code the code of the OrganisationUnit to return.
-     * @return the OrganisationUnit with the given code, or null if no match.
-     */
-    OrganisationUnit getOrganisationUnitByCode( String code );
+  /**
+   * Returns all OrganisationUnits with corresponding identifiers.
+   *
+   * @param identifiers the collection of identifiers.
+   * @return a list of OrganisationUnits.
+   */
+  List<OrganisationUnit> getOrganisationUnits(Collection<Long> identifiers);
 
-    /**
-     * Returns all OrganisationUnits.
-     *
-     * @return a list of all OrganisationUnits, or an empty list if
-     * there are no OrganisationUnits.
-     */
-    List<OrganisationUnit> getAllOrganisationUnits();
+  /**
+   * Returns all OrganisationUnits with corresponding identifiers.
+   *
+   * @param uids the collection of uids.
+   * @return a list of OrganisationUnits.
+   */
+  List<OrganisationUnit> getOrganisationUnitsByUid(@Nonnull Collection<String> uids);
 
-    /**
-     * Returns all OrganisationUnits by lastUpdated.
-     *
-     * @param lastUpdated OrganisationUnits from this date
-     * @return a list of all OrganisationUnits, or an empty list if
-     * there are no OrganisationUnits.
-     */
-    List<OrganisationUnit> getAllOrganisationUnitsByLastUpdated( Date lastUpdated );
+  /**
+   * Returns an OrganisationUnit with a given name.
+   *
+   * @param name the name of the OrganisationUnit to return.
+   * @return the OrganisationUnit with the given name, or null if not match.
+   */
+  List<OrganisationUnit> getOrganisationUnitByName(String name);
 
-    /**
-     * Returns all OrganisationUnits with corresponding identifiers.
-     *
-     * @param identifiers the collection of identifiers.
-     * @return a list of OrganisationUnits.
-     */
-    List<OrganisationUnit> getOrganisationUnits( Collection<Integer> identifiers );
+  /**
+   * Returns all root OrganisationUnits. A root OrganisationUnit is an OrganisationUnit with no
+   * parent/the parent set to null.
+   *
+   * @return a list containing all root OrganisationUnits, or an empty list if there are no
+   *     OrganisationUnits.
+   */
+  List<OrganisationUnit> getRootOrganisationUnits();
 
-    /**
-     * Returns all OrganisationUnits with corresponding identifiers.
-     *
-     * @param uids the collection of uids.
-     * @return a list of OrganisationUnits.
-     */
-    List<OrganisationUnit> getOrganisationUnitsByUid( Collection<String> uids );
-    
-    /**
-     * Returns a list of OrganisationUnits based on the given params.
-     * 
-     * @param params the params.
-     * @return a list of OrganisationUnits.
-     */
-    List<OrganisationUnit> getOrganisationUnitsByQuery( OrganisationUnitQueryParams params );
+  /**
+   * Returns the intersection of the members of the given OrganisationUnitGroups and the
+   * OrganisationUnits which are children of the given collection of parents in the hierarchy. If
+   * the given parent collection is null or empty, the members of the group are returned.
+   *
+   * @param groups the collection of OrganisationUnitGroups.
+   * @param parents the collection of OrganisationUnit parents in the hierarchy.
+   * @return A list of OrganisationUnits.
+   */
+  List<OrganisationUnit> getOrganisationUnits(
+      Collection<OrganisationUnitGroup> groups, Collection<OrganisationUnit> parents);
 
-    /**
-     * Returns an OrganisationUnit with a given name.
-     *
-     * @param name the name of the OrganisationUnit to return.
-     * @return the OrganisationUnit with the given name, or null if not match.
-     */
-    List<OrganisationUnit> getOrganisationUnitByName( String name );
+  /**
+   * Returns an OrganisationUnit and all its children.
+   *
+   * @param uid the uid of the parent OrganisationUnit in the subtree.
+   * @return a list containing the OrganisationUnit with the given id and all its children, or an
+   *     empty list if no OrganisationUnits match.
+   */
+  List<OrganisationUnit> getOrganisationUnitWithChildren(String uid);
 
-    /**
-     * Returns all root OrganisationUnits. A root OrganisationUnit is an
-     * OrganisationUnit with no parent/the parent set to null.
-     *
-     * @return a list containing all root OrganisationUnits, or an empty
-     * list if there are no OrganisationUnits.
-     */
-    List<OrganisationUnit> getRootOrganisationUnits();
+  /**
+   * Returns an OrganisationUnit and all its children.
+   *
+   * @param uid the uid of the parent OrganisationUnit in the subtree.
+   * @param maxLevels the max number of levels to return relative to the given root, inclusive.
+   * @return a list containing the OrganisationUnit with the given id and all its children, or an
+   *     empty list if no OrganisationUnits match.
+   */
+  List<OrganisationUnit> getOrganisationUnitWithChildren(String uid, Integer maxLevels);
 
-    /**
-     * Returns the intersection of the members of the given OrganisationUnitGroups
-     * and the OrganisationUnits which are children of the given collection of
-     * parents in the hierarchy. If the given parent collection is null or empty,
-     * the members of the group are returned.
-     *
-     * @param groups  the collection of OrganisationUnitGroups.
-     * @param parents the collection of OrganisationUnit parents in the hierarchy.
-     * @return A list of OrganisationUnits.
-     */
-    List<OrganisationUnit> getOrganisationUnits( Collection<OrganisationUnitGroup> groups, Collection<OrganisationUnit> parents );
+  /**
+   * Returns an OrganisationUnit and all its children.
+   *
+   * @param id the id of the parent OrganisationUnit in the subtree.
+   * @return a list containing the OrganisationUnit with the given id and all its children, or an
+   *     empty list if no OrganisationUnits match.
+   */
+  List<OrganisationUnit> getOrganisationUnitWithChildren(long id);
 
-    /**
-     * Returns an OrganisationUnit and all its children.
-     *
-     * @param uid the uid of the parent OrganisationUnit in the subtree.
-     * @return a list containing the OrganisationUnit with the given id
-     * and all its children, or an empty list if no
-     * OrganisationUnits match.
-     */
-    List<OrganisationUnit> getOrganisationUnitWithChildren( String uid );
+  /**
+   * Returns an OrganisationUnit and all its children.
+   *
+   * @param id the id of the parent OrganisationUnit in the subtree.
+   * @param maxLevels the max number of levels to return relative to the given root, inclusive.
+   * @return a list containing the OrganisationUnit with the given id and all its children, or an
+   *     empty list if no OrganisationUnits match.
+   */
+  List<OrganisationUnit> getOrganisationUnitWithChildren(long id, Integer maxLevels);
 
-    /**
-     * Returns an OrganisationUnit and all its children.
-     *
-     * @param uid       the uid of the parent OrganisationUnit in the subtree.
-     * @param maxLevels the max number of levels to return relative to
-     *                  the given root, inclusive.
-     * @return a list containing the OrganisationUnit with the given id
-     * and all its children, or an empty list if no
-     * OrganisationUnits match.
-     */
-    List<OrganisationUnit> getOrganisationUnitWithChildren( String uid, Integer maxLevels );
+  /**
+   * Returns the OrganisationUnits and all their children.
+   *
+   * @param uids the uids of the parent OrganisationUnits.
+   * @return a list containing the OrganisationUnit with the given id and all its children, or an
+   *     empty list if no OrganisationUnits match.
+   */
+  List<OrganisationUnit> getOrganisationUnitsWithChildren(Collection<String> uids);
 
-    /**
-     * Returns an OrganisationUnit and all its children.
-     *
-     * @param id the id of the parent OrganisationUnit in the subtree.
-     * @return a list containing the OrganisationUnit with the given id
-     * and all its children, or an empty list if no
-     * OrganisationUnits match.
-     */
-    List<OrganisationUnit> getOrganisationUnitWithChildren( int id );
+  /**
+   * Returns the OrganisationUnits and all their children.
+   *
+   * @param uids the uids of the parent OrganisationUnits.
+   * @param maxLevels the max number of levels to return relative to the given root, inclusive.
+   * @return a list containing the OrganisationUnit with the given id and all its children, or an
+   *     empty list if no OrganisationUnits match.
+   */
+  List<OrganisationUnit> getOrganisationUnitsWithChildren(
+      Collection<String> uids, Integer maxLevels);
 
-    /**
-     * Returns an OrganisationUnit and all its children.
-     *
-     * @param id        the id of the parent OrganisationUnit in the subtree.
-     * @param maxLevels the max number of levels to return relative to
-     *                  the given root, inclusive.
-     * @return a list containing the OrganisationUnit with the given id
-     * and all its children, or an empty list if no
-     * OrganisationUnits match.
-     */
-    List<OrganisationUnit> getOrganisationUnitWithChildren( int id, Integer maxLevels );
+  /**
+   * Returns organisation units associated with the given data set uid.
+   *
+   * @param dataSetUid the {@link DataSet} uid.
+   * @return a list of {@link OrganisationUnit} found.
+   */
+  List<OrganisationUnit> getDataSetOrganisationUnits(String dataSetUid);
 
-    /**
-     * Returns the OrganisationUnits and all their children.
-     *
-     * @param uids the uids of the parent OrganisationUnits.
-     * @return a list containing the OrganisationUnit with the given id
-     * and all its children, or an empty list if no
-     * OrganisationUnits match.
-     */
-    List<OrganisationUnit> getOrganisationUnitsWithChildren( Collection<String> uids );
+  /**
+   * Returns organisation units associated with the given program uid.
+   *
+   * @param programUid the {@link Program} uid.
+   * @return a list of {@link OrganisationUnit} found.
+   */
+  List<OrganisationUnit> getProgramOrganisationUnits(String programUid);
 
-    /**
-     * Returns the OrganisationUnits and all their children.
-     *
-     * @param uids      the uids of the parent OrganisationUnits.
-     * @param maxLevels the max number of levels to return relative to
-     *                  the given root, inclusive.
-     * @return a list containing the OrganisationUnit with the given id
-     * and all its children, or an empty list if no
-     * OrganisationUnits match.
-     */
-    List<OrganisationUnit> getOrganisationUnitsWithChildren( Collection<String> uids, Integer maxLevels );
+  /**
+   * Returns all OrganisationUnits at a given hierarchical level. The root OrganisationUnits are at
+   * level 1.
+   *
+   * @param level the hierarchical level.
+   * @return a list of all OrganisationUnits at a given hierarchical level, or an empty list if the
+   *     level is empty.
+   * @throws IllegalArgumentException if the level is zero or negative.
+   */
+  List<OrganisationUnit> getOrganisationUnitsAtLevel(int level);
 
-    /**
-     * Returns all OrganisationUnits at a given hierarchical level. The root
-     * OrganisationUnits are at level 1.
-     *
-     * @param level the hierarchical level.
-     * @return a list of all OrganisationUnits at a given hierarchical
-     * level, or an empty list if the level is empty.
-     * @throws IllegalArgumentException if the level is zero or negative.
-     */
-    List<OrganisationUnit> getOrganisationUnitsAtLevel( int level );
+  /**
+   * Returns all OrganisationUnits which are children of the given unit and are at the given
+   * hierarchical level. The root OrganisationUnits are at level 1. If parent is null, then all
+   * OrganisationUnits at the given level are returned.
+   *
+   * @param level the hierarchical level.
+   * @param parent the parent unit.
+   * @return all OrganisationUnits which are children of the given unit and are at the given
+   *     hierarchical level.
+   * @throws IllegalArgumentException if the level is illegal.
+   */
+  List<OrganisationUnit> getOrganisationUnitsAtLevel(int level, OrganisationUnit parent);
 
-    /**
-     * Returns all OrganisationUnits which are children of the given unit and are
-     * at the given hierarchical level. The root OrganisationUnits are at level 1.
-     * If parent is null, then all OrganisationUnits at the given level are returned.
-     *
-     * @param level  the hierarchical level.
-     * @param parent the parent unit.
-     * @return all OrganisationUnits which are children of the given unit and are
-     * at the given hierarchical level.
-     * @throws IllegalArgumentException if the level is illegal.
-     */
-    List<OrganisationUnit> getOrganisationUnitsAtLevel( int level, OrganisationUnit parent );
+  /**
+   * Returns all OrganisationUnits which are children of the given unit and are at the given
+   * hierarchical levels. The root OrganisationUnits are at level 1.
+   *
+   * @param levels the OrganisationUnitLevels.
+   * @param parents the parent units.
+   * @return all OrganisationUnits which are children of the given unit and are at the given
+   *     hierarchical level.
+   * @throws IllegalArgumentException if the level is illegal.
+   */
+  List<OrganisationUnit> getOrganisationUnitsAtOrgUnitLevels(
+      Collection<OrganisationUnitLevel> levels, Collection<OrganisationUnit> parents);
 
-    /**
-     * Returns all OrganisationUnits which are children of the given unit and are
-     * at the given hierarchical levels. The root OrganisationUnits are at level 1.
-     *
-     * @param levels  the OrganisationUnitLevels.
-     * @param parents the parent units.
-     * @return all OrganisationUnits which are children of the given unit and are
-     * at the given hierarchical level.
-     * @throws IllegalArgumentException if the level is illegal.
-     */
-    List<OrganisationUnit> getOrganisationUnitsAtOrgUnitLevels( Collection<OrganisationUnitLevel> levels, Collection<OrganisationUnit> parents );
+  /**
+   * Returns all OrganisationUnits which are children of the given unit and are at the given
+   * hierarchical levels. The root OrganisationUnits are at level 1.
+   *
+   * @param levels the hierarchical levels.
+   * @param parents the parent units.
+   * @return all OrganisationUnits which are children of the given unit and are at the given
+   *     hierarchical level.
+   * @throws IllegalArgumentException if the level is illegal.
+   */
+  List<OrganisationUnit> getOrganisationUnitsAtLevels(
+      Collection<Integer> levels, Collection<OrganisationUnit> parents);
 
-    /**
-     * Returns all OrganisationUnits which are children of the given unit and are
-     * at the given hierarchical levels. The root OrganisationUnits are at level 1.
-     *
-     * @param levels  the hierarchical levels.
-     * @param parents the parent units.
-     * @return all OrganisationUnits which are children of the given unit and are
-     * at the given hierarchical level.
-     * @throws IllegalArgumentException if the level is illegal.
-     */
-    List<OrganisationUnit> getOrganisationUnitsAtLevels( Collection<Integer> levels, Collection<OrganisationUnit> parents );
+  /**
+   * Returns the number of levels in the OrganisationUnit hierarchy.
+   *
+   * @return the number of hierarchical levels.
+   */
+  int getNumberOfOrganisationalLevels();
 
-    /**
-     * Returns the number of levels in the OrganisationUnit hierarchy.
-     *
-     * @return the number of hierarchical levels.
-     */
-    int getNumberOfOrganisationalLevels();
+  /**
+   * Returns the count of OrganisationUnits which are part of the sub-hierarchy of the given parent
+   * OrganisationUnit and members of the given object based on the collection of the given
+   * collection name.
+   *
+   * @param parent the parent OrganisationUnit.
+   * @param member the member object.
+   * @param collectionName the name of the collection.
+   * @return the count of member OrganisationUnits.
+   */
+  Long getOrganisationUnitHierarchyMemberCount(
+      OrganisationUnit parent, Object member, String collectionName) throws BadRequestException;
 
-    /**
-     * Returns all OrganisationUnits which are not a member of any OrganisationUnitGroups.
-     *
-     * @return all OrganisationUnits which are not a member of any OrganisationUnitGroups.
-     */
-    List<OrganisationUnit> getOrganisationUnitsWithoutGroups();
-    
-    /**
-     * Returns the count of OrganisationUnits which are part of the
-     * sub-hierarchy of the given parent OrganisationUnit and members of 
-     * the given object based on the collection of the given collection name.
-     * 
-     * @param parent the parent OrganisationUnit.
-     * @param member the member object.
-     * @param collectionName the name of the collection.
-     * @return the count of member OrganisationUnits.
-     */
-    Long getOrganisationUnitHierarchyMemberCount( OrganisationUnit parent, Object member, String collectionName );
+  /**
+   * Returns the level of the given org unit level. The level parameter string can either represent
+   * a numerical level, or a UID referring to an {@link OrganisationUnitLevel} object.
+   *
+   * @param level the level string, either a numeric level or UID.
+   * @return the level of the corresponding {@link OrganisationUnitLevel}, or null if not found or
+   *     if the parameter was invalid.
+   */
+  Integer getOrganisationUnitLevelByLevelOrUid(String level);
 
-    OrganisationUnitDataSetAssociationSet getOrganisationUnitDataSetAssociationSet( Integer maxlevels );
+  /**
+   * Retrieves all the org units within the distance from center location.
+   *
+   * @param longitude The longitude of the center location.
+   * @param latitude The latitude of the center location.
+   * @param distance The distance from center location.
+   * @return a list of objects.
+   */
+  List<OrganisationUnit> getOrganisationUnitWithinDistance(
+      double longitude, double latitude, double distance);
 
-    List<OrganisationUnit> getOrganisationUnitsBetweenByName( String name, int first, int max );
+  /**
+   * Retrieves the orgunit(s) by coordinate.
+   *
+   * @param longitude The longitude of the location.
+   * @param latitude The latitude of the location.
+   * @param topOrgUnitUid Optional. Uid of the search top level org unit (ex. Country level orgunit)
+   * @param targetLevel Optional. The level being searched.
+   * @return list of objects.
+   */
+  List<OrganisationUnit> getOrganisationUnitByCoordinate(
+      double longitude, double latitude, String topOrgUnitUid, Integer targetLevel);
 
-    /**
-     * Retrieves all the org units within the distance from center location.
-     *
-     * @param longitude The longitude of the center location.
-     * @param latitude  The latitude of the center location.
-     * @param distance  The distance from center location.
-     * @return a list of objects.
-     */
-    List<OrganisationUnit> getOrganisationUnitWithinDistance( double longitude, double latitude, double distance );
+  /**
+   * Equal to {@link OrganisationUnitService#isInUserHierarchy(User, OrganisationUnit)} except adds
+   * a caching layer on top. Use this method when performance is imperative and the risk of a stale
+   * result is tolerable.
+   *
+   * @param user the user to check for.
+   * @param organisationUnit the organisation unit.
+   * @return true if the given organisation unit is part of the hierarchy.
+   * @deprecated Use {@link org.hisp.dhis.user.UserDetails#isInUserHierarchy(String)} instead
+   */
+  @Deprecated(forRemoval = true)
+  boolean isInUserHierarchyCached(User user, OrganisationUnit organisationUnit);
 
-    /**
-     * Retrieves the orgunit(s) by coordinate.
-     *
-     * @param longitude     The longitude of the location.
-     * @param latitude      The latitude of the location.
-     * @param topOrgUnitUid Optional. Uid of the search top level org unit (ex.
-     *                      Country level orgunit)
-     * @param targetLevel   Optional. The level being searched.
-     * @return list of objects.
-     */
-    List<OrganisationUnit> getOrganisationUnitByCoordinate( double longitude, double latitude, String topOrgUnitUid,
-        Integer targetLevel );
+  /**
+   * @deprecated Use {@link org.hisp.dhis.user.UserDetails#isInUserHierarchy(String)} instead
+   */
+  @Deprecated(forRemoval = true)
+  boolean isInUserHierarchy(User user, OrganisationUnit organisationUnit);
 
-    /**
-     * Indicates whether the given organisation unit is part of the hierarchy
-     * of the organisation units of the current user.
-     *
-     * @param organisationUnit the organisation unit.
-     * @return true if the given organisation unit is part of the hierarchy.
-     */
-    boolean isInUserHierarchy( OrganisationUnit organisationUnit );
+  /**
+   * Indicates whether the given organisation unit is part of the hierarchy of the given user
+   * organisation units.
+   *
+   * @param uid the uid of the organisation unit.
+   * @param organisationUnits the set of organisation units associated with a user.
+   * @return true if the organisation unit with the given uid is part of the hierarchy.
+   * @deprecated Use {@link org.hisp.dhis.user.UserDetails#isInUserHierarchy(String)} instead
+   */
+  @Deprecated(forRemoval = true)
+  boolean isInUserHierarchy(String uid, Set<OrganisationUnit> organisationUnits);
 
-    boolean isInUserHierarchy( User user, OrganisationUnit organisationUnit );
+  /**
+   * Indicates whether the given organisation unit is part of the hierarchy of the given user data
+   * view organisation units.
+   *
+   * @param user the user to check for.
+   * @param organisationUnit the organisation unit.
+   * @return true if the given organisation unit is part of the data view hierarchy.
+   * @deprecated Use {@link org.hisp.dhis.user.UserDetails#isInUserDataHierarchy(String)} instead
+   */
+  @Deprecated(forRemoval = true)
+  boolean isInUserDataViewHierarchy(User user, OrganisationUnit organisationUnit);
 
-    /**
-     * Indicates whether the given organisation unit is part of the hierarchy
-     * of the given user organisation units.
-     *
-     * @param uid               the uid of the organisation unit.
-     * @param organisationUnits the set of organisation units associated with a
-     *                          user.
-     * @return true if the organisation unit with the given uid is part of the hierarchy.
-     */
-    boolean isInUserHierarchy( String uid, Set<OrganisationUnit> organisationUnits );
-    
-    // -------------------------------------------------------------------------
-    // OrganisationUnitHierarchy
-    // -------------------------------------------------------------------------
+  /**
+   * @deprecated Use {@link org.hisp.dhis.user.UserDetails#isInUserSearchHierarchy(String)} instead
+   */
+  @Deprecated(forRemoval = true)
+  boolean isInUserSearchHierarchy(User user, OrganisationUnit organisationUnit);
 
-    /**
-     * Get the OrganisationUnit hierarchy.
-     *
-     * @return a Collection with OrganisationUnitRelationship entries.
-     */
-    OrganisationUnitHierarchy getOrganisationUnitHierarchy();
+  // -------------------------------------------------------------------------
+  // OrganisationUnitLevel
+  // -------------------------------------------------------------------------
 
-    /**
-     * Updates the parent id of the organisation unit with the given id.
-     *
-     * @param organisationUnitId the child organisation unit identifier.
-     * @param parentId           the parent organisation unit identifier.
-     */
-    void updateOrganisationUnitParent( int organisationUnitId, int parentId );
+  long addOrganisationUnitLevel(OrganisationUnitLevel level);
 
-    // -------------------------------------------------------------------------
-    // OrganisationUnitLevel
-    // -------------------------------------------------------------------------
+  void updateOrganisationUnitLevel(OrganisationUnitLevel level);
 
-    int addOrganisationUnitLevel( OrganisationUnitLevel level );
+  void addOrUpdateOrganisationUnitLevel(OrganisationUnitLevel level);
 
-    void updateOrganisationUnitLevel( OrganisationUnitLevel level );
+  void pruneOrganisationUnitLevels(Set<Integer> currentLevels);
 
-    void addOrUpdateOrganisationUnitLevel( OrganisationUnitLevel level );
+  OrganisationUnitLevel getOrganisationUnitLevel(long id);
 
-    void pruneOrganisationUnitLevels( Set<Integer> currentLevels );
+  OrganisationUnitLevel getOrganisationUnitLevel(String uid);
 
-    OrganisationUnitLevel getOrganisationUnitLevel( int id );
+  void deleteOrganisationUnitLevel(OrganisationUnitLevel level);
 
-    OrganisationUnitLevel getOrganisationUnitLevel( String uid );
+  void deleteOrganisationUnitLevels();
 
-    void deleteOrganisationUnitLevel( OrganisationUnitLevel level );
+  List<OrganisationUnitLevel> getOrganisationUnitLevels();
 
-    void deleteOrganisationUnitLevels();
+  OrganisationUnitLevel getOrganisationUnitLevelByLevel(int level);
 
-    List<OrganisationUnitLevel> getOrganisationUnitLevels();
+  List<OrganisationUnitLevel> getOrganisationUnitLevelByName(String name);
 
-    OrganisationUnitLevel getOrganisationUnitLevelByLevel( int level );
+  List<OrganisationUnitLevel> getFilledOrganisationUnitLevels();
 
-    List<OrganisationUnitLevel> getOrganisationUnitLevelByName( String name );
+  Map<Integer, OrganisationUnitLevel> getOrganisationUnitLevelMap();
 
-    List<OrganisationUnitLevel> getFilledOrganisationUnitLevels();
+  int getNumberOfOrganisationUnits();
 
-    Map<Integer, OrganisationUnitLevel> getOrganisationUnitLevelMap();
+  /**
+   * Return the number of organisation unit levels to cache offline, e.g. for organisation unit
+   * tree. Looks for level to return in the following order:
+   *
+   * <p>
+   *
+   * <ul>
+   *   <li>Get level of organisation unit of the current user.
+   *   <li>Get level from system configuration.
+   *   <li>Get max level.
+   *   <li>Return 1 as fall back.
+   * </ul>
+   */
+  int getOfflineOrganisationUnitLevels(User user);
 
-    int getNumberOfOrganisationUnits();
+  /** Update all OUs where paths is null. */
+  void updatePaths();
 
-    /**
-     * Return the number of organisation unit levels to cache offline, e.g. for
-     * organisation unit tree. Looks for level to return in the following order:
-     * <p/>
-     * <ul>
-     * <li>Get level of organisation unit of the current user.</li>
-     * <li>Get level from system configuration.</li>
-     * <li>Get max level.</li>
-     * <li>Return 1 as fall back.</li>
-     * </ul>
-     */
-    int getOfflineOrganisationUnitLevels();
+  /** Update all OUs (thus forcing update of path). */
+  void forceUpdatePaths();
 
-    /**
-     * Update all OUs where paths is null.
-     */
-    void updatePaths();
+  /**
+   * Returns all OrganisationUnits that the user has access to.
+   *
+   * @param username of the user.
+   * @return
+   */
+  List<String> getOrganisationUnitsUidsByUser(String username);
 
-    /**
-     * Update all OUs (thus forcing update of path).
-     */
-    void forceUpdatePaths();
+  /**
+   * Returns all data view scope OrganisationUnits that the user has access to.
+   *
+   * @param username of the user.
+   * @return
+   */
+  List<String> getDataViewOrganisationUnitsUidsByUser(String username);
 
-    // -------------------------------------------------------------------------
-    // Version
-    // -------------------------------------------------------------------------
+  /**
+   * Returns all search scope OrganisationUnits that the user has access to.
+   *
+   * @param username of the user.
+   * @return
+   */
+  List<String> getSearchOrganisationUnitsUidsByUser(String username);
 
-    void updateVersion();
+  /**
+   * Returns all OrganisationUnits with refs to any of the CategoryOptions passed in.
+   *
+   * @param categoryOptions refs to search for.
+   * @return OrganisationUnits with refs to any of the CategoryOptions passed in
+   */
+  List<OrganisationUnit> getByCategoryOption(Collection<UID> categoryOptions);
 }

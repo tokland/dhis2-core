@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.systemsettings;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,69 +25,76 @@ package org.hisp.dhis.dxf2.metadata.systemsettings;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.systemsettings;
 
-import org.hisp.dhis.setting.SettingKey;
-import org.hisp.dhis.setting.SystemSettingManager;
-import org.springframework.beans.factory.annotation.Autowired;
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.setting.SystemSettings;
+import org.hisp.dhis.setting.SystemSettingsService;
+import org.springframework.stereotype.Service;
 
 /**
  * Provide the endpoints for api calls in metadata versioning
  *
- * @author anilkumk.
+ * @author anilkumk
  */
+@RequiredArgsConstructor
+@Service
+public class DefaultMetadataSystemSettingService implements MetadataSystemSettingService {
 
-public class DefaultMetadataSystemSettingService
-    implements MetadataSystemSettingService
-{
-    @Autowired
-    private SystemSettingManager systemSettingManager;
+  private final SystemSettingsService settingsService;
 
-    private final String API_URL = "/api/metadata/version";
-    private final String BASELINE_URL = API_URL + "/history?baseline=";
+  @Override
+  public String getRemoteInstanceUserName() {
+    return getSettings().getRemoteInstanceUsername();
+  }
 
-    public String getRemoteInstanceUserName()
-    {
-        return (String) systemSettingManager.getSystemSetting( SettingKey.REMOTE_INSTANCE_USERNAME );
-    }
+  @Override
+  public String getRemoteInstancePassword() {
+    return getSettings().getRemoteInstancePassword();
+  }
 
-    public String getRemoteInstancePassword()
-    {
-        return (String) systemSettingManager.getSystemSetting( SettingKey.REMOTE_INSTANCE_PASSWORD );
-    }
+  @Override
+  public String getVersionDetailsUrl(String versionName) {
+    return getBaseUrl() + "?versionName=" + versionName;
+  }
 
-    public String getVersionDetailsUrl( String versionName )
-    {
-        return systemSettingManager.getSystemSetting( SettingKey.REMOTE_INSTANCE_URL ) + API_URL + "?versionName=" + versionName;
-    }
+  @Override
+  public String getDownloadVersionSnapshotURL(String versionName) {
+    return getBaseUrl() + "/" + versionName + "/data.gz";
+  }
 
-    public String getDownloadVersionSnapshotURL( String versionName )
-    {
-        return systemSettingManager.getSystemSetting( SettingKey.REMOTE_INSTANCE_URL ) + API_URL + "/" + versionName + "/data.gz";
-    }
+  @Override
+  public String getMetaDataDifferenceURL(String versionName) {
+    return getBaseUrl() + "/history?baseline=" + versionName;
+  }
 
-    public String getMetaDataDifferenceURL( String versionName )
-    {
-        return systemSettingManager.getSystemSetting( SettingKey.REMOTE_INSTANCE_URL ) + BASELINE_URL + versionName;
-    }
+  @Override
+  public String getEntireVersionHistory() {
+    return getBaseUrl() + "/history";
+  }
 
-    public String getEntireVersionHistory()
-    {
-        return systemSettingManager.getSystemSetting( SettingKey.REMOTE_INSTANCE_URL ) + API_URL + "/history";
-    }
+  @Nonnull
+  private String getBaseUrl() {
+    return getSettings().getRemoteInstanceUrl() + "/api/metadata/version";
+  }
 
-    public void setSystemMetadataVersion( String versionName )
-    {
-        systemSettingManager.saveSystemSetting( SettingKey.SYSTEM_METADATA_VERSION, versionName );
-    }
+  @Override
+  public void setSystemMetadataVersion(String versionName) {
+    settingsService.put("keySystemMetadataVersion", versionName);
+  }
 
-    public String getSystemMetadataVersion()
-    {
-        return (String) systemSettingManager.getSystemSetting( SettingKey.SYSTEM_METADATA_VERSION );
-    }
+  @Override
+  public String getSystemMetadataVersion() {
+    return getSettings().getSystemMetadataVersion();
+  }
 
-    public Boolean getStopMetadataSyncSetting()
-    {
-        Boolean stopSyncSetting = (Boolean) systemSettingManager.getSystemSetting( SettingKey.STOP_METADATA_SYNC );
-        return stopSyncSetting == null ? false : stopSyncSetting;
-    }
+  @Override
+  public boolean getStopMetadataSyncSetting() {
+    return getSettings().getStopMetadataSync();
+  }
+
+  private SystemSettings getSettings() {
+    return settingsService.getCurrentSettings();
+  }
 }

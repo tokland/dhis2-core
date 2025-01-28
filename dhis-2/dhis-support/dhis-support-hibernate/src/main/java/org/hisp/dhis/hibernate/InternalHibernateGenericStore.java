@@ -1,7 +1,5 @@
-package org.hisp.dhis.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,44 +25,86 @@ package org.hisp.dhis.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.hibernate;
 
-import org.hibernate.Criteria;
-import org.hibernate.criterion.DetachedCriteria;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import java.util.List;
+import java.util.function.Function;
 import org.hisp.dhis.common.GenericStore;
+import org.hisp.dhis.user.CurrentUserGroupInfo;
 import org.hisp.dhis.user.User;
+import org.hisp.dhis.user.UserDetails;
 
 /**
- * Interface which extends GenericStore and exposes support methods for retrieving
- * criteria.
+ * Interface which contains methods for generating predicates which are used validating sharing
+ * access permission.
  *
  * @author Lars Helge Overland
  */
-public interface InternalHibernateGenericStore<T>
-    extends GenericStore<T>
-{
-    Criteria getCriteria();
+public interface InternalHibernateGenericStore<T> extends GenericStore<T> {
 
-    Criteria getSharingCriteria();
+  List<Function<Root<T>, Predicate>> getSharingPredicates(CriteriaBuilder builder);
 
-    Criteria getDataSharingCriteria();
+  /**
+   * Get List of JPA Query Predicates for checking AclService.LIKE_READ_METADATA sharing access of
+   * current {@link User}.
+   *
+   * @param builder {@link CriteriaBuilder} used for generating {@link Predicate}
+   * @return List of {@link Predicate}
+   */
+  List<Function<Root<T>, Predicate>> getSharingPredicates(
+      CriteriaBuilder builder, UserDetails userDetails);
 
-    Criteria getSharingCriteria( String access );
+  /**
+   * Get List of JPA Query Predicates for checking sharing access of current {@link User} based on
+   * given access String.
+   *
+   * @param builder {@link CriteriaBuilder} used for generating {@link Predicate}.
+   * @param user {@link User} for checking.
+   * @param access access string for checking.
+   * @return List of {@link Predicate}
+   */
+  //  List<Function<Root<T>, Predicate>> getSharingPredicates(
+  //      CriteriaBuilder builder, UserDetails userDetails, String access);
 
-    Criteria getDataSharingCriteria( String access );
+  /**
+   * Get List of JPA Query Predicates for checking AclService.LIKE_READ_DATA sharing access of
+   * current {@link User}.
+   *
+   * @param builder {@link CriteriaBuilder} used for generating {@link Predicate}.
+   * @param user {@link User} for checking.
+   * @return List of {@link Predicate}
+   */
+  List<Function<Root<T>, Predicate>> getDataSharingPredicates(
+      CriteriaBuilder builder, UserDetails userDetails);
 
-    Criteria getDataSharingCriteria( User user, String access );
+  /**
+   * Get List of JPA Query Predicates for checking data sharing access of current {@link User} based
+   * on given access String.
+   *
+   * @param builder {@link CriteriaBuilder} used for generating {@link Predicate}.
+   * @param user {@link User} for checking.
+   * @param groupInfo {@link CurrentUserGroupInfo}
+   * @return List of {@link Predicate}
+   */
+  List<Function<Root<T>, Predicate>> getDataSharingPredicates(
+      CriteriaBuilder builder,
+      UserDetails userDetails,
+      CurrentUserGroupInfo groupInfo,
+      String access);
 
-    Criteria getSharingCriteria( User user );
+  /**
+   * Get List of JPA Query Predicates for checking data sharing access of current {@link User} based
+   * on given access String.
+   *
+   * @param builder {@link CriteriaBuilder} used for generating {@link Predicate}.
+   * @param user {@link User} for checking.
+   * @return List of {@link Predicate}
+   */
+  List<Function<Root<T>, Predicate>> getDataSharingPredicates(
+      CriteriaBuilder builder, UserDetails userDetails, String access);
 
-    DetachedCriteria getDataSharingDetachedCriteria( User user );
-
-    Criteria getExecutableCriteria( DetachedCriteria detachedCriteria );
-
-    DetachedCriteria getSharingDetachedCriteria();
-
-    DetachedCriteria getSharingDetachedCriteria( String access );
-
-    DetachedCriteria getDataSharingDetachedCriteria( String access );
-
-    DetachedCriteria getSharingDetachedCriteria( User user );
+  public CurrentUserGroupInfo getCurrentUserGroupInfo(String userUID);
 }

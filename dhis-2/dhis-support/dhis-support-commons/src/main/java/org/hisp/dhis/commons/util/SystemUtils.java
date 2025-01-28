@@ -1,7 +1,5 @@
-package org.hisp.dhis.commons.util;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,40 +25,65 @@ package org.hisp.dhis.commons.util;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.commons.util;
+
+import java.util.Arrays;
 
 /**
  * @author Torgeir Lorange Ostby
  */
-public class SystemUtils
-{
-    private static final int FACTOR_MB = 1024 * 1024;
+public class SystemUtils {
+  private static final int FACTOR_MB = 1024 * 1024;
 
-    /**
-     * Indicates whether the current thread is running for testing.
-     * @return true if test run.
-     */
-    public static boolean isTestRun()
-    {
-        return "true".equals( System.getProperty( "org.hisp.dhis.test", "false" ) );
-    }
-    
-    /**
-     * Gets the number of CPU cores available to this JVM.
-     * @return the number of available CPU cores.
-     */
-    public static int getCpuCores()
-    {
-        return Runtime.getRuntime().availableProcessors();
-    }
+  /**
+   * Indicates whether the current thread is running for testing.
+   *
+   * @return true if test run.
+   */
+  public static boolean isTestRun(String[] profiles) {
+    return Arrays.asList(profiles).contains("test");
+  }
 
-    /**
-     * Gets a String containing info of available and used memory of this JVM.
-     * @return an info string.
-     */
-    public static String getMemoryString()
-    {
-        return "Mem Total in JVM: " + ( Runtime.getRuntime().totalMemory() / FACTOR_MB ) + 
-            " Free in JVM: " + ( Runtime.getRuntime().freeMemory() / FACTOR_MB ) +
-            " Max Limit: " + ( Runtime.getRuntime().maxMemory() / FACTOR_MB );     
-    }
+  public static boolean isEnableCacheInTest(String[] profiles) {
+    return Arrays.asList(profiles).contains("cache-test");
+  }
+
+  public static boolean isCacheInvalidationInTest(String[] profiles) {
+    return Arrays.asList(profiles).contains("cache-invalidation-test");
+  }
+
+  public static boolean isUserImpersonationInTest(String[] profiles) {
+    return Arrays.asList(profiles).contains("impersonate-user-test");
+  }
+
+  public static boolean isAuditTest(String[] profiles) {
+    return Arrays.asList(profiles).contains("test-audit");
+  }
+
+  public static boolean isH2(String[] profiles) {
+    return Arrays.asList(profiles).contains("test-h2");
+  }
+
+  /**
+   * Gets the number of CPU cores available to this JVM.
+   *
+   * @return the number of available CPU cores.
+   */
+  public static int getCpuCores() {
+    return Runtime.getRuntime().availableProcessors();
+  }
+
+  /**
+   * Gets a String containing info of available and used memory of this JVM.
+   *
+   * @return an info string.
+   */
+  public static String getMemoryString() {
+    return "Mem Total in JVM: "
+        + (Runtime.getRuntime().totalMemory() / FACTOR_MB)
+        + " Free in JVM: "
+        + (Runtime.getRuntime().freeMemory() / FACTOR_MB)
+        + " Max Limit: "
+        + (Runtime.getRuntime().maxMemory() / FACTOR_MB);
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.common.annotation;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +25,7 @@ package org.hisp.dhis.common.annotation;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.common.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -36,9 +35,8 @@ import java.lang.annotation.Target;
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-@Target( { ElementType.METHOD } )
-@Retention( RetentionPolicy.RUNTIME )
-public @interface Description
-{
-    String value();
+@Target({ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Description {
+  String value();
 }

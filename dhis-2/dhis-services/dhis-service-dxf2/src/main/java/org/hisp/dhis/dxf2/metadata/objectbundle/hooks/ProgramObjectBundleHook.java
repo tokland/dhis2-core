@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,53 +25,151 @@ package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.objectbundle.hooks;
 
-import org.hisp.dhis.common.IdentifiableObject;
+import java.util.Date;
+import java.util.Objects;
+import java.util.function.Consumer;
+import lombok.AllArgsConstructor;
+import org.hisp.dhis.common.IdentifiableObjectManager;
 import org.hisp.dhis.dxf2.metadata.objectbundle.ObjectBundle;
+import org.hisp.dhis.feedback.ErrorCode;
+import org.hisp.dhis.feedback.ErrorReport;
+import org.hisp.dhis.organisationunit.OrganisationUnitService;
+import org.hisp.dhis.preheat.PreheatIdentifier;
+import org.hisp.dhis.program.Enrollment;
+import org.hisp.dhis.program.EnrollmentStatus;
+import org.hisp.dhis.program.EventProgramEnrollmentService;
 import org.hisp.dhis.program.Program;
 import org.hisp.dhis.program.ProgramStage;
+import org.hisp.dhis.program.ProgramStageService;
 import org.hisp.dhis.program.ProgramType;
 import org.hisp.dhis.security.acl.AccessStringHelper;
+import org.hisp.dhis.security.acl.AclService;
+import org.hisp.dhis.trackedentity.TrackedEntityAttribute;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class ProgramObjectBundleHook extends AbstractObjectBundleHook
-{
-    @Override
-    public void postCreate( IdentifiableObject object, ObjectBundle bundle )
-    {
-        if ( !Program.class.isInstance( object ) )
-        {
-            return;
-        }
+@Component
+@AllArgsConstructor
+public class ProgramObjectBundleHook extends AbstractObjectBundleHook<Program> {
+  private final EventProgramEnrollmentService eventProgramEnrollmentService;
 
-        syncSharingForEventProgram( (Program) object );
+  private final ProgramStageService programStageService;
+
+  private final OrganisationUnitService organisationUnitService;
+
+  private final AclService aclService;
+
+  private final IdentifiableObjectManager identifiableObjectManager;
+
+  @Override
+  public void postCreate(Program object, ObjectBundle bundle) {
+    syncSharingForEventProgram(object);
+
+    addProgramInstance(object);
+
+    updateProgramStage(object);
+  }
+
+  @Override
+  public void postUpdate(Program object, ObjectBundle bundle) {
+    syncSharingForEventProgram(object);
+  }
+
+  @Override
+  public void validate(Program program, ObjectBundle bundle, Consumer<ErrorReport> addReports) {
+    if (program.getId() != 0 && getProgramInstancesCount(program) > 1) {
+      addReports.accept(new ErrorReport(Program.class, ErrorCode.E6000, program.getName()));
+    }
+    Program relatedProgram = program.getRelatedProgram();
+    if (relatedProgram != null && Objects.equals(relatedProgram.getUid(), program.getUid())) {
+      addReports.accept(new ErrorReport(Program.class, ErrorCode.E6022, "relatedProgram"));
+    }
+    if (relatedProgram != null && program.getProgramType().isEventProgram()) {
+      addReports.accept(
+          new ErrorReport(
+              Program.class,
+              ErrorCode.E4023,
+              "relatedProgram",
+              "programType",
+              ProgramType.WITHOUT_REGISTRATION.name()));
+    }
+    validateAttributeSecurity(program, bundle, addReports);
+  }
+
+  private void syncSharingForEventProgram(Program program) {
+    if (ProgramType.WITHOUT_REGISTRATION != program.getProgramType()
+        || program.getProgramStages().isEmpty()) {
+      return;
     }
 
-    @Override
-    public void postUpdate( IdentifiableObject object, ObjectBundle bundle )
-    {
-        if ( !Program.class.isInstance( object ) )
-        {
-            return;
-        }
+    ProgramStage programStage = program.getProgramStages().iterator().next();
+    AccessStringHelper.copySharing(program, programStage);
 
-        syncSharingForEventProgram( (Program) object );
+    programStage.setCreatedBy(program.getCreatedBy());
+    programStageService.updateProgramStage(programStage);
+  }
+
+  private void updateProgramStage(Program program) {
+    if (program.getProgramStages().isEmpty()) {
+      return;
     }
 
-    private void syncSharingForEventProgram( Program program )
-    {
-        if ( ProgramType.WITH_REGISTRATION == program.getProgramType()
-            || program.getProgramStages().isEmpty() )
-        {
-            return;
-        }
+    program
+        .getProgramStages()
+        .forEach(
+            ps -> {
+              if (Objects.isNull(ps.getProgram())) {
+                ps.setProgram(program);
+              }
+            });
+  }
 
-        ProgramStage programStage = program.getProgramStages().iterator().next();
-        AccessStringHelper.copySharing( program, programStage );
+  private void addProgramInstance(Program program) {
+    if (getProgramInstancesCount(program) == 0 && program.isWithoutRegistration()) {
+      Enrollment enrollment = new Enrollment();
+      enrollment.setEnrollmentDate(new Date());
+      enrollment.setOccurredDate(new Date());
+      enrollment.setProgram(program);
+      enrollment.setStatus(EnrollmentStatus.ACTIVE);
+      enrollment.setStoredBy("system-process");
+      enrollment.setOrganisationUnit(
+          organisationUnitService.getRootOrganisationUnits().iterator().next());
 
-        programStage.setUser( program.getUser() );
-        sessionFactory.getCurrentSession().update( programStage );
+      identifiableObjectManager.save(enrollment);
     }
+  }
+
+  private int getProgramInstancesCount(Program program) {
+    return eventProgramEnrollmentService.getEnrollments(program, EnrollmentStatus.ACTIVE).size();
+  }
+
+  private void validateAttributeSecurity(
+      Program program, ObjectBundle bundle, Consumer<ErrorReport> addReports) {
+    if (program.getProgramAttributes().isEmpty()) {
+      return;
+    }
+
+    PreheatIdentifier identifier = bundle.getPreheatIdentifier();
+
+    program
+        .getProgramAttributes()
+        .forEach(
+            programAttr -> {
+              TrackedEntityAttribute attribute =
+                  bundle.getPreheat().get(identifier, programAttr.getAttribute());
+
+              if (attribute == null || !aclService.canRead(bundle.getUser(), attribute)) {
+                addReports.accept(
+                    new ErrorReport(
+                        TrackedEntityAttribute.class,
+                        ErrorCode.E3012,
+                        identifier.getIdentifiersWithName(bundle.getUser()),
+                        identifier.getIdentifiersWithName(programAttr.getAttribute())));
+              }
+            });
+  }
 }

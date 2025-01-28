@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.objectbundle;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,18 +25,18 @@ package org.hisp.dhis.dxf2.metadata.objectbundle;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.objectbundle;
 
 import org.hisp.dhis.dxf2.metadata.objectbundle.feedback.ObjectBundleValidationReport;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public interface ObjectBundleValidationService
-{
-    /**
-     * Validate object bundle
-     *
-     * @param bundle Bundle to validate
-     */
-    ObjectBundleValidationReport validate( ObjectBundle bundle );
+public interface ObjectBundleValidationService {
+  /**
+   * Validate object bundle
+   *
+   * @param bundle Bundle to validate
+   */
+  ObjectBundleValidationReport validate(ObjectBundle bundle);
 }

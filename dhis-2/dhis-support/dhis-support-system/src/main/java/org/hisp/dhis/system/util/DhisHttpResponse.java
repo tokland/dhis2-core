@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.util;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,69 +25,65 @@ package org.hisp.dhis.system.util;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.util;
 
-import org.apache.http.HttpResponse;
+import org.apache.hc.core5.http.HttpResponse;
 
-/**
- * Created by vanyas on 3/15/16.
- */
-public class DhisHttpResponse
-{
-    private HttpResponse httpResponse;
+/** Created by vanyas on 3/15/16. */
+public class DhisHttpResponse {
+  private HttpResponse httpResponse;
 
-    private String response;
+  private String response;
 
-    private int statusCode;
+  private int statusCode;
 
-    // -------------------------------------------------------------------------
-    // Constructor
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Constructor
+  // -------------------------------------------------------------------------
 
-    public DhisHttpResponse( HttpResponse httpResponse, String response, int statusCode )
-    {
-        super();
-        this.httpResponse = httpResponse;
-        this.response = response;
-        this.statusCode = statusCode;
-    }
+  public DhisHttpResponse(HttpResponse httpResponse, String response, int statusCode) {
+    super();
+    this.httpResponse = httpResponse;
+    this.response = response;
+    this.statusCode = statusCode;
+  }
 
-    // -------------------------------------------------------------------------
-    // Getters and setters
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Getters and setters
+  // -------------------------------------------------------------------------
 
-    public HttpResponse getHttpResponse()
-    {
-        return httpResponse;
-    }
+  public HttpResponse getHttpResponse() {
+    return httpResponse;
+  }
 
-    public void setHttpResponse( HttpResponse httpResponse )
-    {
-        this.httpResponse = httpResponse;
-    }
+  public void setHttpResponse(HttpResponse httpResponse) {
+    this.httpResponse = httpResponse;
+  }
 
-    public String getResponse()
-    {
-        return response;
-    }
+  public String getResponse() {
+    return response;
+  }
 
-    public void setResponse( String response )
-    {
-        this.response = response;
-    }
+  public void setResponse(String response) {
+    this.response = response;
+  }
 
-    public int getStatusCode()
-    {
-        return statusCode;
-    }
+  public int getStatusCode() {
+    return statusCode;
+  }
 
-    public void setStatusCode( int statusCode )
-    {
-        this.statusCode = statusCode;
-    }
+  public void setStatusCode(int statusCode) {
+    this.statusCode = statusCode;
+  }
 
-    @Override
-    public String toString()
-    {
-        return "DhisHttpResponse [httpResponse=" + httpResponse + ", response=" + response + " statusCode=" + statusCode + "]";
-    }
+  @Override
+  public String toString() {
+    return "DhisHttpResponse [httpResponse="
+        + httpResponse
+        + ", response="
+        + response
+        + " statusCode="
+        + statusCode
+        + "]";
+  }
 }

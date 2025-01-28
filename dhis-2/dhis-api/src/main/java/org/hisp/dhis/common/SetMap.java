@@ -1,7 +1,5 @@
-package org.hisp.dhis.common;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +25,9 @@ package org.hisp.dhis.common;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.common;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -36,59 +36,44 @@ import java.util.function.Function;
 /**
  * @author Lars Helge Overland
  */
-public class SetMap<T, V>
-    extends HashMap<T, Set<V>>
-{
-    public SetMap()
-    {
-        super();
+public class SetMap<T, V> extends HashMap<T, Set<V>> {
+  public SetMap() {
+    super();
+  }
+
+  public SetMap(SetMap<T, V> setMap) {
+    super(setMap);
+  }
+
+  public void putValue(T key, V value) {
+    computeIfAbsent(key, k -> new HashSet<>()).add(value);
+  }
+
+  public void putValues(T key, Collection<? extends V> values) {
+    computeIfAbsent(key, k -> new HashSet<>()).addAll(values);
+  }
+
+  public void putValues(SetMap<T, V> setMap) {
+    setMap.forEach(this::putValues);
+  }
+
+  /**
+   * Produces a SetMap based on the given set of values. The key for each entry is produced by
+   * applying the given keyMapper function.
+   *
+   * @param values the values of the map.
+   * @param keyMapper the function producing the key for each entry.
+   * @return a SetMap.
+   */
+  public static <T, V> SetMap<T, V> getSetMap(Set<V> values, Function<V, T> keyMapper) {
+    SetMap<T, V> map = new SetMap<>();
+
+    for (V value : values) {
+      T key = keyMapper.apply(value);
+
+      map.putValue(key, value);
     }
-    
-    public SetMap( SetMap<T, V> setMap )
-    {
-        super( setMap );
-    }    
 
-    public Set<V> putValue( T key, V value )
-    {
-        Set<V> set = this.get( key );
-        set = set == null ? new HashSet<>() : set;
-        set.add( value );
-        return super.put( key, set );
-    }
-
-    public Set<V> putValues( T key, Set<V> values )
-    {
-        Set<V> set = this.get( key );
-        set = set == null ? new HashSet<>() : set;
-        set.addAll( values );
-        return super.put( key, set );
-    }
-
-    public void putValues( SetMap<T, V> setMap )
-    {
-        setMap.forEach( ( k, v ) -> putValues( k, v ) );
-    }
-
-    /**
-     * Produces a SetMap based on the given set of values. The key for
-     * each entry is produced by applying the given keyMapper function.
-     * 
-     * @param values the values of the map.
-     * @param keyMapper the function producing the key for each entry.
-     * @return a SetMap.
-     */
-    public static <T, V> SetMap<T, V> getSetMap( Set<V> values, Function<V, T> keyMapper )
-    {
-        SetMap<T, V> map = new SetMap<>();
-
-        for ( V value : values )
-        {
-            T key = keyMapper.apply( value );
-
-            map.putValue( key, value );
-        }
-
-        return map;
-    }
+    return map;
+  }
 }

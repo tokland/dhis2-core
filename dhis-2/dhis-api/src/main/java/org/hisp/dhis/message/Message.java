@@ -1,7 +1,5 @@
-package org.hisp.dhis.message;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,128 +25,122 @@ package org.hisp.dhis.message;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.message;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import java.util.Date;
+import java.util.Set;
 import org.hisp.dhis.common.BaseIdentifiableObject;
 import org.hisp.dhis.common.CodeGenerator;
 import org.hisp.dhis.common.DxfNamespaces;
+import org.hisp.dhis.fileresource.FileResource;
 import org.hisp.dhis.user.User;
-
-import java.util.Date;
 
 /**
  * @author Lars Helge Overland
  */
-@JacksonXmlRootElement( localName = "message", namespace = DxfNamespaces.DXF_2_0 )
-public class Message
-    extends BaseIdentifiableObject
-{
-    /**
-     * The message text.
-     */
-    private String text;
+@JacksonXmlRootElement(localName = "message", namespace = DxfNamespaces.DXF_2_0)
+public class Message extends BaseIdentifiableObject {
+  /** The message text. */
+  private String text;
 
-    /**
-     * The message meta data, like user agent and OS of sender.
-     */
-    private String metaData;
+  /** The message meta data, like user agent and OS of sender. */
+  private String metaData;
 
-    /**
-     * The message sender.
-     */
-    private User sender;
+  /** The message sender. */
+  private User sender;
 
-    /**
-     * Internal message flag. Can only be seen by users in "FeedbackRecipients" group.
-     */
-    private Boolean internal;
+  /** Internal message flag. Can only be seen by users in "FeedbackRecipients" group. */
+  private Boolean internal;
 
-    public Message()
-    {
-        this.uid = CodeGenerator.generateUid();
-        this.lastUpdated = new Date();
-        this.internal = false;
-    }
+  /** Attached files */
+  private Set<FileResource> attachments;
 
-    public Message( String text, String metaData, User sender )
-    {
-        this.uid = CodeGenerator.generateUid();
-        this.lastUpdated = new Date();
-        this.text = text;
-        this.metaData = metaData;
-        this.sender = sender;
-        this.internal = false;
-    }
+  public Message() {
+    this.uid = CodeGenerator.generateUid();
+    this.lastUpdated = new Date();
+    this.internal = false;
+  }
 
-    public Message( String text, String metaData, User sender, boolean internal )
-    {
-        this.uid = CodeGenerator.generateUid();
-        this.lastUpdated = new Date();
-        this.text = text;
-        this.metaData = metaData;
-        this.sender = sender;
-        this.internal = internal;
-    }
+  public Message(String text, String metaData, User sender) {
+    this.uid = CodeGenerator.generateUid();
+    this.lastUpdated = new Date();
+    this.text = text;
+    this.metaData = metaData;
+    this.sender = sender;
+    this.internal = false;
+  }
 
-    @Override
-    public String getName()
-    {
-        return text;
-    }
+  public Message(String text, String metaData, User sender, boolean internal) {
+    this.uid = CodeGenerator.generateUid();
+    this.lastUpdated = new Date();
+    this.text = text;
+    this.metaData = metaData;
+    this.sender = sender;
+    this.internal = internal;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty
-    public String getText()
-    {
-        return text;
-    }
+  @Override
+  public String getName() {
+    return text;
+  }
 
-    public void setText( String text )
-    {
-        this.text = text;
-    }
+  @JsonProperty
+  @JacksonXmlProperty
+  public String getText() {
+    return text;
+  }
 
-    @JsonProperty
-    @JacksonXmlProperty
-    public String getMetaData()
-    {
-        return metaData;
-    }
+  public void setText(String text) {
+    this.text = text;
+  }
 
-    public void setMetaData( String metaData )
-    {
-        this.metaData = metaData;
-    }
+  @JsonProperty
+  @JacksonXmlProperty
+  public String getMetaData() {
+    return metaData;
+  }
 
-    @JsonProperty
-    @JsonSerialize( as = BaseIdentifiableObject.class )
-    @JacksonXmlProperty
-    public User getSender()
-    {
-        return sender;
-    }
+  public void setMetaData(String metaData) {
+    this.metaData = metaData;
+  }
 
-    public void setSender( User sender )
-    {
-        this.sender = sender;
-    }
+  @JsonProperty
+  @JsonSerialize(as = BaseIdentifiableObject.class)
+  @JacksonXmlProperty
+  public User getSender() {
+    return sender;
+  }
 
-    @Override
-    public String toString()
-    {
-        return "[" + text + "]";
-    }
+  public void setSender(User sender) {
+    this.sender = sender;
+  }
 
-    public boolean isInternal()
-    {
-        return internal;
-    }
+  @Override
+  public String toString() {
+    return "[" + text + "]";
+  }
 
-    public void setInternal( boolean internal )
-    {
-        this.internal = internal;
-    }
+  @JsonProperty
+  @JacksonXmlProperty
+  public boolean isInternal() {
+    return internal;
+  }
+
+  public void setInternal(boolean internal) {
+    this.internal = internal;
+  }
+
+  @JsonProperty
+  @JacksonXmlProperty
+  public Set<FileResource> getAttachments() {
+    return attachments;
+  }
+
+  public void setAttachments(Set<FileResource> attachments) {
+    this.attachments = attachments;
+  }
 }

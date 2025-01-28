@@ -1,7 +1,5 @@
-package org.hisp.dhis.dxf2.metadata.systemsettings;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,30 +25,30 @@ package org.hisp.dhis.dxf2.metadata.systemsettings;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dxf2.metadata.systemsettings;
 
 /**
- * MetadataSystemSettingService is the helper class for getting the Versioning
- * endpoint specific constructs.
+ * MetadataSystemSettingService is the helper class for getting the Versioning endpoint specific
+ * constructs.
  *
- * Created by vanyas on 6/27/16.
+ * <p>Created by vanyas on 6/27/16.
  */
-public interface MetadataSystemSettingService
-{
-    String getRemoteInstanceUserName();
+public interface MetadataSystemSettingService {
+  String getRemoteInstanceUserName();
 
-    String getRemoteInstancePassword();
+  String getRemoteInstancePassword();
 
-    String getVersionDetailsUrl( String versionName );
+  String getVersionDetailsUrl(String versionName);
 
-    String getDownloadVersionSnapshotURL( String versionName );
+  String getDownloadVersionSnapshotURL(String versionName);
 
-    String getMetaDataDifferenceURL( String versionName );
+  String getMetaDataDifferenceURL(String versionName);
 
-    String getEntireVersionHistory();
+  String getEntireVersionHistory();
 
-    void setSystemMetadataVersion(String versionName);
+  void setSystemMetadataVersion(String versionName);
 
-    String getSystemMetadataVersion();
+  String getSystemMetadataVersion();
 
-    Boolean getStopMetadataSyncSetting();
+  boolean getStopMetadataSyncSetting();
 }

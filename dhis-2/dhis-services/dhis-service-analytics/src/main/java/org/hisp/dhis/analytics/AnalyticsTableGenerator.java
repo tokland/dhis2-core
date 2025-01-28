@@ -1,7 +1,5 @@
-package org.hisp.dhis.analytics;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,35 +25,29 @@ package org.hisp.dhis.analytics;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.analytics;
 
-import org.hisp.dhis.scheduling.JobConfiguration;
-
-import javax.annotation.Nullable;
+import org.hisp.dhis.scheduling.JobProgress;
 
 /**
- * Interface responsible for generating analytics tables. Will look for and
- * invoke implementations of interface {@link AnalyticsTableService}.
+ * Interface responsible for generating analytics tables. Will look for and invoke implementations
+ * of interface {@link AnalyticsTableService}.
  *
  * @author Lars Helge Overland
  */
-public interface AnalyticsTableGenerator
-{
-    /**
-     * Generates analytics tables.
-     *
-     * @param params the {@link AnalyticsTableUpdateParams}.
-     */
-    void generateTables( AnalyticsTableUpdateParams params );
+public interface AnalyticsTableGenerator {
+  /**
+   * Generates analytics tables.
+   *
+   * @param params the {@link AnalyticsTableUpdateParams}.
+   * @param progress job progress tracking and control flow
+   */
+  void generateAnalyticsTables(AnalyticsTableUpdateParams params, JobProgress progress);
 
-    /**
-     * Drops all existing analytics tables.
-     */
-    void dropTables();
-
-    /**
-     * Generates all resource tables.
-     *
-     * @param jobId the job identifier, can be null.
-     */
-    void generateResourceTables( @Nullable JobConfiguration jobId );
+  /**
+   * Generates all resource tables.
+   *
+   * @param progress job progress tracking and control flow
+   */
+  void generateResourceTables(JobProgress progress);
 }

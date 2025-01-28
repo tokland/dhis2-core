@@ -1,7 +1,5 @@
-package org.hisp.dhis.system.startup;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,56 +25,56 @@ package org.hisp.dhis.system.startup;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.system.startup;
 
 /**
- * Convenience class for creating startup routines. Contains a setter for the
- * runlevel property which should be used in bean mappings.
- * 
+ * Convenience class for creating startup routines. Contains a setter for the runlevel property
+ * which should be used in bean mappings.
+ *
  * @author <a href="mailto:torgeilo@gmail.com">Torgeir Lorange Ostby</a>
  */
-public abstract class AbstractStartupRoutine
-    implements StartupRoutine
-{
-    private String name = this.getClass().getSimpleName();
-    
-    public void setName( String name )
-    {
-        this.name = name;
-    }
+public abstract class AbstractStartupRoutine implements StartupRoutine {
+  private String name = this.getClass().getSimpleName();
 
-    private int runlevel = 0;
+  public void setName(String name) {
+    this.name = name;
+  }
 
-    public void setRunlevel( int runlevel )
-    {
-        this.runlevel = runlevel;
-    }
-    
-    private boolean skipInTests = false;
+  private int runlevel = 0;
 
-    public void setSkipInTests( boolean skipInTests )
-    {
-        this.skipInTests = skipInTests;
-    }
-    
-    // -------------------------------------------------------------------------
-    // StartupRoutine implementation
-    // -------------------------------------------------------------------------
+  public void setRunlevel(int runlevel) {
+    this.runlevel = runlevel;
+  }
 
-    @Override
-    public int getRunlevel()
-    {
-        return runlevel;
-    }
-    
-    @Override
-    public String getName()
-    {
-        return name;
-    }
+  private boolean skipInTests = false;
 
-    @Override
-    public boolean skipInTests()
-    {
-        return skipInTests;
-    }
+  public void setSkipInTests(boolean skipInTests) {
+    this.skipInTests = skipInTests;
+  }
+
+  // -------------------------------------------------------------------------
+  // StartupRoutine implementation
+  // -------------------------------------------------------------------------
+
+  @Override
+  public int getRunlevel() {
+    return runlevel;
+  }
+
+  @Override
+  public String getName() {
+    return name;
+  }
+
+  @Override
+  public boolean skipInTests() {
+    return skipInTests;
+  }
+
+  @Override
+  public boolean skip() {
+    String skipProperty = "dhis.skip.startup." + this.getName();
+    String shouldSkip = System.getProperty(skipProperty);
+    return "true".equalsIgnoreCase(shouldSkip);
+  }
 }

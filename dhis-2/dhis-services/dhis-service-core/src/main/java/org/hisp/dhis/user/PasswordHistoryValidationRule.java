@@ -1,7 +1,5 @@
-package org.hisp.dhis.user;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,69 +25,65 @@ package org.hisp.dhis.user;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.user;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import static org.hisp.dhis.user.PasswordValidationError.PASSWORD_ALREADY_USED_BEFORE;
 
 import java.util.List;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
-/**
- * Created by zubair on 08.03.17.
- */
-public class PasswordHistoryValidationRule implements PasswordValidationRule
-{
-    private static final int HISTORY_LIMIT = 24;
+/** Created by zubair on 08.03.17. */
+public class PasswordHistoryValidationRule implements PasswordValidationRule {
+  private static final int HISTORY_LIMIT = 24;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+  private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private UserService userService;
+  private final UserService userService;
 
-    @Autowired
-    private CurrentUserService currentUserService;
+  public PasswordHistoryValidationRule(PasswordEncoder passwordEncoder, UserService userService) {
+    this.passwordEncoder = passwordEncoder;
+    this.userService = userService;
+  }
 
-    @Override
-    public PasswordValidationResult validate( CredentialsInfo credentialsInfo )
-    {
-        boolean match;
-
-        UserCredentials userCredentials = userService.getUserCredentialsByUsername( credentialsInfo.getUsername() );
-
-        List<String> previousPasswords = userCredentials.getPreviousPasswords();
-
-        for ( String encodedPassword : previousPasswords )
-        {
-            match = passwordEncoder.matches( credentialsInfo.getPassword(), encodedPassword );
-
-            if ( match )
-            {
-                return new PasswordValidationResult( String.format(
-                        "Password must not be one of the previous %d passwords", HISTORY_LIMIT ), "password_history_validation", false );
-            }
-        }
-
-        if ( previousPasswords.size() == HISTORY_LIMIT )
-        {
-            userCredentials.getPreviousPasswords().remove( 0 );
-
-            userService.updateUserCredentials( userCredentials );
-        }
-
-        return new PasswordValidationResult( true );
+  @Override
+  public PasswordValidationResult validate(CredentialsInfo credentials) {
+    if (!isRuleApplicable(credentials)) {
+      return PasswordValidationResult.VALID;
     }
 
-    @Override
-    public boolean isRuleApplicable( CredentialsInfo credentialsInfo )
-    {
-        UserCredentials userCredentials = userService.getUserCredentialsByUsername( credentialsInfo.getUsername() );
+    User user = userService.getUserByUsername(credentials.getUsername());
 
-        if ( !userService.credentialsNonExpired( userCredentials ) )
-        {
-            return true;
-        }
-
-        return ( credentialsInfo.isNewUser() ||
-                !currentUserService.getCurrentUsername().equals( credentialsInfo.getUsername() ) ) ? false : true;
+    List<String> previousPasswords = user.getPreviousPasswords();
+    for (String encodedPassword : previousPasswords) {
+      if (passwordEncoder.matches(credentials.getPassword(), encodedPassword)) {
+        return new PasswordValidationResult(PASSWORD_ALREADY_USED_BEFORE, HISTORY_LIMIT);
+      }
     }
+
+    // remove one item from password history if size exceeds HISTORY_LIMIT
+    if (previousPasswords.size() == HISTORY_LIMIT) {
+      previousPasswords.remove(0);
+      userService.updateUser(user);
+    }
+
+    return PasswordValidationResult.VALID;
+  }
+
+  private boolean isRuleApplicable(CredentialsInfo credentials) {
+    User user = userService.getUserByUsername(credentials.getUsername());
+
+    if (!userService.userNonExpired(user)) {
+      return true;
+    }
+
+    boolean hasCurrentUser = CurrentUserUtil.hasCurrentUser();
+    if (hasCurrentUser) {
+      boolean isCurrentUser =
+          CurrentUserUtil.getCurrentUsername().equals(credentials.getUsername());
+      return !credentials.isNewUser() && isCurrentUser;
+
+    } else {
+      return !credentials.isNewUser();
+    }
+  }
 }

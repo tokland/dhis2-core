@@ -1,7 +1,5 @@
-package org.hisp.dhis.user;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,38 +25,41 @@ package org.hisp.dhis.user;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.user;
 
-import java.util.List;
-
+import org.hisp.dhis.setting.SystemSettingsProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
-/**
- * Created by zubair.
- */
-public class DefaultPasswordValidationService
-        implements PasswordValidationService
-{
-    @Autowired
-    private List<PasswordValidationRule> rules;
+/** Created by zubair. */
+@Service("org.hisp.dhis.user.PasswordValidationService")
+public class DefaultPasswordValidationService implements PasswordValidationService {
+  private final PasswordValidationRule rule;
 
-    @Override
-    public PasswordValidationResult validate( CredentialsInfo credentialsInfo )
-    {
-        PasswordValidationResult result;
+  @Autowired
+  public DefaultPasswordValidationService(
+      PasswordEncoder passwordEncoder,
+      UserService userService,
+      SystemSettingsProvider settingsProvider) {
+    this(
+        new PasswordMandatoryValidationRule()
+            .then(new PasswordLengthValidationRule(settingsProvider))
+            .then(new DigitPatternValidationRule())
+            .then(new UpperCasePatternValidationRule())
+            .then(new LowerCasePatternValidationRule())
+            .then(new SpecialCharacterValidationRule())
+            .then(new PasswordDictionaryValidationRule())
+            .then(new UserParameterValidationRule())
+            .then(new PasswordHistoryValidationRule(passwordEncoder, userService)));
+  }
 
-        for ( PasswordValidationRule rule : rules )
-        {
-            if ( rule.isRuleApplicable( credentialsInfo ) )
-            {
-                result = rule.validate( credentialsInfo );
+  public DefaultPasswordValidationService(PasswordValidationRule rule) {
+    this.rule = rule;
+  }
 
-                if ( !result.isValid() )
-                {
-                    return result;
-                }
-            }
-        }
-
-        return new PasswordValidationResult( true );
-    }
+  @Override
+  public PasswordValidationResult validate(CredentialsInfo credentials) {
+    return rule.validate(credentials);
+  }
 }

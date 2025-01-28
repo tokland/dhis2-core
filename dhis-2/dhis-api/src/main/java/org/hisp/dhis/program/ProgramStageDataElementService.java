@@ -1,7 +1,5 @@
-package org.hisp.dhis.program;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,57 +25,63 @@ package org.hisp.dhis.program;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program;
 
 import java.util.List;
-
 import org.hisp.dhis.dataelement.DataElement;
 
 /**
- * TODO do we need this service given cascade all on 
- * program stage -> program stage data element?
- * 
+ * TODO do we need this service given cascade all on program stage -> program stage data element?
+ *
  * @author Viet Nguyen
  */
-public interface ProgramStageDataElementService
-{
-    String ID = ProgramStageInstanceService.class.getName();
+public interface ProgramStageDataElementService {
+  String ID = ProgramStageDataElementService.class.getName();
 
-    /**
-     * Adds an {@link ProgramStageDataElement}
-     *
-     * @param programStageDataElement The to ProgramStageDataElement add.
-     */
-    void addProgramStageDataElement( ProgramStageDataElement programStageDataElement );
+  /**
+   * Adds an {@link ProgramStageDataElement}
+   *
+   * @param programStageDataElement The to ProgramStageDataElement add.
+   */
+  void addProgramStageDataElement(ProgramStageDataElement programStageDataElement);
 
-    /**
-     * Updates an {@link ProgramStageDataElement}.
-     *
-     * @param programStageDataElement the ProgramStageDataElement to update.
-     */
-    void updateProgramStageDataElement( ProgramStageDataElement programStageDataElement );
+  /**
+   * Updates an {@link ProgramStageDataElement}.
+   *
+   * @param programStageDataElement the ProgramStageDataElement to update.
+   */
+  void updateProgramStageDataElement(ProgramStageDataElement programStageDataElement);
 
-    /**
-     * Deletes a {@link ProgramStageDataElement}.
-     *
-     * @param programStageDataElement the ProgramStageDataElement to delete.
-     */
-    void deleteProgramStageDataElement( ProgramStageDataElement programStageDataElement );
+  /**
+   * Deletes a {@link ProgramStageDataElement}.
+   *
+   * @param programStageDataElement the ProgramStageDataElement to delete.
+   */
+  void deleteProgramStageDataElement(ProgramStageDataElement programStageDataElement);
 
-    /**
-     * Retrieve ProgramStageDataElement list on a program stage and a data
-     * element
-     *
-     * @param programStage ProgramStage
-     * @param dataElement  DataElement
-     * @return ProgramStageDataElement
-     */
-    ProgramStageDataElement get( ProgramStage programStage, DataElement dataElement );
+  /**
+   * Retrieve ProgramStageDataElement on a program stage and a data element
+   *
+   * @param programStage ProgramStage
+   * @param dataElement DataElement
+   * @return ProgramStageDataElement
+   */
+  ProgramStageDataElement get(ProgramStage programStage, DataElement dataElement);
 
-    /**
-     * Returns all {@link ProgramStageDataElement}
-     *
-     * @return a collection of all ProgramStageDataElement, or an empty
-     * collection if there are no ProgramStageDataElements.
-     */
-    List<ProgramStageDataElement> getAllProgramStageDataElements();
+  /**
+   * Returns all {@link ProgramStageDataElement}
+   *
+   * @return a collection of all ProgramStageDataElement, or an empty collection if there are no
+   *     ProgramStageDataElements.
+   */
+  List<ProgramStageDataElement> getAllProgramStageDataElements();
+
+  /**
+   * Returns all {@link ProgramStageDataElement} for the given {@link DataElement}.
+   *
+   * @param dataElement filter, not null
+   * @return a collection of {@link ProgramStageDataElement} associated with the provided {@link
+   *     DataElement}
+   */
+  List<ProgramStageDataElement> getProgramStageDataElements(DataElement dataElement);
 }

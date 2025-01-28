@@ -1,7 +1,5 @@
-package org.hisp.dhis.dataset;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,123 +25,127 @@ package org.hisp.dhis.dataset;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.dataset;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.hisp.dhis.util.DateUtils.addDays;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.hisp.dhis.dataapproval.DataApprovalWorkflow;
+import com.google.common.collect.Sets;
+import java.util.Date;
+import java.util.function.Function;
 import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.indicator.Indicator;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
-import org.junit.Test;
-
-import com.google.common.collect.Sets;
+import org.hisp.dhis.period.Period;
+import org.hisp.dhis.period.PeriodType;
+import org.hisp.dhis.period.PeriodTypeEnum;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Lars Helge Overland
  */
-public class DataSetTest
-{
-    @Test
-    public void testAddDataSetElement()
-    {
-        DataSet dsA = new DataSet( "DataSetA" );
-        DataSet dsB = new DataSet( "DataSetB" );
-        
-        DataElement deA = new DataElement( "DataElementA" );
-        DataElement deB = new DataElement( "DataElementB" );
-        
-        dsA.addDataSetElement( deA );
-        dsA.addDataSetElement( deB );
-        dsB.addDataSetElement( deA );
-        
-        assertEquals( 2, dsA.getDataSetElements().size() );
-        assertEquals( 1, dsB.getDataSetElements().size() );
-        assertEquals( 2, deA.getDataSetElements().size() );
-        assertEquals( 1, deB.getDataSetElements().size() );
-    }
+class DataSetTest {
 
-    @Test
-    public void testUpdateOrganisationUnits()
-    {
-        DataSet dsA = new DataSet( "dsA" );
-        
-        OrganisationUnit ouA = new OrganisationUnit( "ouA" );
-        OrganisationUnit ouB = new OrganisationUnit( "ouB" );
-        OrganisationUnit ouC = new OrganisationUnit( "ouC" );
-        OrganisationUnit ouD = new OrganisationUnit( "ouD" );
-        
-        dsA.addOrganisationUnit( ouA );
-        dsA.addOrganisationUnit( ouB );
-        
-        assertEquals( 2, dsA.getSources().size() );
-        assertTrue( dsA.getSources().containsAll( Sets.newHashSet( ouA, ouB ) ) );
-        assertTrue( ouA.getDataSets().contains( dsA ) );
-        assertTrue( ouB.getDataSets().contains( dsA ) );
-        assertTrue( ouC.getDataSets().isEmpty() );
-        assertTrue( ouD.getDataSets().isEmpty() );
-        
-        dsA.updateOrganisationUnits( Sets.newHashSet( ouB, ouC ) );
+  @Test
+  void testAddDataSetElement() {
+    DataSet dsA = new DataSet("DataSetA");
+    DataSet dsB = new DataSet("DataSetB");
+    DataElement deA = new DataElement("DataElementA");
+    DataElement deB = new DataElement("DataElementB");
+    dsA.addDataSetElement(deA);
+    dsA.addDataSetElement(deB);
+    dsB.addDataSetElement(deA);
+    assertEquals(2, dsA.getDataSetElements().size());
+    assertEquals(1, dsB.getDataSetElements().size());
+    assertEquals(2, deA.getDataSetElements().size());
+    assertEquals(1, deB.getDataSetElements().size());
+  }
 
-        assertEquals( 2, dsA.getSources().size() );
-        assertTrue( dsA.getSources().containsAll( Sets.newHashSet( ouB, ouC ) ) );
-        assertTrue( ouA.getDataSets().isEmpty() );
-        assertTrue( ouB.getDataSets().contains( dsA ) );
-        assertTrue( ouC.getDataSets().contains( dsA ) );
-        assertTrue( ouD.getDataSets().isEmpty() );
-    }
+  @Test
+  void testUpdateOrganisationUnits() {
+    DataSet dsA = new DataSet("dsA");
+    OrganisationUnit ouA = new OrganisationUnit("ouA");
+    OrganisationUnit ouB = new OrganisationUnit("ouB");
+    OrganisationUnit ouC = new OrganisationUnit("ouC");
+    OrganisationUnit ouD = new OrganisationUnit("ouD");
+    dsA.addOrganisationUnit(ouA);
+    dsA.addOrganisationUnit(ouB);
+    assertEquals(2, dsA.getSources().size());
+    assertTrue(dsA.getSources().containsAll(Sets.newHashSet(ouA, ouB)));
+    assertTrue(ouA.getDataSets().contains(dsA));
+    assertTrue(ouB.getDataSets().contains(dsA));
+    assertTrue(ouC.getDataSets().isEmpty());
+    assertTrue(ouD.getDataSets().isEmpty());
+    dsA.updateOrganisationUnits(Sets.newHashSet(ouB, ouC));
+    assertEquals(2, dsA.getSources().size());
+    assertTrue(dsA.getSources().containsAll(Sets.newHashSet(ouB, ouC)));
+    assertTrue(ouA.getDataSets().isEmpty());
+    assertTrue(ouB.getDataSets().contains(dsA));
+    assertTrue(ouC.getDataSets().contains(dsA));
+    assertTrue(ouD.getDataSets().isEmpty());
+  }
 
-    @Test
-    public void testAddIndicator()
-    {
-        DataSet dsA = new DataSet( "DataSetA" );
+  @Test
+  void testAddIndicator() {
+    DataSet dsA = new DataSet("DataSetA");
+    Indicator indicatorA = new Indicator();
+    Indicator indicatorB = new Indicator();
+    indicatorA.setName("Indicator A");
+    indicatorB.setName("Indicator B");
+    dsA.addIndicator(indicatorA);
+    assertEquals(1, dsA.getIndicators().size());
+    assertTrue(dsA.getIndicators().contains(indicatorA));
+    assertEquals(1, indicatorA.getDataSets().size());
+    assertTrue(indicatorA.getDataSets().contains(dsA));
+    dsA.addIndicator(indicatorB);
+    assertEquals(2, dsA.getIndicators().size());
+    assertTrue(dsA.getIndicators().contains(indicatorA));
+    assertTrue(dsA.getIndicators().contains(indicatorB));
+    assertEquals(1, indicatorA.getDataSets().size());
+    assertEquals(1, indicatorB.getDataSets().size());
+    assertTrue(indicatorA.getDataSets().contains(dsA));
+    assertTrue(indicatorB.getDataSets().contains(dsA));
+  }
 
-        Indicator indicatorA = new Indicator();
-        Indicator indicatorB = new Indicator();
-        indicatorA.setName( "Indicator A");
-        indicatorB.setName( "Indicator B");
+  @Test
+  void testIsLocked_BeforeFirstDayOfPeriod() {
+    assertIsLocked(false, period -> new Date(period.getStartDate().getTime() - 1L));
+  }
 
-        dsA.addIndicator( indicatorA );
+  @Test
+  void testIsLocked_FirstDayOfPeriod() {
+    assertIsLocked(false, Period::getStartDate);
+  }
 
-        assertEquals( 1, dsA.getIndicators().size() );
-        assertTrue( dsA.getIndicators().contains( indicatorA ) );
+  @Test
+  void testIsLocked_LastDayOfPeriod() {
+    assertIsLocked(false, Period::getEndDate);
+  }
 
-        assertEquals( 1, indicatorA.getDataSets().size() );
-        assertTrue( indicatorA.getDataSets().contains( dsA ) );
+  @Test
+  void testIsLocked_AfterLastDayOfPeriod() {
+    // 12 hours after the end is still ok (12/24 = 0.5 days)
+    assertIsLocked(false, period -> addDays(period.getEndDate(), 0.5));
 
-        dsA.addIndicator( indicatorB );
+    // expiryDays is 1 so 1 extra day after the end is still ok
+    assertIsLocked(false, period -> addDays(period.getEndDate(), 1));
 
-        assertEquals( 2, dsA.getIndicators().size() );
-        assertTrue( dsA.getIndicators().contains( indicatorA ) );
-        assertTrue( dsA.getIndicators().contains( indicatorB ) );
+    // 1.5 days after the end is too much
+    assertIsLocked(true, period -> addDays(period.getEndDate(), 1.5));
 
-        assertEquals( 1, indicatorA.getDataSets().size() );
-        assertEquals( 1, indicatorB.getDataSets().size() );
-        assertTrue( indicatorA.getDataSets().contains( dsA ) );
-        assertTrue( indicatorB.getDataSets().contains( dsA ) );
-    }
+    // 2 days after the end is too much
+    assertIsLocked(true, period -> addDays(period.getEndDate(), 2));
 
-    @Test
-    public void testSetWorkflow()
-    {
-        DataSet dsA = new DataSet( "DataSetA" );
+    // 60 hours is 2.5 days (60 / 24) which is too much
+    assertIsLocked(true, period -> addDays(period.getEndDate(), 2.5));
+  }
 
-        DataApprovalWorkflow workflowA = new DataApprovalWorkflow( "Workflow A" );
-        DataApprovalWorkflow workflowB = new DataApprovalWorkflow( "Workflow B" );
-
-        dsA.setWorkflow( workflowA );
-
-        assertTrue( dsA.getWorkflow() == workflowA );
-
-        assertEquals( 1, workflowA.getDataSets().size() );
-        assertTrue( workflowA.getDataSets().contains( dsA ) );
-
-        dsA.setWorkflow( workflowB );
-
-        assertTrue( dsA.getWorkflow() == workflowB );
-
-        assertEquals( 0, workflowA.getDataSets().size() );
-        assertEquals( 1, workflowB.getDataSets().size() );
-        assertTrue( workflowB.getDataSets().contains( dsA ) );
-    }
+  private static void assertIsLocked(boolean expected, Function<Period, Date> actual) {
+    Date now = new Date();
+    Period thisMonth = PeriodType.getPeriodType(PeriodTypeEnum.MONTHLY).createPeriod(now);
+    DataSet ds = new DataSet();
+    ds.setExpiryDays(1);
+    assertEquals(expected, ds.isLocked(null, thisMonth, actual.apply(thisMonth)));
+  }
 }

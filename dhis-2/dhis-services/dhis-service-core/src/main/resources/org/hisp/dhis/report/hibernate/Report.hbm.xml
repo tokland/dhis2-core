@@ -17,6 +17,8 @@
 
     <property name="name" column="name" not-null="true" unique="false" length="230" />
 
+    <property name="translations" type="jblTranslations"/>
+
     <property name="type" length="50">
       <type name="org.hibernate.type.EnumType">
         <param name="enumClass">org.hisp.dhis.report.ReportType</param>
@@ -27,15 +29,14 @@
 
     <property name="designContent" type="text" />
 
-    <many-to-one name="reportTable" class="org.hisp.dhis.reporttable.ReportTable" column="reporttableid"
-      foreign-key="fk_report_reporttableid" />
+    <property name="rawRelativePeriods" column="relativeperiods" type="jbList"/>
 
-    <many-to-one name="relatives" unique="true" class="org.hisp.dhis.period.RelativePeriods" column="relativeperiodsid"
-      cascade="all-delete-orphan" foreign-key="fk_report_relativeperiodsid" />
+    <many-to-one name="visualization" class="org.hisp.dhis.visualization.Visualization" column="visualizationid"
+      foreign-key="fk_report_visualizationid" />
 
     <component name="reportParams">
-      <property name="paramReportingMonth" />
-      <property name="paramOrganisationUnit" />
+      <property name="reportingPeriod" column="paramreportingmonth" />
+      <property name="organisationUnit" column="paramorganisationunit" />
     </component>
 
     <property name="cacheStrategy" length="40">
@@ -46,31 +47,10 @@
       </type>
     </property>
 
-    <!-- Access properties -->
-    <property name="externalAccess" />
+    <many-to-one name="createdBy" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_report_userid" />
 
-    <many-to-one name="user" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_report_userid" />
-
-    <property name="publicAccess" length="8" />
-
-    <set name="userGroupAccesses" table="reportusergroupaccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="reportid" />
-      <many-to-many class="org.hisp.dhis.user.UserGroupAccess" column="usergroupaccessid" unique="true" />
-    </set>
-
-    <set name="userAccesses" table="reportuseraccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="reportid" />
-      <many-to-many class="org.hisp.dhis.user.UserAccess" column="useraccessid" unique="true" />
-    </set>
-
-    <!-- Object Translation -->
-    <set name="translations" table="reporttranslations" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="reportid" foreign-key="fk_objecttranslation_reportid" />
-      <many-to-many class="org.hisp.dhis.translation.ObjectTranslation" column="objecttranslationid" unique="true" />
-    </set>
+    <!-- Sharing -->
+    <property name="sharing" type="jsbObjectSharing"/>
 
   </class>
 

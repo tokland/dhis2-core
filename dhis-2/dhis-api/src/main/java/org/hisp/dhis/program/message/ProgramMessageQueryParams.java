@@ -1,7 +1,5 @@
-package org.hisp.dhis.program.message;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,163 +25,54 @@ package org.hisp.dhis.program.message;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.program.message;
 
 import java.util.Date;
 import java.util.Set;
-
-import org.hisp.dhis.program.ProgramInstance;
-import org.hisp.dhis.program.ProgramStageInstance;
+import lombok.Builder;
+import lombok.Data;
+import org.hisp.dhis.program.Enrollment;
+import org.hisp.dhis.program.Event;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
  */
-public class ProgramMessageQueryParams
-{
-    private Set<String> organisationUnit;
+@Data
+@Builder
+public class ProgramMessageQueryParams {
+  private Set<String> organisationUnit;
 
-    private ProgramMessageStatus messageStatus;
+  private ProgramMessageStatus messageStatus;
 
-    private ProgramInstance programInstance;
+  private Enrollment enrollment;
 
-    private ProgramStageInstance programStageInstance;
+  private Event event;
 
-    private Date afterDate;
+  private Date afterDate;
 
-    private Date beforeDate;
+  private Date beforeDate;
 
-    private Integer page;
+  private Integer page;
 
-    private Integer pageSize;
+  private Integer pageSize;
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Logic
+  // -------------------------------------------------------------------------
 
-    public ProgramMessageQueryParams()
-    {
-        super();
-    }
+  public boolean hasOrganisationUnit() {
+    return organisationUnit != null;
+  }
 
-    public ProgramMessageQueryParams( Set<String> organisationUnit, ProgramMessageStatus messageStatus,
-        ProgramInstance programInstance, ProgramStageInstance programStageInstance, Date afterDate, Date beforeDate,
-        Integer page, Integer pageSize )
-    {
-        super();
-        this.organisationUnit = organisationUnit;
-        this.messageStatus = messageStatus;
-        this.programInstance = programInstance;
-        this.programStageInstance = programStageInstance;
-        this.afterDate = afterDate;
-        this.beforeDate = beforeDate;
-        this.page = page;
-        this.pageSize = pageSize;
-    }
+  public boolean hasEnrollment() {
+    return enrollment != null;
+  }
 
-    // -------------------------------------------------------------------------
-    // Logic
-    // -------------------------------------------------------------------------
+  public boolean hasEvent() {
+    return event != null;
+  }
 
-    public boolean hasOrignisationUnit()
-    {
-        return organisationUnit != null;
-    }
-
-    public boolean hasProgramInstance()
-    {
-        return programInstance != null;
-    }
-
-    public boolean hasProgramStageInstance()
-    {
-        return programStageInstance != null;
-    }
-
-    public boolean hasPaging()
-    {
-        return page != null && pageSize != null;
-    }
-
-    // -------------------------------------------------------------------------
-    // Getters and Setters
-    // -------------------------------------------------------------------------
-
-    public ProgramInstance getProgramInstance()
-    {
-        return programInstance;
-    }
-
-    public void setProgramInstance( ProgramInstance programInstance )
-    {
-        this.programInstance = programInstance;
-    }
-
-    public ProgramStageInstance getProgramStageInstance()
-    {
-        return programStageInstance;
-    }
-
-    public void setProgramStageInstance( ProgramStageInstance programStageInstance )
-    {
-        this.programStageInstance = programStageInstance;
-    }
-
-    public Set<String> getOrganisationUnit()
-    {
-        return organisationUnit;
-    }
-
-    public void setOrganisationUnit( Set<String> organisationUnit )
-    {
-        this.organisationUnit = organisationUnit;
-    }
-    
-    public Integer getPage()
-    {
-        return page;
-    }
-
-    public void setPage( Integer page )
-    {
-        this.page = page;
-    }
-
-    public Integer getPageSize()
-    {
-        return pageSize;
-    }
-
-    public void setPageSize( Integer pageSize )
-    {
-        this.pageSize = pageSize;
-    }
-
-    public ProgramMessageStatus getMessageStatus()
-    {
-        return messageStatus;
-    }
-
-    public void setMessageStatus( ProgramMessageStatus messageStatus )
-    {
-        this.messageStatus = messageStatus;
-    }
-
-    public Date getAfterDate()
-    {
-        return afterDate;
-    }
-
-    public void setAfterDate( Date afterDate )
-    {
-        this.afterDate = afterDate;
-    }
-
-    public Date getBeforeDate()
-    {
-        return beforeDate;
-    }
-
-    public void setBeforeDate( Date beforeDate )
-    {
-        this.beforeDate = beforeDate;
-    }
+  public boolean hasPaging() {
+    return page != null && pageSize != null;
+  }
 }

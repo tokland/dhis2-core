@@ -1,7 +1,5 @@
-package org.hisp.dhis.reservedvalue.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,66 +25,42 @@ package org.hisp.dhis.reservedvalue.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.reservedvalue.hibernate;
 
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hisp.dhis.reservedvalue.SequentialNumberCounter;
-import org.hisp.dhis.reservedvalue.SequentialNumberCounterStore;
-
-import javax.transaction.Transactional;
+import jakarta.persistence.EntityManager;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.reservedvalue.SequentialNumberCounterStore;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Stian Sandvold
  */
-@Transactional
-public class HibernateSequentialNumberCounterStore
-    implements SequentialNumberCounterStore
-{
-    protected SessionFactory sessionFactory;
+@RequiredArgsConstructor
+@Repository("org.hisp.dhis.reservedvalue.SequentialNumberCounterStore")
+public class HibernateSequentialNumberCounterStore implements SequentialNumberCounterStore {
+  private final EntityManager entityManager;
 
-    public void setSessionFactory( SessionFactory sessionFactory )
-    {
-        this.sessionFactory = sessionFactory;
-    }
+  @Override
+  public List<Integer> getNextValues(String uid, String key, int length) {
+    int count =
+        (int)
+            entityManager
+                .createNativeQuery("SELECT * FROM incrementSequentialCounter(:uid, :key, :length)")
+                .setParameter("uid", uid)
+                .setParameter("key", key)
+                .setParameter("length", length)
+                .getSingleResult();
 
-    @Override
-    public List<Integer> getNextValues( String uid, String key, int length )
-    {
-        Session session = sessionFactory.getCurrentSession();
+    return IntStream.range(count - length, length + (count - length)).boxed().toList();
+  }
 
-        int count;
-
-        SequentialNumberCounter counter = (SequentialNumberCounter) session
-            .createQuery( "FROM SequentialNumberCounter WHERE owneruid = ? AND key = ?" )
-            .setParameter( 0, uid )
-            .setParameter( 1, key )
-            .uniqueResult();
-
-        if ( counter == null )
-        {
-            counter = new SequentialNumberCounter( uid, key, 1 );
-        }
-
-        count = counter.getCounter();
-        counter.setCounter( count + length );
-        session.saveOrUpdate( counter );
-
-        return IntStream.range( count, count + length ).boxed().collect( Collectors.toList() );
-
-    }
-
-    @Override
-    public void deleteCounter( String uid )
-    {
-        Session session = sessionFactory.getCurrentSession();
-
-        sessionFactory.getCurrentSession()
-            .createQuery( "DELETE SequentialNumberCounter WHERE owneruid = :uid" )
-            .setParameter( "uid", uid )
-            .executeUpdate();
-
-    }
+  @Override
+  public void deleteCounter(String uid) {
+    entityManager
+        .createQuery("DELETE SequentialNumberCounter WHERE owneruid = :uid")
+        .setParameter("uid", uid)
+        .executeUpdate();
+  }
 }

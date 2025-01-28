@@ -1,7 +1,5 @@
-package org.hisp.dhis.organisationunit.hibernate;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,24 +25,53 @@ package org.hisp.dhis.organisationunit.hibernate;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.organisationunit.hibernate;
 
+import jakarta.persistence.EntityManager;
 import java.util.List;
-
+import java.util.Set;
 import org.hisp.dhis.common.hibernate.HibernateIdentifiableObjectStore;
 import org.hisp.dhis.organisationunit.OrganisationUnitGroup;
+import org.hisp.dhis.organisationunit.OrganisationUnitGroupSet;
 import org.hisp.dhis.organisationunit.OrganisationUnitGroupStore;
+import org.hisp.dhis.security.acl.AclService;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Lars Helge Overland
  */
+@Repository("org.hisp.dhis.organisationunit.OrganisationUnitGroupStore")
 public class HibernateOrganisationUnitGroupStore
     extends HibernateIdentifiableObjectStore<OrganisationUnitGroup>
-    implements OrganisationUnitGroupStore
-{
-    @Override
-    @SuppressWarnings("unchecked")
-    public List<OrganisationUnitGroup> getOrganisationUnitGroupsWithGroupSets()
-    {
-        return getQuery( "from OrganisationUnitGroup o where o.groupSet is not null" ).list();
-    }
+    implements OrganisationUnitGroupStore {
+  public HibernateOrganisationUnitGroupStore(
+      EntityManager entityManager,
+      JdbcTemplate jdbcTemplate,
+      ApplicationEventPublisher publisher,
+      AclService aclService) {
+    super(entityManager, jdbcTemplate, publisher, OrganisationUnitGroup.class, aclService, true);
+  }
+
+  @Override
+  public List<OrganisationUnitGroup> getOrganisationUnitGroupsWithGroupSets() {
+    return getQuery("from OrganisationUnitGroup o where size(o.groupSets) > 0").list();
+  }
+
+  @Override
+  public List<OrganisationUnitGroup> getOrganisationUnitGroupsWithoutGroupSets() {
+    return getQuery("from OrganisationUnitGroup g where size(g.groupSets) = 0").list();
+  }
+
+  @Override
+  public OrganisationUnitGroup getOrgUnitGroupInGroupSet(
+      Set<OrganisationUnitGroup> groups, OrganisationUnitGroupSet groupSet) {
+    return getQuery(
+            "select g from OrganisationUnitGroup g inner join g.groupSets gs where gs = :groupSet and g in :groups")
+        .setParameter("groupSet", groupSet)
+        .setParameter("groups", groups)
+        .setMaxResults(1)
+        .uniqueResult();
+  }
 }

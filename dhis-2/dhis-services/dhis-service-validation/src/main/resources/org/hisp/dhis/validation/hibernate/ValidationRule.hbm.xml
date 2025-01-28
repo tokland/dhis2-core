@@ -21,6 +21,8 @@
 
     <property name="instruction" type="text" />
 
+    <property name="translations" type="jblTranslations"/>
+
     <property name="importance" length="50">
       <type name="org.hibernate.type.EnumType">
         <param name="enumClass">org.hisp.dhis.validation.Importance</param>
@@ -32,10 +34,12 @@
     <property name="operator" column="operator" type="org.hisp.dhis.expression.OperatorUserType" not-null="true" />
 
     <many-to-one name="leftSide" column="leftexpressionid" class="org.hisp.dhis.expression.Expression"
-      cascade="all" foreign-key="fk_validationrule_leftexpressionid" not-null="true" />
+      cascade="all-delete-orphan" foreign-key="fk_validationrule_leftexpressionid" 
+      not-null="false" unique="true"/>
 
     <many-to-one name="rightSide" column="rightexpressionid" class="org.hisp.dhis.expression.Expression"
-      cascade="all" foreign-key="fk_validationrule_rightexpressionid" not-null="true" />
+      cascade="all-delete-orphan" foreign-key="fk_validationrule_rightexpressionid" 
+      not-null="false" unique="true"/>
 
     <property name="skipFormValidation" />
 
@@ -60,29 +64,14 @@
       <element column="organisationunitlevel" type="int" />
     </set>
 
-    <!-- Object Translation -->
-    <set name="translations" table="validationruletranslations" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="validationruleid" foreign-key="fk_objecttranslation_validationruleid" />
-      <many-to-many class="org.hisp.dhis.translation.ObjectTranslation" column="objecttranslationid" unique="true" />
-    </set>
+    <many-to-one name="createdBy" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_validationrule_userid" />
 
-    <!-- Access properties -->
-    <many-to-one name="user" class="org.hisp.dhis.user.User" column="userid" foreign-key="fk_validationrule_userid" />
+    <!-- Sharing -->
+    <property name="sharing" type="jsbObjectSharing"/>
 
-    <property name="publicAccess" length="8" />
+    <!-- Dynamic attribute values -->
 
-    <set name="userGroupAccesses" table="validationruleusergroupaccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="validationruleid" />
-      <many-to-many class="org.hisp.dhis.user.UserGroupAccess" column="usergroupaccessid" unique="true" />
-    </set>
-
-    <set name="userAccesses" table="validationruleuseraccesses" cascade="all-delete-orphan">
-      <cache usage="read-write" />
-      <key column="validationruleid" />
-      <many-to-many class="org.hisp.dhis.user.UserAccess" column="useraccessid" unique="true" />
-    </set>
+    <property name="attributeValues" type="jsbAttributeValues"/>
 
   </class>
 

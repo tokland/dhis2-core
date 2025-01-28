@@ -1,7 +1,5 @@
-package org.hisp.dhis.setting;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,109 +25,29 @@ package org.hisp.dhis.setting;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.setting;
 
-import java.io.Serializable;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
-/**
- * TODO make IdentifiableObject
- * 
- * @author Stian Strandli
- */
-public class SystemSetting
-    implements Serializable
-{
-    private int id;
+/** A system setting, for use in store layer only. */
+@Setter
+@Getter
+@ToString
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@NoArgsConstructor
+public class SystemSetting {
 
-    private String name;
+  private long id;
 
-    private Serializable value;
+  @EqualsAndHashCode.Include private String name;
+  private String value;
 
-    // -------------------------------------------------------------------------
-    // Constructor
-    // -------------------------------------------------------------------------
-
-    public SystemSetting()
-    {
-    }
-
-    // -------------------------------------------------------------------------
-    // Logic
-    // -------------------------------------------------------------------------
-
-    public boolean hasValue()
-    {
-        return value != null;
-    }
-
-    // -------------------------------------------------------------------------
-    // Getters and setters
-    // -------------------------------------------------------------------------
-
-    public int getId()
-    {
-        return id;
-    }
-
-    public void setId( int id )
-    {
-        this.id = id;
-    }
-
-    public String getName()
-    {
-        return name;
-    }
-
-    public void setName( String name )
-    {
-        this.name = name;
-    }
-
-    public Serializable getValue()
-    {
-        return value;
-    }
-
-    public void setValue( Serializable value )
-    {
-        this.value = value;
-    }
-
-    // -------------------------------------------------------------------------
-    // hashCode and equals
-    // -------------------------------------------------------------------------
-
-    @Override
-    public boolean equals( Object o )
-    {
-        if ( this == o )
-        {
-            return true;
-        }
-
-        if ( o == null )
-        {
-            return false;
-        }
-
-        if ( !(o instanceof SystemSetting) )
-        {
-            return false;
-        }
-
-        final SystemSetting other = (SystemSetting) o;
-
-        return name.equals( other.getName() );
-    }
-
-    @Override
-    public int hashCode()
-    {
-        int prime = 31;
-        int result = 1;
-
-        result = result * prime + name.hashCode();
-
-        return result;
-    }
+  public SystemSetting(String name, String value) {
+    this.name = name;
+    this.value = value;
+  }
 }

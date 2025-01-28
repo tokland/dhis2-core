@@ -1,7 +1,5 @@
-package org.hisp.dhis.relationship;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,51 +25,29 @@ package org.hisp.dhis.relationship;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.relationship;
 
-import java.util.Collection;
-
-import org.hisp.dhis.system.deletion.DeletionHandler;
-import org.hisp.dhis.trackedentity.TrackedEntityInstance;
+import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.hisp.dhis.system.deletion.DeletionVeto;
+import org.hisp.dhis.system.deletion.IdObjectDeletionHandler;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Chau Thu Tran
  */
-public class RelationshipDeletionHandler
-    extends DeletionHandler
-{
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
+@Component
+@RequiredArgsConstructor
+public class RelationshipDeletionHandler extends IdObjectDeletionHandler<Relationship> {
+  @Override
+  protected void registerHandler() {
+    whenVetoing(RelationshipType.class, this::allowDeleteRelationshipType);
+  }
 
-    private RelationshipService relationshipSevice;
-
-    public void setRelationshipSevice( RelationshipService relationshipSevice )
-    {
-        this.relationshipSevice = relationshipSevice;
-    }
-
-    // -------------------------------------------------------------------------
-    // DeletionHandler implementation
-    // -------------------------------------------------------------------------
-
-    @Override
-    public String getClassName()
-    {
-        return Relationship.class.getSimpleName();
-    }
-
-    @Override
-    public void deleteTrackedEntityInstance( TrackedEntityInstance entityInstance )
-    {
-        Collection<Relationship> relationships = relationshipSevice
-            .getRelationshipsForTrackedEntityInstance( entityInstance );
-
-        if ( relationships != null )
-        {
-            for ( Relationship relationship : relationships )
-            {
-                relationshipSevice.deleteRelationship( relationship );
-            }
-        }
-    }    
+  private DeletionVeto allowDeleteRelationshipType(RelationshipType relationshipType) {
+    return vetoIfExists(
+        VETO,
+        "select 1 from relationship where relationshiptypeid = :id limit 1",
+        Map.of("id", relationshipType.getId()));
+  }
 }

@@ -1,7 +1,5 @@
-package org.hisp.dhis.schema.descriptors;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,35 +25,35 @@ package org.hisp.dhis.schema.descriptors;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.schema.descriptors;
 
-import com.google.common.collect.Lists;
+import static org.hisp.dhis.security.Authorities.F_MOBILE_SENDSMS;
+
+import java.util.List;
 import org.hisp.dhis.schema.Schema;
 import org.hisp.dhis.schema.SchemaDescriptor;
 import org.hisp.dhis.security.Authority;
 import org.hisp.dhis.security.AuthorityType;
 import org.hisp.dhis.sms.command.SMSCommand;
 
-/**
- * Created by zubair@dhis2.org on 18.08.17.
- */
-public class SmsCommandSchemaDescriptor implements SchemaDescriptor
-{
-    public static final String SINGULAR = "smsCommand";
+/** Created by zubair@dhis2.org on 18.08.17. */
+public class SmsCommandSchemaDescriptor implements SchemaDescriptor {
+  public static final String SINGULAR = "smsCommand";
 
-    public static final String PLURAL = "smsCommands";
+  public static final String PLURAL = "smsCommands";
 
-    public static final String API_ENDPOINT = "/" + PLURAL;
+  public static final String API_ENDPOINT = "/" + PLURAL;
 
-    @Override
-    public Schema getSchema()
-    {
-        Schema schema = new Schema( SMSCommand.class, SINGULAR, PLURAL );
-        schema.setRelativeApiEndpoint( API_ENDPOINT );
-        schema.setOrder( 1509 );
+  @Override
+  public Schema getSchema() {
+    Schema schema = new Schema(SMSCommand.class, SINGULAR, PLURAL);
+    schema.setRelativeApiEndpoint(API_ENDPOINT);
+    schema.setOrder(1509);
 
-        schema.getAuthorities().add( new Authority( AuthorityType.CREATE, Lists.newArrayList( "F_MOBILE_SENDSMS" ) ) );
-        schema.getAuthorities().add( new Authority( AuthorityType.DELETE, Lists.newArrayList( "F_MOBILE_SENDSMS" ) ) );
+    schema.add(new Authority(AuthorityType.CREATE, List.of(F_MOBILE_SENDSMS.toString())));
+    schema.add(new Authority(AuthorityType.DELETE, List.of(F_MOBILE_SENDSMS.toString())));
+    schema.add(new Authority(AuthorityType.READ, List.of(F_MOBILE_SENDSMS.toString())));
 
-        return schema;
-    }
+    return schema;
+  }
 }

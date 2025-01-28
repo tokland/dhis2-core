@@ -1,7 +1,5 @@
-package org.hisp.dhis.query;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,65 +25,58 @@ package org.hisp.dhis.query;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.query;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.Accessors;
+import org.hisp.dhis.query.operators.InOperator;
 import org.hisp.dhis.query.operators.Operator;
 import org.hisp.dhis.query.planner.QueryPath;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
-public class Restriction implements Criterion
-{
-    /**
-     * Path to property you want to restrict only, one first-level properties are currently supported.
-     */
-    private String path;
+@Getter
+@Accessors(chain = true)
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+public final class Restriction implements Criterion {
+  /**
+   * Path to property you want to restrict only, one first-level properties are currently supported.
+   */
+  private final String path;
 
-    /**
-     * Operator for restriction.
-     */
-    private Operator operator;
+  /** Operator for restriction. */
+  private final Operator<?> operator;
 
-    /**
-     * Query Path.
-     */
-    private QueryPath queryPath;
+  /**
+   * Indicates that the {@link #path} is a attribute UID. This also means the {@link Restriction} is
+   * an in-memory filter.
+   */
+  private final boolean attribute;
 
-    public Restriction( String path, Operator operator )
-    {
-        this.path = path;
-        this.operator = operator;
-    }
+  /** Query Path used in persistent part of a query. */
+  @Setter private QueryPath queryPath;
 
-    public String getPath()
-    {
-        return path;
-    }
+  public Restriction(String path, Operator<?> operator) {
+    this(path, operator, false);
+  }
 
-    public Operator getOperator()
-    {
-        return operator;
-    }
+  public Restriction asAttribute() {
+    return new Restriction(path, operator, true);
+  }
 
-    public QueryPath getQueryPath()
-    {
-        return queryPath;
-    }
+  @Override
+  public String toString() {
+    return "[" + path + ", op: " + operator + "]";
+  }
 
-    public Restriction setQueryPath( QueryPath queryPath )
-    {
-        this.queryPath = queryPath;
-        return this;
-    }
-
-    public boolean haveQueryPath()
-    {
-        return queryPath != null;
-    }
-
-    @Override
-    public String toString()
-    {
-        return "[" + path + ", op: " + operator + "]";
-    }
+  @Override
+  public boolean isAlwaysFalse() {
+    if (operator instanceof InOperator<?> in)
+      return in.getCollectionArgs().isEmpty() || in.getCollectionArgs().get(0).isEmpty();
+    return false;
+  }
 }

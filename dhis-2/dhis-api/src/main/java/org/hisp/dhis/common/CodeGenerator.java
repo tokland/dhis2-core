@@ -1,7 +1,5 @@
-package org.hisp.dhis.common;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,94 +25,166 @@ package org.hisp.dhis.common;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.common;
 
 import java.security.SecureRandom;
-
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
-
-import org.springframework.util.Base64Utils;
 
 /**
  * @author bobj
  */
-public class CodeGenerator
-{
-    public static final String letters = "abcdefghijklmnopqrstuvwxyz"
-        + "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    
-    public static final String ALLOWED_CHARS = "0123456789" + letters;
+public class CodeGenerator {
 
-    public static final int NUMBER_OF_CODEPOINTS = ALLOWED_CHARS.length();
-    public static final int CODESIZE = 11;
+  private CodeGenerator() {
+    throw new IllegalStateException("Utility class");
+  }
 
-    private static final Pattern CODE_PATTERN = Pattern.compile( "^[a-zA-Z]{1}[a-zA-Z0-9]{10}$" );
+  /*
+   * The secure random number generator used by this class to create secure
+   * random-based codes. It is in a holder class to defer initialization until
+   * needed.
+   */
+  public static class SecureRandomHolder {
+    static final SecureRandom GENERATOR = new SecureRandom();
+  }
 
-    /**
-     * 192 bit, must be dividable by 3 to avoid padding "=".
-     */
-    private static final int URL_RANDOM_TOKEN_LENGTH = 24;
-    
-    /**
-     * Generates a UID according to the following rules:
-     * <ul>
-     * <li>Alphanumeric characters only.</li>
-     * <li>Exactly 11 characters long.</li>
-     * <li>First character is alphabetic.</li>
-     * </ul>
-     * 
-     * @return a UID.
-     */
-    public static String generateUid()
-    {
-        return generateCode( CODESIZE );
+  public static final String NUMERIC_CHARS = "0123456789";
+
+  public static final String UPPERCASE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  public static final String LOWERCASE_LETTERS = "abcdefghijklmnopqrstuvwxyz";
+
+  public static final String LETTERS = LOWERCASE_LETTERS + UPPERCASE_LETTERS;
+
+  public static final String ALPHANUMERIC_CHARS = NUMERIC_CHARS + LETTERS;
+
+  public static final int UID_CODE_SIZE = 11;
+
+  public static final String UID_REGEXP = "^[a-zA-Z][a-zA-Z0-9]{10}$";
+
+  public static final Pattern UID_PATTERN = Pattern.compile(UID_REGEXP);
+
+  /**
+   * The minimum length of a random alphanumeric string, with the first character always being a
+   * letter. We want to have at least 256 bits of entropy.
+   *
+   * <p>Alphanumeric char = log2(62) = 5.95
+   *
+   * <p>Letter only char = log2(52) = 5.7
+   *
+   * <p>256 - 5.7 (1st char) / 5.95 bits ≈ 42.1 characters ≈ 43 characters + 1 (1st char) = 44
+   * characters
+   *
+   * <p>We add one extra character to ensure we have 256 bits of entropy.
+   */
+  public static final int SECURE_RANDOM_TOKEN_MIN_SIZE = 44;
+
+  /**
+   * Generates a string of random alphanumeric characters to the following rules:
+   *
+   * <ul>
+   *   <li>Alphanumeric characters only.
+   *   <li>First character is alphabetic.
+   * </ul>
+   *
+   * @return a code.
+   */
+  private static char[] generateRandomAlphanumericCode(int codeSize, java.util.Random r) {
+    char[] randomChars = new char[codeSize];
+
+    // First char should be a letter
+    randomChars[0] = LETTERS.charAt(r.nextInt(LETTERS.length()));
+
+    for (int i = 1; i < codeSize; ++i) {
+      randomChars[i] = ALPHANUMERIC_CHARS.charAt(r.nextInt(ALPHANUMERIC_CHARS.length()));
     }
-        
-    /**
-     * Generates a pseudo random string with alphanumeric characters.
-     * 
-     * @param codeSize the number of characters in the code.
-     * @return the code.
-     */
-    public static String generateCode( int codeSize )
-    {
-        ThreadLocalRandom r = ThreadLocalRandom.current();
 
-        char[] randomChars = new char[codeSize];
-        
-        // First char should be a letter
-        randomChars[0] = letters.charAt( r.nextInt( letters.length() ) );
-        
-        for ( int i = 1; i < codeSize; ++i )
-        {
-            randomChars[i] = ALLOWED_CHARS.charAt( r.nextInt( NUMBER_OF_CODEPOINTS ) );
-        }
-        
-        return new String( randomChars );
-    }
-    
-    /**
-     * Tests whether the given code is a valid UID.
-     * 
-     * @param code the code to validate.
-     * @return true if the code is valid.
-     */
-    public static boolean isValidUid( String code )
-    {
-        return code != null && CODE_PATTERN.matcher( code ).matches();
-    }
-    
-    /**
-     * Generates a random 32 character token to be used in URLs.
-     * 
-     * @return a token.
-     */
-    public static String getRandomUrlToken()
-    {
-        SecureRandom sr = new SecureRandom();
-        byte[] tokenBytes = new byte[ URL_RANDOM_TOKEN_LENGTH ];
-        sr.nextBytes( tokenBytes );
+    return randomChars;
+  }
 
-        return Base64Utils.encodeToUrlSafeString( tokenBytes );
+  /**
+   * Generates a string of random alphanumeric characters. Uses a {@link ThreadLocalRandom} instance
+   * and is considered non-secure and should not be used for security purposes.
+   *
+   * @param codeSize the number of characters in the code.
+   * @return the code.
+   */
+  public static String generateCode(int codeSize) {
+    ThreadLocalRandom r = ThreadLocalRandom.current();
+    return new String(generateRandomAlphanumericCode(codeSize, r));
+  }
+
+  /**
+   * Generates a UID according to the following rules:
+   *
+   * <ul>
+   *   <li>Alphanumeric characters only.
+   *   <li>Exactly 11 characters long.
+   *   <li>First character is alphabetic.
+   * </ul>
+   *
+   * @return a UID.
+   */
+  public static String generateUid() {
+    return generateCode(UID_CODE_SIZE);
+  }
+
+  /**
+   * Generates a string of random alphanumeric characters. Uses a {@link SecureRandom} instance and
+   * is slower than {@link #generateCode(int)}, this should be used for security-related purposes
+   * only.
+   *
+   * @param codeSize the number of characters in the code.
+   * @return the code.
+   */
+  public static char[] generateSecureRandomCode(int codeSize) {
+    SecureRandom sr = SecureRandomHolder.GENERATOR;
+    return generateRandomAlphanumericCode(codeSize, sr);
+  }
+
+  public static byte[] generateSecureRandomBytes(int length) {
+    SecureRandom sr = SecureRandomHolder.GENERATOR;
+    byte[] bytes = new byte[length];
+    sr.nextBytes(bytes);
+    return bytes;
+  }
+
+  /**
+   * Generates a string of random numeric characters.
+   *
+   * @param length the number of characters in the code.
+   * @return the code.
+   */
+  public static char[] generateSecureRandomNumber(int length) {
+    char[] digits = new char[length];
+    SecureRandom sr = SecureRandomHolder.GENERATOR;
+    for (int i = 0; i < length; i++) {
+      digits[i] = (char) ('0' + sr.nextInt(10));
     }
+    return digits;
+  }
+
+  /**
+   * Generates a random secure token.
+   *
+   * <p>The token is generated using {@link SecureRandom} and should be used for security-related
+   * purposes only.
+   *
+   * @return a token.
+   */
+  public static String getRandomSecureToken() {
+    SecureRandom sr = SecureRandomHolder.GENERATOR;
+    return new String(generateRandomAlphanumericCode(SECURE_RANDOM_TOKEN_MIN_SIZE, sr));
+  }
+
+  /**
+   * Tests whether the given code is a valid UID.
+   *
+   * @param code the code to validate.
+   * @return true if the code is valid.
+   */
+  public static boolean isValidUid(String code) {
+    return code != null && UID_PATTERN.matcher(code).matches();
+  }
 }

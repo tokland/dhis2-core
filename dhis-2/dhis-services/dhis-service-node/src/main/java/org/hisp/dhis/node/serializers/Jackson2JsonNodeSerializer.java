@@ -1,7 +1,5 @@
-package org.hisp.dhis.node.serializers;
-
 /*
- * Copyright (c) 2004-2018, University of Oslo
+ * Copyright (c) 2004-2022, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,148 +25,128 @@ package org.hisp.dhis.node.serializers;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package org.hisp.dhis.node.serializers;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.collect.Lists;
+import java.io.OutputStream;
+import java.util.Date;
+import java.util.List;
 import org.hisp.dhis.node.AbstractNodeSerializer;
 import org.hisp.dhis.node.types.CollectionNode;
 import org.hisp.dhis.node.types.ComplexNode;
 import org.hisp.dhis.node.types.RootNode;
 import org.hisp.dhis.node.types.SimpleNode;
-import org.hisp.dhis.system.util.DateUtils;
+import org.hisp.dhis.util.DateUtils;
+import org.locationtech.jts.geom.Geometry;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.stereotype.Component;
-
-import java.io.OutputStream;
-import java.util.Date;
-import java.util.List;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
  */
 @Component
-@Scope( value = "prototype", proxyMode = ScopedProxyMode.INTERFACES )
-public class Jackson2JsonNodeSerializer extends AbstractNodeSerializer
-{
-    public static final String CONTENT_TYPE = "application/json";
+@Scope(value = "prototype", proxyMode = ScopedProxyMode.INTERFACES)
+public class Jackson2JsonNodeSerializer extends AbstractNodeSerializer {
+  public static final String CONTENT_TYPE = "application/json";
 
-    public static final String JSONP_CALLBACK = "org.hisp.dhis.node.serializers.Jackson2JsonNodeSerializer.callback";
+  public static final String JSONP_CALLBACK =
+      "org.hisp.dhis.node.serializers.Jackson2JsonNodeSerializer.callback";
 
-    private final static ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper jsonMapper;
 
-    static
-    {
-        objectMapper.configure( SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false );
-        objectMapper.configure( SerializationFeature.WRITE_EMPTY_JSON_ARRAYS, true );
-        objectMapper.configure( SerializationFeature.WRAP_EXCEPTIONS, true );
-        objectMapper.getFactory().enable( JsonGenerator.Feature.QUOTE_FIELD_NAMES );
+  private JsonGenerator generator = null;
+
+  public Jackson2JsonNodeSerializer(ObjectMapper jsonMapper) {
+    this.jsonMapper = jsonMapper;
+  }
+
+  @Override
+  public List<String> contentTypes() {
+    return Lists.newArrayList(CONTENT_TYPE);
+  }
+
+  @Override
+  protected void flushStream() throws Exception {
+    generator.flush();
+  }
+
+  @Override
+  protected void startSerialize(RootNode rootNode, OutputStream outputStream) throws Exception {
+    generator = jsonMapper.getFactory().createGenerator(outputStream);
+  }
+
+  @Override
+  protected void startWriteRootNode(RootNode rootNode) throws Exception {
+    if (config.getProperties().containsKey(JSONP_CALLBACK)) {
+      generator.writeRaw(config.getProperties().get(JSONP_CALLBACK) + "(");
     }
 
-    private JsonGenerator generator = null;
+    generator.writeStartObject();
+  }
 
-    @Override
-    public List<String> contentTypes()
-    {
-        return Lists.newArrayList( CONTENT_TYPE );
+  @Override
+  protected void endWriteRootNode(RootNode rootNode) throws Exception {
+    generator.writeEndObject();
+
+    if (config.getProperties().containsKey(JSONP_CALLBACK)) {
+      generator.writeRaw(")");
+    }
+  }
+
+  @Override
+  protected void startWriteSimpleNode(SimpleNode simpleNode) throws Exception {
+    Object value = simpleNode.getValue();
+
+    if (Date.class.isAssignableFrom(simpleNode.getValue().getClass())) {
+      value = DateUtils.toIso8601NoTz((Date) value);
     }
 
-    @Override
-    protected void flushStream() throws Exception
-    {
-        generator.flush();
+    if (Geometry.class.isAssignableFrom(simpleNode.getValue().getClass())) {
+      generator.writeFieldName(simpleNode.getName());
+      generator.writeRawValue(jsonMapper.writeValueAsString(value));
+      return;
     }
 
-    @Override
-    protected void startSerialize( RootNode rootNode, OutputStream outputStream ) throws Exception
-    {
-        generator = objectMapper.getFactory().createGenerator( outputStream );
+    if (simpleNode.getParent().isCollection()) {
+      generator.writeObject(value);
+    } else if (value instanceof String) {
+      generator.writeStringField(simpleNode.getName(), (String) value);
+    } else {
+      generator.writeObjectField(simpleNode.getName(), value);
     }
+  }
 
-    @Override
-    protected void startWriteRootNode( RootNode rootNode ) throws Exception
-    {
-        if ( config.getProperties().containsKey( JSONP_CALLBACK ) )
-        {
-            generator.writeRaw( config.getProperties().get( JSONP_CALLBACK ) + "(" );
-        }
+  @Override
+  protected void endWriteSimpleNode(SimpleNode simpleNode) throws Exception {}
 
-        generator.writeStartObject();
+  @Override
+  protected void startWriteComplexNode(ComplexNode complexNode) throws Exception {
+    if (complexNode.getParent().isCollection()) {
+      generator.writeStartObject();
+    } else {
+      generator.writeObjectFieldStart(complexNode.getName());
     }
+  }
 
-    @Override
-    protected void endWriteRootNode( RootNode rootNode ) throws Exception
-    {
-        generator.writeEndObject();
+  @Override
+  protected void endWriteComplexNode(ComplexNode complexNode) throws Exception {
+    generator.writeEndObject();
+  }
 
-        if ( config.getProperties().containsKey( JSONP_CALLBACK ) )
-        {
-            generator.writeRaw( ")" );
-        }
+  @Override
+  protected void startWriteCollectionNode(CollectionNode collectionNode) throws Exception {
+    if (collectionNode.getParent().isCollection()) {
+      generator.writeStartArray();
+    } else {
+      generator.writeArrayFieldStart(collectionNode.getName());
     }
+  }
 
-    @Override
-    protected void startWriteSimpleNode( SimpleNode simpleNode ) throws Exception
-    {
-        Object value = simpleNode.getValue();
-
-        if ( Date.class.isAssignableFrom( simpleNode.getValue().getClass() ) )
-        {
-            value = DateUtils.getIso8601NoTz( (Date) simpleNode.getValue() );
-        }
-
-        if ( simpleNode.getParent().isCollection() )
-        {
-            generator.writeObject( value );
-        }
-        else
-        {
-            generator.writeObjectField( simpleNode.getName(), value );
-        }
-    }
-
-    @Override
-    protected void endWriteSimpleNode( SimpleNode simpleNode ) throws Exception
-    {
-    }
-
-    @Override
-    protected void startWriteComplexNode( ComplexNode complexNode ) throws Exception
-    {
-        if ( complexNode.getParent().isCollection() )
-        {
-            generator.writeStartObject();
-        }
-        else
-        {
-            generator.writeObjectFieldStart( complexNode.getName() );
-        }
-    }
-
-    @Override
-    protected void endWriteComplexNode( ComplexNode complexNode ) throws Exception
-    {
-        generator.writeEndObject();
-    }
-
-    @Override
-    protected void startWriteCollectionNode( CollectionNode collectionNode ) throws Exception
-    {
-        if ( collectionNode.getParent().isCollection() )
-        {
-            generator.writeStartArray();
-        }
-        else
-        {
-            generator.writeArrayFieldStart( collectionNode.getName() );
-        }
-    }
-
-    @Override
-    protected void endWriteCollectionNode( CollectionNode collectionNode ) throws Exception
-    {
-        generator.writeEndArray();
-    }
+  @Override
+  protected void endWriteCollectionNode(CollectionNode collectionNode) throws Exception {
+    generator.writeEndArray();
+  }
 }
