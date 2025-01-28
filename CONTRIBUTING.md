@@ -1,5 +1,7 @@
 # Contributing
 
+Some test
+
 ## Guidelines
 
 Read the contribution [guidelines](https://developers.dhis2.org/community/contribute).
